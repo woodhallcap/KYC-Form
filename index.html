@@ -21,6 +21,85 @@
 
       <form id="kyc-form" novalidate>
         <section class="form-step active" data-step="1">
+          <h2>Section A: Entity Information</h2>
+
+          <div class="field" data-field="companyName">
+            <label for="companyName">Company Name</label>
+            <input type="text" id="companyName" name="companyName" required>
+            <div class="error"></div>
+          </div>
+
+          <div class="field" data-field="rcNumber">
+            <label for="rcNumber">RC Number</label>
+            <input type="text" id="rcNumber" name="rcNumber" required>
+            <div class="error"></div>
+          </div>
+
+          <div class="field" data-field="dateOfIncorporation">
+            <label for="dateOfIncorporation">Date of Incorporation</label>
+            <input type="date" id="dateOfIncorporation" name="dateOfIncorporation" required>
+            <div class="error"></div>
+          </div>
+
+          <div class="field" data-field="legalStatus">
+            <label>Legal Status</label>
+            <label><input type="radio" name="legalStatus" value="private"> Private Limited Company</label>
+            <label><input type="radio" name="legalStatus" value="public"> Public Limited Company</label>
+            <label><input type="radio" name="legalStatus" value="other"> Other</label>
+            <input type="text" id="legalStatusOther" name="legalStatusOther" placeholder="Please specify" style="margin-top:8px; display:none;">
+            <div class="error"></div>
+          </div>
+
+          <div class="field" data-field="registeredAddress">
+            <label for="registeredAddress">Registered Address</label>
+            <textarea id="registeredAddress" name="registeredAddress" rows="2" required></textarea>
+            <div class="error"></div>
+          </div>
+
+          <div class="field" data-field="businessAddress">
+            <label for="businessAddress">Business/Operating Address (if different)</label>
+            <textarea id="businessAddress" name="businessAddress" rows="2"></textarea>
+          </div>
+
+          <div class="field" data-field="natureOfBusiness">
+            <label for="natureOfBusiness">Nature of Business</label>
+            <input type="text" id="natureOfBusiness" name="natureOfBusiness" required>
+            <div class="error"></div>
+          </div>
+
+          <div class="field" data-field="tin">
+            <label for="tin">Tax Identification Number (TIN)</label>
+            <input type="text" id="tin" name="tin" required>
+            <div class="error"></div>
+          </div>
+
+          <div class="field" data-field="companyEmail">
+            <label for="companyEmail">Company Email</label>
+            <input type="email" id="companyEmail" name="companyEmail" required>
+            <div class="error"></div>
+          </div>
+
+          <div class="field" data-field="website">
+            <label for="website">Website (if any)</label>
+            <input type="text" id="website" name="website">
+          </div>
+
+          <div class="field" data-field="bankAccountNumber">
+            <label for="bankAccountNumber">Corporate Bank Account Number</label>
+            <input type="text" id="bankAccountNumber" name="bankAccountNumber" required>
+            <div class="error"></div>
+          </div>
+
+          <div class="field" data-field="bankName">
+            <label for="bankName">Bank</label>
+            <input type="text" id="bankName" name="bankName" required>
+            <div class="error"></div>
+          </div>
+
+          <div class="actions">
+            <span></span>
+            <button type="button" class="btn-primary" data-action="next">Next: KYC Documents</button>
+          </div>
         </section>
 
         <section class="form-step" data-step="2">
