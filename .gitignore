@@ -1,4 +1,3 @@
 .DS_Store
 /uploads/
-/vendor/
 config.local.php
