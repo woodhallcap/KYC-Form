@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Corporate KYC / CDD Form — Woodhall Capital</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <img src="assets/logos/woodhall-capital-logo-full-colour-rgb-1.svg" alt="Woodhall Capital">
+  </header>
+
+  <main class="wizard">
+    <div class="wizard-card">
+      <div class="progress" id="progress">
+        <div class="progress-step active" data-step="1">1. Entity Information</div>
+        <div class="progress-step" data-step="2">2. KYC / CDD Documents</div>
+        <div class="progress-step" data-step="3">3. Declaration</div>
+      </div>
+
+      <form id="kyc-form" novalidate>
+        <section class="form-step active" data-step="1">
+        </section>
+
+        <section class="form-step" data-step="2">
+        </section>
+
+        <section class="form-step" data-step="3">
+        </section>
+      </form>
+
+      <div class="confirmation" id="confirmation" hidden>
+      </div>
+    </div>
+  </main>
+
+  <script src="assets/js/validation.js"></script>
+  <script src="assets/js/form.js"></script>
+</body>
+</html>
