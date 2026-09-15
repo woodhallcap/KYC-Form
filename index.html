@@ -169,10 +169,42 @@
         </section>
 
         <section class="form-step" data-step="3">
+          <h2>Section C: Declaration</h2>
+          <p>We, the undersigned, certify that the information provided above is true and complete to the best of our knowledge, and that any material misstatement may result in the decline or termination of this relationship.</p>
+
+          <div class="field" data-field="certifyingName">
+            <label for="certifyingName">Name</label>
+            <input type="text" id="certifyingName" name="certifyingName" required>
+            <div class="error"></div>
+          </div>
+
+          <div class="field" data-field="designation">
+            <label for="designation">Designation</label>
+            <input type="text" id="designation" name="designation" required>
+            <div class="error"></div>
+          </div>
+
+          <div class="field" data-field="signatureName">
+            <label for="signatureName">Typed Signature (type your full name)</label>
+            <input type="text" id="signatureName" name="signatureName" required>
+            <div class="error"></div>
+          </div>
+
+          <div class="field" data-field="signatureAgree">
+            <label><input type="checkbox" id="signatureAgree" name="signatureAgree" required> I agree that the typed name above constitutes my signature.</label>
+            <div class="error"></div>
+          </div>
+
+          <div class="actions">
+            <button type="button" class="btn-secondary" data-action="back">Back</button>
+            <button type="submit" class="btn-primary" data-action="submit">Submit Form</button>
+          </div>
         </section>
       </form>
 
       <div class="confirmation" id="confirmation" hidden>
+        <h2>Thank you</h2>
+        <p>Your KYC/CDD submission has been received. A copy has been emailed to <span id="confirmation-email"></span>.</p>
       </div>
     </div>
   </main>
