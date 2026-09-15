@@ -103,6 +103,69 @@
         </section>
 
         <section class="form-step" data-step="2">
+          <h2>Section B: KYC / CDD Documentation</h2>
+          <p>Tick each document submitted and attach a copy where available.</p>
+
+          <div id="document-list">
+            <div class="document-row" data-doc-id="certificate_of_incorporation">
+              <label><input type="checkbox" class="doc-checkbox" name="documents[certificate_of_incorporation][submitted]"> Certificate of Incorporation</label>
+              <div class="file-input"><input type="file" name="documents[certificate_of_incorporation][file]" accept=".pdf,.jpg,.jpeg,.png,.docx"></div>
+            </div>
+            <div class="document-row" data-doc-id="cac_status_report">
+              <label><input type="checkbox" class="doc-checkbox" name="documents[cac_status_report][submitted]"> CAC Status Report</label>
+              <div class="file-input"><input type="file" name="documents[cac_status_report][file]" accept=".pdf,.jpg,.jpeg,.png,.docx"></div>
+            </div>
+            <div class="document-row" data-doc-id="memorandum_articles">
+              <label><input type="checkbox" class="doc-checkbox" name="documents[memorandum_articles][submitted]"> Memorandum and Articles of Association</label>
+              <div class="file-input"><input type="file" name="documents[memorandum_articles][file]" accept=".pdf,.jpg,.jpeg,.png,.docx"></div>
+            </div>
+            <div class="document-row" data-doc-id="directors_id">
+              <label><input type="checkbox" class="doc-checkbox" name="documents[directors_id][submitted]"> Valid means of identification for each director, signatory, and UBO above five per cent shareholding</label>
+              <div class="file-input"><input type="file" name="documents[directors_id][file]" accept=".pdf,.jpg,.jpeg,.png,.docx"></div>
+            </div>
+            <div class="document-row" data-doc-id="bvn_nin">
+              <label><input type="checkbox" class="doc-checkbox" name="documents[bvn_nin][submitted]"> Bank Verification Number (BVN) and National Identification Number (NIN) for each director, signatory, and Ultimate Beneficial Owner above five per cent shareholding</label>
+              <div class="file-input"><input type="file" name="documents[bvn_nin][file]" accept=".pdf,.jpg,.jpeg,.png,.docx"></div>
+            </div>
+            <div class="document-row" data-doc-id="utility_bill">
+              <label><input type="checkbox" class="doc-checkbox" name="documents[utility_bill][submitted]"> Recent residential utility bill or proof of address for the company / director(s)</label>
+              <div class="file-input"><input type="file" name="documents[utility_bill][file]" accept=".pdf,.jpg,.jpeg,.png,.docx"></div>
+            </div>
+            <div class="document-row" data-doc-id="corporate_profile">
+              <label><input type="checkbox" class="doc-checkbox" name="documents[corporate_profile][submitted]"> Company corporate profile</label>
+              <div class="file-input"><input type="file" name="documents[corporate_profile][file]" accept=".pdf,.jpg,.jpeg,.png,.docx"></div>
+            </div>
+            <div class="document-row" data-doc-id="regulatory_licences">
+              <label><input type="checkbox" class="doc-checkbox" name="documents[regulatory_licences][submitted]"> Applicable regulatory licences and permits, where the business is engaged in a regulated activity</label>
+              <div class="file-input"><input type="file" name="documents[regulatory_licences][file]" accept=".pdf,.jpg,.jpeg,.png,.docx"></div>
+            </div>
+            <div class="document-row" data-doc-id="bank_statements">
+              <label><input type="checkbox" class="doc-checkbox" name="documents[bank_statements][submitted]"> One year's bank statements from the company's operating account(s)</label>
+              <div class="file-input"><input type="file" name="documents[bank_statements][file]" accept=".pdf,.jpg,.jpeg,.png,.docx"></div>
+            </div>
+            <div class="document-row" data-doc-id="audited_financials">
+              <label><input type="checkbox" class="doc-checkbox" name="documents[audited_financials][submitted]"> Three-year audited financial statements and current-year management accounts</label>
+              <div class="file-input"><input type="file" name="documents[audited_financials][file]" accept=".pdf,.jpg,.jpeg,.png,.docx"></div>
+            </div>
+            <div class="document-row" data-doc-id="personal_financial_info">
+              <label><input type="checkbox" class="doc-checkbox" name="documents[personal_financial_info][submitted]"> Personal Financial Information (PFI) (where applicable)</label>
+              <div class="file-input"><input type="file" name="documents[personal_financial_info][file]" accept=".pdf,.jpg,.jpeg,.png,.docx"></div>
+            </div>
+            <div class="document-row" data-doc-id="aml_certificate">
+              <label><input type="checkbox" class="doc-checkbox" name="documents[aml_certificate][submitted]"> Anti-Money Laundering (AML) compliance certificate, where the customer is itself a regulated financial institution</label>
+              <div class="file-input"><input type="file" name="documents[aml_certificate][file]" accept=".pdf,.jpg,.jpeg,.png,.docx"></div>
+            </div>
+          </div>
+
+          <div class="field" data-field="consent" style="margin-top:20px;">
+            <label><input type="checkbox" id="consent" name="consent" required> We consent to the use, processing, verification, retention, and disclosure of the information and documents provided for due diligence, compliance, and the furtherance of our business relationship.</label>
+            <div class="error"></div>
+          </div>
+
+          <div class="actions">
+            <button type="button" class="btn-secondary" data-action="back">Back</button>
+            <button type="button" class="btn-primary" data-action="next">Next: Declaration</button>
+          </div>
         </section>
 
         <section class="form-step" data-step="3">
