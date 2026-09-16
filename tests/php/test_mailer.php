@@ -13,6 +13,7 @@ class FakePHPMailer
     public string $ErrorInfo = '';
     public string $CharSet = '';
     public array $attachments = [];
+    public array $embeddedImages = [];
     public bool $shouldFail = false;
 
     public function isSMTP(): void {}
@@ -21,6 +22,10 @@ class FakePHPMailer
     public function addAddress(string $address, string $name = ''): void
     {
         $this->sentTo[] = $address;
+    }
+    public function addEmbeddedImage(string $path, string $cid, string $name = ''): void
+    {
+        $this->embeddedImages[] = $cid;
     }
     public function addStringAttachment(string $content, string $name, string $encoding = '', string $type = ''): void
     {
@@ -45,14 +50,23 @@ $sampleData = [
     'step1' => ['companyName' => 'Acme Trading Ltd', 'companyEmail' => 'info@acme.com'],
 ];
 
-test_case('build_admin_email_html includes company name', function () use ($sampleData) {
+test_case('build_admin_email_html includes company name and the logo image', function () use ($sampleData) {
     $html = build_admin_email_html($sampleData);
     assert_true(strpos($html, 'Acme Trading Ltd') !== false);
+    assert_true(strpos($html, 'cid:woodhall-logo') !== false);
+    assert_true(strpos($html, '<img') !== false);
 });
 
-test_case('build_confirmation_email_html includes company name', function () use ($sampleData) {
+test_case('build_confirmation_email_html includes company name and the logo image', function () use ($sampleData) {
     $html = build_confirmation_email_html($sampleData);
     assert_true(strpos($html, 'Acme Trading Ltd') !== false);
+    assert_true(strpos($html, 'cid:woodhall-logo') !== false);
+});
+
+test_case('build_admin_email_html accepts a custom logo source (used by the dev preview page)', function () use ($sampleData) {
+    $html = build_admin_email_html($sampleData, 'assets/logos/woodhall-capital-logo-reverse-rgb-1.png');
+    assert_true(strpos($html, 'assets/logos/woodhall-capital-logo-reverse-rgb-1.png') !== false);
+    assert_true(strpos($html, 'cid:woodhall-logo') === false);
 });
 
 test_case('send_submission_emails sends to admin and submitter on success', function () use ($sampleData) {
@@ -70,6 +84,8 @@ test_case('send_submission_emails sends to admin and submitter on success', func
     assert_equal([RECIPIENT_EMAIL], $fakes[0]->sentTo);
     assert_equal(['info@acme.com'], $fakes[1]->sentTo);
     assert_true(in_array('woodhall-kyc-submission.pdf', $fakes[0]->attachments, true));
+    assert_true(in_array('woodhall-logo', $fakes[0]->embeddedImages, true), 'Admin email should embed the logo');
+    assert_true(in_array('woodhall-logo', $fakes[1]->embeddedImages, true), 'Confirmation email should embed the logo');
 });
 
 test_case('send_submission_emails reports failure when admin send fails', function () use ($sampleData) {

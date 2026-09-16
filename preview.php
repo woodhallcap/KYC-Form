@@ -72,8 +72,12 @@ if (($_GET['view'] ?? '') === 'pdf') {
     exit;
 }
 
-$adminHtml = build_admin_email_html($data);
-$confirmationHtml = build_confirmation_email_html($data);
+// The real emails embed the logo via a PHPMailer CID reference (cid:woodhall-logo),
+// which only resolves inside an email client — for this browser-based preview we
+// swap in a normal relative path so the logo actually renders in the iframe.
+$previewLogoSrc = 'assets/logos/woodhall-capital-logo-reverse-rgb-1.png';
+$adminHtml = build_admin_email_html($data, $previewLogoSrc);
+$confirmationHtml = build_confirmation_email_html($data, $previewLogoSrc);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -86,7 +90,7 @@ $confirmationHtml = build_confirmation_email_html($data);
   .panel { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
   .panel h2 { margin-top: 0; color: #0E4033; font-size: 18px; }
   iframe { width: 100%; border: 1px solid #ddd; border-radius: 6px; }
-  .email-frame { height: 320px; }
+  .email-frame { height: 420px; }
   .pdf-frame { height: 800px; }
   .notice { background: #FFF3CD; color: #7A5B00; padding: 10px 14px; border-radius: 6px; margin-bottom: 20px; font-size: 14px; }
 </style>
