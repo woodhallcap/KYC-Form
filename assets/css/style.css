@@ -47,6 +47,8 @@
 
 * { box-sizing: border-box; }
 
+[hidden] { display: none !important; }
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -63,7 +65,13 @@ body {
 }
 
 .site-header img {
-  height: 48px;
+  height: 84px;
+}
+
+@media (max-width: 600px) {
+  .site-header img {
+    height: 64px;
+  }
 }
 
 .wizard {
@@ -255,8 +263,35 @@ button {
   padding: 40px 16px;
 }
 
+.progress-mobile {
+  display: none;
+  margin-bottom: 24px;
+}
+
+.progress-mobile-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-primary);
+  margin-bottom: 8px;
+}
+
+.progress-mobile-track {
+  height: 6px;
+  background: var(--color-bg-alt);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-mobile-fill {
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: 999px;
+  transition: width 0.2s ease;
+}
+
 @media (max-width: 600px) {
   .wizard-card { padding: 20px; }
-  .progress-step { font-size: 11px; padding: 8px 4px; }
-  body { background-size: 90vw; background-position: center 80px; }
+  .progress { display: none; }
+  .progress-mobile { display: block; }
 }

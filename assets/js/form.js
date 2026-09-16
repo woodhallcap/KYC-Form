@@ -8,6 +8,10 @@
   var confirmation = document.getElementById('confirmation');
   var currentStep = 1;
   var touchedFields = {};
+  var STEP_NAMES = { 1: 'Entity Information', 2: 'KYC / CDD Documents', 3: 'Declaration' };
+  var progressMobileCurrent = document.getElementById('progress-mobile-current');
+  var progressMobileName = document.getElementById('progress-mobile-name');
+  var progressMobileFill = document.getElementById('progress-mobile-fill');
 
   function showStep(stepNumber) {
     steps.forEach(function (section) {
@@ -18,6 +22,9 @@
       el.classList.toggle('active', n === stepNumber);
       el.classList.toggle('complete', n < stepNumber);
     });
+    if (progressMobileCurrent) progressMobileCurrent.textContent = stepNumber;
+    if (progressMobileName) progressMobileName.textContent = STEP_NAMES[stepNumber] || '';
+    if (progressMobileFill) progressMobileFill.style.width = (stepNumber / steps.length * 100) + '%';
     currentStep = stepNumber;
   }
 
@@ -211,6 +218,7 @@
           if (autosave) autosave.clearDraft();
           form.hidden = true;
           document.getElementById('progress').hidden = true;
+          document.getElementById('progress-mobile').hidden = true;
           document.getElementById('confirmation-email').textContent = submitterEmail;
           confirmation.hidden = false;
         } else {
