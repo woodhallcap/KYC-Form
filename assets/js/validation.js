@@ -86,7 +86,7 @@
       errors._total = 'Total attachments exceed the 20MB limit.';
     }
     if (!consent) {
-      errors._consent = 'Consent to processing is required.';
+      errors.consent = 'Consent to processing is required.';
     }
     return { valid: Object.keys(errors).length === 0, errors: errors };
   }

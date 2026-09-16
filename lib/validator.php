@@ -88,7 +88,7 @@ function validate_step2(array $documents, bool $consent): array
         $errors['_total'] = 'Total attachments exceed the 20MB limit.';
     }
     if (!$consent) {
-        $errors['_consent'] = 'Consent to processing is required.';
+        $errors['consent'] = 'Consent to processing is required.';
     }
     return ['valid' => count($errors) === 0, 'errors' => $errors];
 }

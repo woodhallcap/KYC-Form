@@ -53,7 +53,7 @@ test('validateFileMeta accepts a valid pdf under the limit', () => {
 test('validateStep2 requires consent', () => {
   const result = V.validateStep2([], false);
   assert.equal(result.valid, false);
-  assert.ok(result.errors._consent);
+  assert.ok(result.errors.consent);
 });
 
 test('validateStep2 flags total attachment size over 20MB', () => {

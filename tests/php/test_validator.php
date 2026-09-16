@@ -50,7 +50,7 @@ test_case('validate_file_meta rejects oversized files', function () {
 test_case('validate_step2 requires consent', function () {
     $result = validate_step2([], false);
     assert_equal(false, $result['valid']);
-    assert_true(isset($result['errors']['_consent']));
+    assert_true(isset($result['errors']['consent']));
 });
 
 test_case('validate_step2 flags total size over 20MB', function () {
