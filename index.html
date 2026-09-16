@@ -13,6 +13,11 @@
 
   <main class="wizard">
     <div class="wizard-card">
+      <div class="draft-banner" id="draft-banner" hidden>
+        <span>We restored your unsaved draft.</span>
+        <button type="button" id="draft-clear">Clear and start over</button>
+      </div>
+
       <div class="progress" id="progress">
         <div class="progress-step active" data-step="1">1. Entity Information</div>
         <div class="progress-step" data-step="2">2. KYC / CDD Documents</div>
@@ -210,6 +215,7 @@
   </main>
 
   <script src="assets/js/validation.js"></script>
+  <script src="assets/js/autosave.js"></script>
   <script src="assets/js/form.js"></script>
 </body>
 </html>

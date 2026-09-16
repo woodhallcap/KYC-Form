@@ -7,6 +7,7 @@
   var progressSteps = Array.prototype.slice.call(document.querySelectorAll('.progress-step'));
   var confirmation = document.getElementById('confirmation');
   var currentStep = 1;
+  var touchedFields = {};
 
   function showStep(stepNumber) {
     steps.forEach(function (section) {
@@ -57,6 +58,55 @@
     return null;
   }
 
+  function stepErrors(stepNumber) {
+    if (stepNumber === 1) return V.validateStep1(collectStep1()).errors;
+    if (stepNumber === 2) {
+      var step2Data = collectStep2();
+      return V.validateStep2(step2Data.documents, step2Data.consent).errors;
+    }
+    if (stepNumber === 3) return V.validateStep3(collectStep3()).errors;
+    return {};
+  }
+
+  function touchAllFieldsInStep(stepNumber) {
+    stepSection(stepNumber).querySelectorAll('[data-field]').forEach(function (fieldWrapper) {
+      touchedFields[fieldWrapper.dataset.field] = true;
+    });
+  }
+
+  function revalidateTouchedFields(stepNumber) {
+    var errors = stepErrors(stepNumber);
+    stepSection(stepNumber).querySelectorAll('[data-field]').forEach(function (fieldWrapper) {
+      var key = fieldWrapper.dataset.field;
+      if (!touchedFields[key]) return;
+      var message = errors[key] || '';
+      fieldWrapper.classList.toggle('has-error', !!message);
+      var errorEl = fieldWrapper.querySelector('.error');
+      if (errorEl) errorEl.textContent = message;
+    });
+  }
+
+  function attachInlineValidation(stepNumber) {
+    stepSection(stepNumber).querySelectorAll('[data-field]').forEach(function (fieldWrapper) {
+      var key = fieldWrapper.dataset.field;
+      fieldWrapper.querySelectorAll('input, textarea, select').forEach(function (input) {
+        input.addEventListener('blur', function () {
+          touchedFields[key] = true;
+          revalidateTouchedFields(stepNumber);
+        });
+        input.addEventListener('input', function () {
+          if (touchedFields[key]) revalidateTouchedFields(stepNumber);
+        });
+        if (input.type === 'checkbox' || input.type === 'radio') {
+          input.addEventListener('change', function () {
+            touchedFields[key] = true;
+            revalidateTouchedFields(stepNumber);
+          });
+        }
+      });
+    });
+  }
+
   function collectStep1() {
     return {
       companyName: form.companyName.value,
@@ -96,6 +146,7 @@
   }
 
   function validateCurrentStep() {
+    touchAllFieldsInStep(currentStep);
     clearErrors(currentStep);
     if (currentStep === 1) {
       var result1 = V.validateStep1(collectStep1());
@@ -157,6 +208,7 @@
       .then(function (response) { return response.json(); })
       .then(function (payload) {
         if (payload.success) {
+          if (autosave) autosave.clearDraft();
           form.hidden = true;
           document.getElementById('progress').hidden = true;
           document.getElementById('confirmation-email').textContent = submitterEmail;
@@ -185,6 +237,29 @@
         alert('Network error. Please try again.');
       });
   });
+
+  attachInlineValidation(1);
+  attachInlineValidation(2);
+  attachInlineValidation(3);
+
+  var autosave = window.WoodhallAutosave ? window.WoodhallAutosave.init(form) : null;
+  if (autosave) {
+    var draft = autosave.loadDraft();
+    if (autosave.hasAnyContent(draft)) {
+      autosave.applyToForm(form, draft);
+      var draftBanner = document.getElementById('draft-banner');
+      draftBanner.hidden = false;
+      document.getElementById('draft-clear').addEventListener('click', function () {
+        form.reset();
+        form.querySelectorAll('.document-row.checked').forEach(function (row) {
+          row.classList.remove('checked');
+        });
+        legalStatusOtherInput.style.display = 'none';
+        autosave.clearDraft();
+        draftBanner.hidden = true;
+      });
+    }
+  }
 
   showStep(1);
 })();

@@ -104,6 +104,29 @@ body {
   }
 }
 
+.draft-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--color-bg-alt);
+  border: 1px solid var(--color-accent);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  color: var(--color-primary);
+}
+
+.draft-banner button {
+  background: transparent;
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  padding: 6px 14px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
 .progress {
   display: flex;
   justify-content: space-between;
