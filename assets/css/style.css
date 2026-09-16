@@ -53,19 +53,6 @@ body {
   font-family: var(--font-body);
   color: var(--color-ink);
   background-color: var(--color-bg);
-  background-image: url('../logos/woodhall-capital-logo-full-colour-rgb-1.svg');
-  background-repeat: no-repeat;
-  background-position: center 120px;
-  background-size: min(70vw, 640px);
-  position: relative;
-}
-
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background-color: rgba(249, 243, 240, 0.94);
-  z-index: -1;
 }
 
 .site-header {
@@ -86,10 +73,35 @@ body::before {
 }
 
 .wizard-card {
-  background: var(--color-white);
+  position: relative;
+  overflow: hidden;
   border-radius: var(--radius);
   box-shadow: var(--shadow-card);
   padding: 32px;
+  background-color: var(--color-white);
+  background-repeat: no-repeat;
+  background-image:
+    url('../logos/woodhall-emblem-faint.png'),
+    url('../logos/woodhall-emblem-faint.png'),
+    url('../logos/woodhall-emblem-faint.png'),
+    url('../logos/woodhall-emblem-faint.png');
+  background-size: 90px auto, 90px auto, 90px auto, 90px auto;
+  background-position:
+    -18px -18px,
+    calc(100% + 18px) -18px,
+    -18px calc(100% + 18px),
+    calc(100% + 18px) calc(100% + 18px);
+}
+
+@media (max-width: 600px) {
+  .wizard-card {
+    background-size: 60px auto, 60px auto, 60px auto, 60px auto;
+    background-position:
+      -12px -12px,
+      calc(100% + 12px) -12px,
+      -12px calc(100% + 12px),
+      calc(100% + 12px) calc(100% + 12px);
+  }
 }
 
 .progress {
