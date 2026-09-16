@@ -295,3 +295,16 @@ button {
   .progress { display: none; }
   .progress-mobile { display: block; }
 }
+
+.dev-prefill-button {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  z-index: 100;
+  background: #FFF3CD;
+  color: #7A5B00;
+  border: 1px dashed #7A5B00;
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 13px;
+}
