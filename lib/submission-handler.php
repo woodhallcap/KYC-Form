@@ -45,6 +45,19 @@ function parse_documents_input(array $post, array $files): array
     return $documents;
 }
 
+function upload_error_message(int $code): string
+{
+    switch ($code) {
+        case UPLOAD_ERR_INI_SIZE:
+        case UPLOAD_ERR_FORM_SIZE:
+            return 'This file is too large to upload.';
+        case UPLOAD_ERR_PARTIAL:
+            return 'This file was only partially uploaded. Please try again.';
+        default:
+            return 'This file could not be uploaded. Please try again.';
+    }
+}
+
 function handle_submission(array $post, array $files, ?callable $sendEmails = null): array
 {
     $sendEmails = $sendEmails ?? 'send_submission_emails';
@@ -55,9 +68,17 @@ function handle_submission(array $post, array $files, ?callable $sendEmails = nu
     $consent = !empty($post['consent']);
     $step2Result = validate_step2($documents, $consent);
 
+    $uploadErrors = [];
+    foreach ($documents as $doc) {
+        $errorCode = $doc['file']['error'] ?? UPLOAD_ERR_NO_FILE;
+        if ($errorCode !== UPLOAD_ERR_OK && $errorCode !== UPLOAD_ERR_NO_FILE) {
+            $uploadErrors[$doc['id']] = upload_error_message($errorCode);
+        }
+    }
+
     $step3Result = validate_step3($post);
 
-    $errors = array_merge($step1Result['errors'], $step2Result['errors'], $step3Result['errors']);
+    $errors = array_merge($step1Result['errors'], $step2Result['errors'], $uploadErrors, $step3Result['errors']);
     if (count($errors) > 0) {
         return ['success' => false, 'errors' => $errors, 'message' => 'Please correct the highlighted fields.'];
     }

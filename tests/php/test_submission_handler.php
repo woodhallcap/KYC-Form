@@ -34,6 +34,28 @@ test_case('handle_submission returns errors for missing required fields', functi
     assert_true(isset($result['errors']['companyName']));
 });
 
+test_case('handle_submission rejects a file that failed PHP-level upload limits instead of silently dropping it', function () {
+    $files = [
+        'documents' => [
+            'name' => ['certificate_of_incorporation' => ['file' => 'big.pdf']],
+            'size' => ['certificate_of_incorporation' => ['file' => 0]],
+            'tmp_name' => ['certificate_of_incorporation' => ['file' => '']],
+            'error' => ['certificate_of_incorporation' => ['file' => UPLOAD_ERR_INI_SIZE]],
+        ],
+    ];
+    $called = false;
+    $fakeSend = function () use (&$called) {
+        $called = true;
+        return ['success' => true, 'error' => null];
+    };
+
+    $result = handle_submission(sample_post(), $files, $fakeSend);
+
+    assert_equal(false, $result['success']);
+    assert_true(isset($result['errors']['certificate_of_incorporation']));
+    assert_true(!$called, 'Should not attempt to email a submission with a failed upload');
+});
+
 test_case('handle_submission succeeds and calls the injected email sender', function () {
     $called = false;
     $fakeSend = function (array $data, string $pdfBytes, array $attachments) use (&$called) {

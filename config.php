@@ -16,4 +16,3 @@ define('MAIL_FROM_NAME', 'Woodhall Capital');
 
 define('MAX_FILE_SIZE_BYTES', 5 * 1024 * 1024);
 define('MAX_TOTAL_SIZE_BYTES', 20 * 1024 * 1024);
-define('UPLOAD_TMP_DIR', __DIR__ . '/uploads');
