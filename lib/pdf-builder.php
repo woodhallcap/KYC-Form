@@ -18,9 +18,9 @@ function build_submission_pdf(array $data): string
     $primary = [14, 64, 51];
     $ink = [22, 22, 22];
 
-    $logoPath = __DIR__ . '/../assets/logos/woodhall-capital-logo-full-colour-rgb-1.svg';
+    $logoPath = __DIR__ . '/../assets/logos/woodhall-capital-logo-full-colour-rgb-1.png';
     if (file_exists($logoPath)) {
-        $pdf->ImageSVG($logoPath, 18, 12, 45, 0, '', '', '', 0);
+        $pdf->Image($logoPath, 18, 10, 24, 0, 'PNG');
     }
     pdf_watermark($pdf, $logoPath);
 
@@ -96,11 +96,28 @@ function pdf_section_title(TCPDF $pdf, string $title, array $color): void
 
 function pdf_field_table(TCPDF $pdf, array $rows): void
 {
+    $labelWidth = 55;
+    $margins = $pdf->getMargins();
+    $valueWidth = $pdf->getPageWidth() - $margins['left'] - $margins['right'] - $labelWidth;
+
     foreach ($rows as [$label, $value]) {
+        $displayValue = $value !== '' ? $value : '—';
+
         $pdf->SetFont('helvetica', 'B', 10);
-        $pdf->MultiCell(55, 6, $label, 0, 'L', false, 0);
+        $labelHeight = $pdf->getStringHeight($labelWidth, $label);
         $pdf->SetFont('helvetica', '', 10);
-        $pdf->MultiCell(0, 6, $value !== '' ? $value : '—', 0, 'L', false, 1);
+        $valueHeight = $pdf->getStringHeight($valueWidth, $displayValue);
+        $rowHeight = max($labelHeight, $valueHeight, 6);
+
+        $bottomLimit = $pdf->getPageHeight() - $margins['bottom'];
+        if ($pdf->GetY() + $rowHeight > $bottomLimit) {
+            $pdf->AddPage();
+        }
+
+        $pdf->SetFont('helvetica', 'B', 10);
+        $pdf->MultiCell($labelWidth, $rowHeight, $label, 0, 'L', false, 0);
+        $pdf->SetFont('helvetica', '', 10);
+        $pdf->MultiCell($valueWidth, $rowHeight, $displayValue, 0, 'L', false, 1);
     }
 }
 
@@ -109,9 +126,15 @@ function pdf_watermark(TCPDF $pdf, string $logoPath): void
     if (!file_exists($logoPath)) {
         return;
     }
+    $pageWidth = $pdf->getPageWidth();
+    $pageHeight = $pdf->getPageHeight();
+    $watermarkWidth = 140;
+    $x = ($pageWidth - $watermarkWidth) / 2;
+    $y = ($pageHeight - $watermarkWidth) / 2;
+
     $pdf->StartTransform();
     $pdf->SetAlpha(0.06);
-    $pdf->ImageSVG($logoPath, 45, 90, 120, 0, '', '', '', 0);
+    $pdf->Image($logoPath, $x, $y, $watermarkWidth, 0, 'PNG');
     $pdf->SetAlpha(1);
     $pdf->StopTransform();
 }
