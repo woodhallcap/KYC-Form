@@ -170,8 +170,22 @@ h1, h2, h3 {
   margin-top: 0;
 }
 
-.form-step { display: none; }
+.form-step {
+  display: none;
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
 .form-step.active { display: block; }
+
+.form-step.slide-out-left { opacity: 0; transform: translateX(-24px); }
+.form-step.slide-out-right { opacity: 0; transform: translateX(24px); }
+.form-step.slide-in-from-right { opacity: 0; transform: translateX(24px); }
+.form-step.slide-in-from-left { opacity: 0; transform: translateX(-24px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .form-step { transition: none; }
+}
 
 .field {
   margin-bottom: 20px;
@@ -243,6 +257,15 @@ button {
   padding: 12px 28px;
   cursor: pointer;
   font-size: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
 }
 
 .btn-primary {
@@ -250,12 +273,29 @@ button {
   color: var(--color-white);
 }
 
-.btn-primary:hover { background: var(--color-primary-dark); }
+.btn-primary:hover:not(:disabled) { background: var(--color-primary-dark); }
 
 .btn-secondary {
   background: transparent;
   color: var(--color-primary);
   border: 1px solid var(--color-primary);
+}
+
+.btn-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: btn-spin 0.7s linear infinite;
+}
+
+@keyframes btn-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-spinner { animation-duration: 1.4s; }
 }
 
 .confirmation {

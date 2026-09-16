@@ -13,8 +13,16 @@
   var progressMobileName = document.getElementById('progress-mobile-name');
   var progressMobileFill = document.getElementById('progress-mobile-fill');
 
-  function showStep(stepNumber) {
+  var SLIDE_DURATION_MS = 180;
+  var slideClasses = ['slide-out-left', 'slide-out-right', 'slide-in-from-left', 'slide-in-from-right'];
+
+  function prefersReducedMotion() {
+    return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
+  function activateStep(stepNumber) {
     steps.forEach(function (section) {
+      section.classList.remove.apply(section.classList, slideClasses);
       section.classList.toggle('active', Number(section.dataset.step) === stepNumber);
     });
     progressSteps.forEach(function (el) {
@@ -26,6 +34,25 @@
     if (progressMobileName) progressMobileName.textContent = STEP_NAMES[stepNumber] || '';
     if (progressMobileFill) progressMobileFill.style.width = (stepNumber / steps.length * 100) + '%';
     currentStep = stepNumber;
+  }
+
+  function showStep(stepNumber, direction) {
+    var oldStep = stepSection(currentStep);
+
+    if (!direction || prefersReducedMotion() || !oldStep || stepNumber === currentStep) {
+      activateStep(stepNumber);
+      return;
+    }
+
+    oldStep.classList.add(direction === 'forward' ? 'slide-out-left' : 'slide-out-right');
+
+    window.setTimeout(function () {
+      activateStep(stepNumber);
+      var newStep = stepSection(stepNumber);
+      newStep.classList.add(direction === 'forward' ? 'slide-in-from-right' : 'slide-in-from-left');
+      void newStep.offsetWidth;
+      newStep.classList.remove('slide-in-from-right', 'slide-in-from-left');
+    }, SLIDE_DURATION_MS);
   }
 
   function stepSection(stepNumber) {
@@ -176,13 +203,13 @@
 
   document.querySelectorAll('[data-action="next"]').forEach(function (button) {
     button.addEventListener('click', function () {
-      if (validateCurrentStep()) showStep(currentStep + 1);
+      if (validateCurrentStep()) showStep(currentStep + 1, 'forward');
     });
   });
 
   document.querySelectorAll('[data-action="back"]').forEach(function (button) {
     button.addEventListener('click', function () {
-      showStep(currentStep - 1);
+      showStep(currentStep - 1, 'back');
     });
   });
 
@@ -200,13 +227,23 @@
     });
   });
 
+  var submitButton = form.querySelector('[data-action="submit"]');
+  var submitSpinner = submitButton.querySelector('.btn-spinner');
+  var submitLabel = submitButton.querySelector('.btn-label');
+  var backButtons = Array.prototype.slice.call(form.querySelectorAll('[data-action="back"]'));
+
+  function setSubmitting(isSubmitting) {
+    submitButton.disabled = isSubmitting;
+    backButtons.forEach(function (btn) { btn.disabled = isSubmitting; });
+    if (submitSpinner) submitSpinner.hidden = !isSubmitting;
+    if (submitLabel) submitLabel.textContent = isSubmitting ? 'Submitting…' : 'Submit Form';
+  }
+
   form.addEventListener('submit', function (event) {
     event.preventDefault();
     if (!validateCurrentStep()) return;
 
-    var submitButton = form.querySelector('[data-action="submit"]');
-    submitButton.disabled = true;
-    submitButton.textContent = 'Submitting…';
+    setSubmitting(true);
 
     var submitterEmail = collectStep1().companyEmail;
     var formData = new FormData(form);
@@ -222,8 +259,7 @@
           document.getElementById('confirmation-email').textContent = submitterEmail;
           confirmation.hidden = false;
         } else {
-          submitButton.disabled = false;
-          submitButton.textContent = 'Submit Form';
+          setSubmitting(false);
           if (payload.errors && Object.keys(payload.errors).length > 0) {
             var firstStep = null;
             Object.keys(payload.errors).forEach(function (field) {
@@ -240,8 +276,7 @@
         }
       })
       .catch(function () {
-        submitButton.disabled = false;
-        submitButton.textContent = 'Submit Form';
+        setSubmitting(false);
         alert('Network error. Please try again.');
       });
   });
