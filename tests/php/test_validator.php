@@ -82,4 +82,37 @@ test_case('validate_step3 passes with all fields valid', function () {
     assert_equal(true, $result['valid']);
 });
 
+test_case('sanitize_text strips CR/LF and control characters, trims whitespace', function () {
+    $result = sanitize_text("  Acme Ltd\r\nBcc: evil@example.com  ");
+    assert_equal('Acme LtdBcc: evil@example.com', $result);
+});
+
+test_case('sanitize_text strips null bytes and other control characters', function () {
+    $result = sanitize_text("Acme\x00\x01\x1FLtd");
+    assert_equal('AcmeLtd', $result);
+});
+
+test_case('sanitize_multiline_text preserves single newlines but strips other control characters', function () {
+    $result = sanitize_multiline_text("1 Marina Road\r\nLagos\x00Island");
+    assert_equal("1 Marina Road\nLagosIsland", $result);
+});
+
+test_case('sanitize_filename strips path components and dangerous characters', function () {
+    assert_equal('passwd', sanitize_filename('../../etc/passwd'));
+    assert_equal('file.pdf', sanitize_filename('my/file.pdf'));
+    assert_equal('my__file.pdf', sanitize_filename('my<>file.pdf'));
+    assert_equal('document', sanitize_filename(''));
+});
+
+test_case('sanitize_submission_input sanitizes known single-line and multiline fields only', function () {
+    $result = sanitize_submission_input([
+        'companyName' => "Acme\r\nLtd",
+        'registeredAddress' => "1 Marina Road\r\nLagos",
+        'documents' => ['certificate_of_incorporation' => ['submitted' => '1']],
+    ]);
+    assert_equal('AcmeLtd', $result['companyName']);
+    assert_equal("1 Marina Road\nLagos", $result['registeredAddress']);
+    assert_equal(['certificate_of_incorporation' => ['submitted' => '1']], $result['documents']);
+});
+
 test_summary();

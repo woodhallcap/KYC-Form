@@ -56,6 +56,51 @@ test_case('handle_submission rejects a file that failed PHP-level upload limits 
     assert_true(!$called, 'Should not attempt to email a submission with a failed upload');
 });
 
+test_case('handle_submission strips header-injection attempts from text fields before sending', function () {
+    $capturedData = null;
+    $fakeSend = function (array $data) use (&$capturedData) {
+        $capturedData = $data;
+        return ['success' => true, 'error' => null];
+    };
+
+    $post = sample_post([
+        'companyName' => "Acme Ltd\r\nBcc: attacker@evil.com",
+        'registeredAddress' => "1 Marina Road\r\nBcc: attacker@evil.com",
+    ]);
+
+    $result = handle_submission($post, [], $fakeSend);
+
+    assert_equal(true, $result['success']);
+    assert_true(strpos($capturedData['step1']['companyName'], "\r") === false);
+    assert_true(strpos($capturedData['step1']['companyName'], "\n") === false);
+    assert_equal("Acme LtdBcc: attacker@evil.com", $capturedData['step1']['companyName']);
+    assert_true(strpos($capturedData['step1']['registeredAddress'], "\r") === false);
+});
+
+test_case('handle_submission sanitizes uploaded filenames before attaching to email', function () {
+    $tmpFile = tempnam(sys_get_temp_dir(), 'kyc-test-');
+    file_put_contents($tmpFile, 'dummy content');
+
+    $files = [
+        'documents' => [
+            'name' => ['certificate_of_incorporation' => ['file' => '../../evil<>.pdf']],
+            'size' => ['certificate_of_incorporation' => ['file' => 13]],
+            'tmp_name' => ['certificate_of_incorporation' => ['file' => $tmpFile]],
+            'error' => ['certificate_of_incorporation' => ['file' => UPLOAD_ERR_OK]],
+        ],
+    ];
+
+    $capturedAttachments = null;
+    $fakeSend = function (array $data, string $pdfBytes, array $attachments) use (&$capturedAttachments) {
+        $capturedAttachments = $attachments;
+        return ['success' => true, 'error' => null];
+    };
+
+    handle_submission(sample_post(), $files, $fakeSend);
+
+    assert_equal('evil__.pdf', $capturedAttachments[0]['originalName']);
+});
+
 test_case('handle_submission succeeds and calls the injected email sender', function () {
     $called = false;
     $fakeSend = function (array $data, string $pdfBytes, array $attachments) use (&$called) {

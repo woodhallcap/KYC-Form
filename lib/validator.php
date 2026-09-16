@@ -20,9 +20,57 @@ const DOCUMENT_IDS = [
     'aml_certificate',
 ];
 
+const SINGLE_LINE_TEXT_FIELDS = [
+    'companyName', 'rcNumber', 'dateOfIncorporation', 'legalStatus', 'legalStatusOther',
+    'natureOfBusiness', 'tin', 'companyEmail', 'website', 'bankAccountNumber', 'bankName',
+    'certifyingName', 'designation', 'signatureName',
+];
+
+const MULTILINE_TEXT_FIELDS = ['registeredAddress', 'businessAddress'];
+
 function is_blank($value): bool
 {
     return $value === null || trim((string) $value) === '';
+}
+
+function sanitize_text(string $value): string
+{
+    $value = str_replace(["\r\n", "\r", "\n"], '', $value);
+    $value = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $value);
+    return trim($value);
+}
+
+function sanitize_multiline_text(string $value): string
+{
+    $value = str_replace(["\r\n", "\r"], "\n", $value);
+    $value = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $value);
+    return trim($value);
+}
+
+function sanitize_filename(string $name): string
+{
+    $name = basename($name);
+    $name = preg_replace('/[\x00-\x1F\x7F<>:"\/\\\\|?*]/', '_', $name);
+    $name = trim($name);
+    if ($name === '') {
+        $name = 'document';
+    }
+    return mb_substr($name, 0, 150);
+}
+
+function sanitize_submission_input(array $post): array
+{
+    foreach (SINGLE_LINE_TEXT_FIELDS as $field) {
+        if (isset($post[$field]) && is_string($post[$field])) {
+            $post[$field] = sanitize_text($post[$field]);
+        }
+    }
+    foreach (MULTILINE_TEXT_FIELDS as $field) {
+        if (isset($post[$field]) && is_string($post[$field])) {
+            $post[$field] = sanitize_multiline_text($post[$field]);
+        }
+    }
+    return $post;
 }
 
 function is_valid_email(string $value): bool

@@ -61,6 +61,7 @@ function upload_error_message(int $code): string
 function handle_submission(array $post, array $files, ?callable $sendEmails = null): array
 {
     $sendEmails = $sendEmails ?? 'send_submission_emails';
+    $post = sanitize_submission_input($post);
 
     $step1Result = validate_step1($post);
 
@@ -99,7 +100,7 @@ function handle_submission(array $post, array $files, ?callable $sendEmails = nu
         if ($doc['file'] !== null && ($doc['file']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
             $attachments[] = [
                 'tmpPath' => $doc['file']['tmp_name'],
-                'originalName' => $doc['file']['name'],
+                'originalName' => sanitize_filename($doc['file']['name']),
             ];
         }
     }
