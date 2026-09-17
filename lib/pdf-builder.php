@@ -3,6 +3,13 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../vendor/tcpdf/tcpdf.php';
 
+// Spacing scale (mm) used consistently throughout this PDF layout, so
+// gaps between rows, sections, and blocks all come from the same scale
+// rather than one-off magic numbers.
+const PDF_SPACE_SM = 2;
+const PDF_SPACE_MD = 4;
+const PDF_SPACE_LG = 8;
+
 function build_submission_pdf(array $data): string
 {
     $pdf = new TCPDF('P', 'mm', 'A4', true, 'UTF-8', false);
@@ -31,7 +38,7 @@ function build_submission_pdf(array $data): string
     $pdf->SetFont('helvetica', '', 10);
     $pdf->SetTextColor($ink[0], $ink[1], $ink[2]);
     $pdf->Cell(0, 6, 'Submitted: ' . ($data['submittedAt'] ?? ''), 0, 1, 'C');
-    $pdf->Ln(6);
+    $pdf->Ln(PDF_SPACE_LG);
 
     pdf_section_title($pdf, 'Section A: Entity Information', $primary);
     $step1Rows = [
@@ -50,17 +57,17 @@ function build_submission_pdf(array $data): string
     ];
     pdf_field_table($pdf, $step1Rows);
 
-    $pdf->Ln(4);
+    $pdf->Ln(PDF_SPACE_LG);
     pdf_section_title($pdf, 'Section B: KYC / CDD Documentation', $primary);
     $documentRows = array_map(function (array $doc): array {
         return [$doc['label'], !empty($doc['submitted']) ? 'Submitted' : 'Not submitted'];
     }, $data['documents'] ?? []);
     pdf_field_table($pdf, $documentRows);
-    $pdf->Ln(2);
+    $pdf->Ln(PDF_SPACE_SM);
     $pdf->SetFont('helvetica', 'I', 9);
     $pdf->MultiCell(0, 5, 'Consent to processing: ' . (!empty($data['consent']) ? 'Given' : 'Not given'), 0, 'L');
 
-    $pdf->Ln(4);
+    $pdf->Ln(PDF_SPACE_LG);
     pdf_section_title($pdf, 'Section C: Declaration', $primary);
     $step3Rows = [
         ['Name', $data['step3']['certifyingName'] ?? ''],
@@ -89,7 +96,7 @@ function pdf_section_title(TCPDF $pdf, string $title, array $color): void
     $pdf->Cell(0, 8, $title, 0, 1, 'L');
     $pdf->SetDrawColor($color[0], $color[1], $color[2]);
     $pdf->Line($pdf->GetX(), $pdf->GetY(), $pdf->GetX() + 174, $pdf->GetY());
-    $pdf->Ln(3);
+    $pdf->Ln(PDF_SPACE_MD);
     $pdf->SetTextColor(22, 22, 22);
     $pdf->SetFont('helvetica', '', 10);
 }
@@ -107,7 +114,7 @@ function pdf_field_table(TCPDF $pdf, array $rows): void
         $labelHeight = $pdf->getStringHeight($labelWidth, $label);
         $pdf->SetFont('helvetica', '', 10);
         $valueHeight = $pdf->getStringHeight($valueWidth, $displayValue);
-        $rowHeight = max($labelHeight, $valueHeight, 6);
+        $rowHeight = max($labelHeight, $valueHeight, 6) + PDF_SPACE_SM;
 
         $bottomLimit = $pdf->getPageHeight() - $margins['bottom'];
         if ($pdf->GetY() + $rowHeight > $bottomLimit) {

@@ -85,14 +85,16 @@ $confirmationHtml = build_confirmation_email_html($data, $previewLogoSrc);
 <meta charset="UTF-8">
 <title>Dev Preview — Woodhall KYC Form</title>
 <style>
-  body { font-family: -apple-system, sans-serif; background: #F4E7E1; margin: 0; padding: 24px; color: #161616; }
-  h1 { color: #0E4033; }
-  .panel { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-  .panel h2 { margin-top: 0; color: #0E4033; font-size: 18px; }
-  iframe { width: 100%; border: 1px solid #ddd; border-radius: 6px; }
+  /* Spacing scale used consistently on this page: 8 / 16 / 24 / 32 (px). */
+  body { font-family: -apple-system, sans-serif; background: #F4E7E1; margin: 0; padding: 32px; color: #161616; line-height: 1.6; }
+  h1 { color: #0E4033; margin: 0 0 24px 0; }
+  .panel { background: #fff; border-radius: 8px; padding: 32px; margin-bottom: 32px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+  .panel h2 { margin: 0 0 16px 0; color: #0E4033; font-size: 18px; }
+  .panel p { margin: 0 0 16px 0; }
+  iframe { width: 100%; border: 1px solid #ddd; border-radius: 6px; display: block; }
   .email-frame { height: 420px; }
   .pdf-frame { height: 800px; }
-  .notice { background: #FFF3CD; color: #7A5B00; padding: 10px 14px; border-radius: 6px; margin-bottom: 20px; font-size: 14px; }
+  .notice { background: #FFF3CD; color: #7A5B00; padding: 16px; border-radius: 6px; margin-bottom: 24px; font-size: 14px; }
 </style>
 </head>
 <body>

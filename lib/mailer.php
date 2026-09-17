@@ -7,18 +7,36 @@ use PHPMailer\PHPMailer\PHPMailer;
 
 const EMAIL_LOGO_CID = 'woodhall-logo';
 
+// Spacing scale (px) used consistently throughout these email templates —
+// the same 8/16/24/32 rule as the rest of the app, so every gap (between
+// paragraphs, around the logo, around the shell) comes from one scale
+// instead of one-off values.
+const EMAIL_SPACE_SM = 8;
+const EMAIL_SPACE_MD = 16;
+const EMAIL_SPACE_LG = 24;
+const EMAIL_SPACE_XL = 32;
+
+function email_paragraph(string $html, bool $isLast = false): string
+{
+    $marginBottom = $isLast ? 0 : EMAIL_SPACE_MD;
+    return "<p style=\"margin:0 0 {$marginBottom}px 0;\">{$html}</p>";
+}
+
 function build_email_shell(string $innerHtml, string $logoSrc): string
 {
     $logoSrcAttr = htmlspecialchars($logoSrc, ENT_QUOTES);
-    return '<div style="font-family:-apple-system,Helvetica,Arial,sans-serif;background:#F4E7E1;padding:24px 0;margin:0;">'
-        . '<div style="max-width:520px;margin:0 auto;background:#FFFFFF;border-radius:10px;overflow:hidden;">'
-        . '<div style="background:#0E4033;padding:28px 24px;text-align:center;">'
-        . "<img src=\"{$logoSrcAttr}\" alt=\"Woodhall Capital\" style=\"height:56px;\">"
+    $xl = EMAIL_SPACE_XL;
+    $lg = EMAIL_SPACE_LG;
+    $md = EMAIL_SPACE_MD;
+    return "<div style=\"font-family:-apple-system,Helvetica,Arial,sans-serif;background:#F4E7E1;padding:{$xl}px 16px;margin:0;\">"
+        . "<div style=\"max-width:520px;margin:0 auto;background:#FFFFFF;border-radius:10px;overflow:hidden;\">"
+        . "<div style=\"background:#0E4033;padding:{$xl}px {$lg}px;text-align:center;\">"
+        . "<img src=\"{$logoSrcAttr}\" alt=\"Woodhall Capital\" style=\"height:56px;display:block;margin:0 auto;\">"
         . '</div>'
-        . '<div style="padding:28px 24px;color:#161616;">'
+        . "<div style=\"padding:{$xl}px {$lg}px;color:#161616;font-size:15px;line-height:1.6;\">"
         . $innerHtml
         . '</div>'
-        . '<div style="padding:16px 24px;text-align:center;color:#8a8a8a;font-size:12px;">'
+        . "<div style=\"padding:{$md}px {$lg}px {$lg}px;text-align:center;color:#8a8a8a;font-size:12px;border-top:1px solid #EEE2DA;margin-top:{$md}px;\">"
         . 'Woodhall Capital &mdash; A uniquely elevated financial advisory firm'
         . '</div>'
         . '</div>'
@@ -29,20 +47,22 @@ function build_admin_email_html(array $data, string $logoSrc = 'cid:woodhall-log
 {
     $companyName = htmlspecialchars($data['step1']['companyName'] ?? '', ENT_QUOTES);
     $submittedAt = htmlspecialchars($data['submittedAt'] ?? '', ENT_QUOTES);
-    $inner = '<h2 style="color:#0E4033;margin-top:0;">New Corporate KYC / CDD Submission</h2>'
-        . "<p><strong>Company:</strong> {$companyName}</p>"
-        . "<p><strong>Submitted:</strong> {$submittedAt}</p>"
-        . '<p>The full submission is attached as a print-ready PDF, along with any supporting documents provided.</p>';
+    $md = EMAIL_SPACE_MD;
+    $inner = "<h2 style=\"color:#0E4033;margin:0 0 {$md}px 0;font-size:20px;\">New Corporate KYC / CDD Submission</h2>"
+        . email_paragraph("<strong>Company:</strong> {$companyName}")
+        . email_paragraph("<strong>Submitted:</strong> {$submittedAt}")
+        . email_paragraph('The full submission is attached as a print-ready PDF, along with any supporting documents provided.', true);
     return build_email_shell($inner, $logoSrc);
 }
 
 function build_confirmation_email_html(array $data, string $logoSrc = 'cid:woodhall-logo'): string
 {
     $companyName = htmlspecialchars($data['step1']['companyName'] ?? '', ENT_QUOTES);
-    $inner = '<h2 style="color:#0E4033;margin-top:0;">Thank you for your submission</h2>'
-        . "<p>We have received the Corporate KYC / CDD submission for <strong>{$companyName}</strong>.</p>"
-        . '<p>A copy of your submission, formatted for printing, is attached for your records.</p>'
-        . '<p style="margin-bottom:0;">&mdash; Woodhall Capital</p>';
+    $md = EMAIL_SPACE_MD;
+    $inner = "<h2 style=\"color:#0E4033;margin:0 0 {$md}px 0;font-size:20px;\">Thank you for your submission</h2>"
+        . email_paragraph("We have received the Corporate KYC / CDD submission for <strong>{$companyName}</strong>.")
+        . email_paragraph('A copy of your submission, formatted for printing, is attached for your records.')
+        . email_paragraph('&mdash; Woodhall Capital', true);
     return build_email_shell($inner, $logoSrc);
 }
 
