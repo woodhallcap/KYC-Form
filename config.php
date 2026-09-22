@@ -1,8 +1,7 @@
 <?php
 declare(strict_types=1);
 
-// Placeholder per spec section 8 — replace with the real compliance inbox before go-live.
-define('RECIPIENT_EMAIL', 'placeholder-compliance@woodhallcap.com');
+define('RECIPIENT_EMAIL', 'compliance@woodhallcap.com');
 define('RECIPIENT_NAME', 'Woodhall Capital Compliance');
 
 // Leave SMTP_HOST empty to fall back to PHP's mail() function.
