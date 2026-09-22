@@ -1,8 +1,8 @@
 <?php
 declare(strict_types=1);
 
-define('RECIPIENT_EMAIL', 'compliance@woodhallcap.com');
-define('RECIPIENT_NAME', 'Woodhall Capital Compliance');
+define('RECIPIENT_EMAIL', 'analyst@woodhallcap.com');
+define('RECIPIENT_NAME', 'Woodhall Capital');
 
 // Leave SMTP_HOST empty to fall back to PHP's mail() function.
 define('SMTP_HOST', '');
