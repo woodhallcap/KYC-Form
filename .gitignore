@@ -1,3 +1,4 @@
 .DS_Store
 config.local.php
 woodhall-kyc-deploy.zip
+.superpowers/
