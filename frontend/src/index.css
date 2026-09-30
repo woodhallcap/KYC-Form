@@ -20,7 +20,8 @@
 }
 
 body { @apply bg-bg font-body text-ink min-h-screen m-0; }
-h1, h2, h3 { @apply font-heading text-primary mt-0; }
+h1, h2, h3 { @apply font-heading text-primary mt-0 mb-5 text-2xl font-bold; }
+p { @apply mb-4; }
 [hidden] { display: none !important; }
 
 @theme {
