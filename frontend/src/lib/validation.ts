@@ -1,5 +1,6 @@
 import type {
-  CorporateDeclaration, CorporateEntity, CorporateFunds, Director, DirectorFileId, Errors, FormState,
+  CorporateDeclaration, CorporateEntity, CorporateForm, CorporateFunds, Director, DirectorFileId, Errors,
+  IndividualDeclaration, IndividualForm, IndividualPerson, MeansOfId, TransactionType,
 } from '../types';
 
 export const ALLOWED_FILE_EXTENSIONS = ['pdf', 'jpg', 'jpeg', 'png', 'docx'];
@@ -57,7 +58,7 @@ function directorFileErrors(rows: Director[]): Errors {
 }
 
 /** Every file that will be sent: ticked documents, directors' files, the seal. */
-export function collectUploads(form: FormState): { key: string; file: File }[] {
+export function collectUploads(form: CorporateForm): { key: string; file: File }[] {
   const uploads: { key: string; file: File }[] = [];
   DOCUMENT_IDS.forEach((id) => {
     const doc = form.docs[id];
@@ -119,17 +120,22 @@ export function validateDirectors(rows: Director[]): Errors {
   return { ...errors, ...directorFileErrors(rows) };
 }
 
-export function validateDocuments(form: FormState): Errors {
+function uploadErrors(uploads: { key: string; file: File }[]): Errors {
   const errors: Errors = {};
   let total = 0;
-  collectUploads(form).forEach(({ key, file }) => {
+  uploads.forEach(({ key, file }) => {
     const meta = validateFileMeta(file);
     if (!meta.valid) errors[key] = meta.error as string;
     else total += file.size;
   });
   if (total > MAX_TOTAL_SIZE) errors._total = 'Total attachments exceed the 20MB limit.';
-  if (!form.consent) errors.consent = 'Consent to processing is required.';
   return errors;
+}
+
+const consentError = (consent: boolean): Errors => (consent ? {} : { consent: 'Consent to processing is required.' });
+
+export function validateDocuments(form: CorporateForm): Errors {
+  return { ...uploadErrors(collectUploads(form)), ...consentError(form.consent) };
 }
 
 export function validateFunds(d: Partial<CorporateFunds>): Errors {
@@ -150,5 +156,93 @@ export function validateDeclaration(d: Partial<CorporateDeclaration>, seal: File
     const meta = validateFileMeta(seal);
     if (!meta.valid) errors.sealFile = meta.error as string;
   }
+  return errors;
+}
+
+export const INDIVIDUAL_DOCUMENT_IDS: readonly string[] = ['valid_means_of_id', 'proof_of_address', 'passport_photograph', 'signature_mandate_card'];
+
+export const MEANS_OF_ID_OPTIONS: { value: MeansOfId; label: string }[] = [
+  { value: 'nin', label: 'NIN' },
+  { value: 'bvn', label: 'BVN' },
+  { value: 'passport', label: "Int'l Passport" },
+  { value: 'drivers_license', label: "Driver's License" },
+  { value: 'voters_card', label: "Voter's Card" },
+];
+
+export const TRANSACTION_TYPE_OPTIONS: { value: TransactionType; label: string }[] = [
+  { value: 'cash', label: 'Cash' },
+  { value: 'transfer', label: 'Transfer' },
+  { value: 'cheque', label: 'Cheque' },
+];
+
+export const INCOME_OPTIONS = [
+  { value: 'salary', label: 'Salary' },
+  { value: 'business', label: 'Business' },
+  { value: 'investment', label: 'Investment' },
+  { value: 'inheritance', label: 'Inheritance' },
+  { value: 'other', label: 'Other' },
+];
+
+export const PURPOSE_OPTIONS = [
+  { value: 'loan', label: 'Loan' },
+  { value: 'lease', label: 'Lease' },
+  { value: 'investment', label: 'Investment' },
+  { value: 'other', label: 'Other' },
+];
+
+export function validateIndividualPerson(p: Partial<IndividualPerson>): Errors {
+  const errors: Errors = {};
+  const required: [keyof IndividualPerson, string][] = [
+    ['fullName', 'Full name is required.'],
+    ['dateOfBirth', 'Date of birth is required.'],
+    ['placeOfBirth', 'Place of birth is required.'],
+    ['nationality', 'Nationality is required.'],
+    ['countryOfResidence', 'Country of residence is required.'],
+    ['residentialAddress', 'Residential address is required.'],
+    ['lga', 'LGA is required.'],
+    ['state', 'State is required.'],
+    ['phone', 'Phone number is required.'],
+    ['idNumber', 'ID number is required.'],
+    ['bvn', 'BVN is required.'],
+    ['nin', 'NIN is required.'],
+    ['occupation', 'Occupation is required.'],
+    ['sourceOfWealth', 'Source of wealth is required.'],
+    ['expectedMonthlyTurnover', 'Expected monthly turnover is required.'],
+  ];
+  required.forEach(([key, message]) => {
+    if (isBlank(p[key])) errors[key] = message;
+  });
+  if (p.gender !== 'M' && p.gender !== 'F') errors.gender = 'Select a gender.';
+  if (isBlank(p.email)) errors.email = 'Email is required.';
+  else if (!isValidEmail(p.email as string)) errors.email = 'Enter a valid email address.';
+  if (!p.meansOfId || p.meansOfId.length === 0) errors.meansOfId = 'Select at least one means of ID.';
+  if (!p.sourceOfIncome) errors.sourceOfIncome = 'Select a source of income.';
+  else if (p.sourceOfIncome === 'other' && isBlank(p.sourceOfIncomeOther)) {
+    errors.sourceOfIncomeOther = 'Please specify the source of income.';
+  }
+  if (!p.purposeOfRelationship) errors.purposeOfRelationship = 'Select the purpose of the relationship.';
+  else if (p.purposeOfRelationship === 'other' && isBlank(p.purposeOther)) {
+    errors.purposeOther = 'Please specify the purpose.';
+  }
+  if (!p.expectedTransactionTypes || p.expectedTransactionTypes.length === 0) {
+    errors.expectedTransactionTypes = 'Select at least one transaction type.';
+  }
+  return errors;
+}
+
+export function validateIndividualDocuments(form: IndividualForm): Errors {
+  const uploads = INDIVIDUAL_DOCUMENT_IDS.flatMap((id) => {
+    const doc = form.docs[id];
+    return doc && doc.submitted && doc.file ? [{ key: id, file: doc.file }] : [];
+  });
+  return { ...uploadErrors(uploads), ...consentError(form.consent) };
+}
+
+export function validateIndividualDeclaration(d: Partial<IndividualDeclaration>): Errors {
+  const errors: Errors = {};
+  if (isBlank(d.declarationName)) errors.declarationName = 'Name is required.';
+  if (isBlank(d.signatureName)) errors.signatureName = 'Typed signature is required.';
+  if (isBlank(d.signatureDate)) errors.signatureDate = 'Signature date is required.';
+  if (!d.signatureAgree) errors.signatureAgree = 'You must confirm this constitutes your signature.';
   return errors;
 }

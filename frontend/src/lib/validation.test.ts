@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   validateDeclaration, validateDirectors, validateDocuments, validateEntity, validateFileMeta, validateFunds,
+  validateIndividualDeclaration, validateIndividualDocuments, validateIndividualPerson,
 } from './validation';
-import { bigFile, dir, makeForm, validEntity } from '../test-utils';
+import { bigFile, dir, makeForm, makeIndividual, validEntity, validPerson } from '../test-utils';
 
 describe('validateFileMeta', () => {
   it('rejects disallowed extensions', () => {
@@ -92,5 +93,66 @@ describe('validateFunds and validateDeclaration', () => {
     const ok = { signatory1Name: 'A', signatory1Date: '2026-01-01', signatory2Name: 'B', signatory2Date: '2026-01-01', signatureAgree: true };
     expect(validateDeclaration(ok, null)).toEqual({});
     expect(validateDeclaration(ok, new File(['x'], 's.exe')).sealFile).toBe('File type not allowed: s.exe');
+  });
+});
+
+describe('validateIndividualPerson', () => {
+  it('flags every required field, but not the optional ones', () => {
+    const e = validateIndividualPerson({});
+    ['fullName', 'dateOfBirth', 'placeOfBirth', 'gender', 'nationality', 'countryOfResidence', 'residentialAddress', 'lga', 'state', 'phone', 'email',
+      'meansOfId', 'idNumber', 'bvn', 'nin', 'occupation', 'sourceOfIncome', 'sourceOfWealth', 'purposeOfRelationship', 'expectedMonthlyTurnover',
+      'expectedTransactionTypes'].forEach((k) => expect(e[k], k).toBeTruthy());
+    ['idExpiry', 'employerName', 'officeAddress', 'sourceOfIncomeOther', 'purposeOther'].forEach((k) => expect(e[k], k).toBeUndefined());
+  });
+
+  it('passes a complete person and checks the email', () => {
+    expect(validateIndividualPerson(validPerson)).toEqual({});
+    expect(validateIndividualPerson({ ...validPerson, email: 'nope' }).email).toBe('Enter a valid email address.');
+  });
+
+  it('requires text for Other, and drops that error when another option is chosen', () => {
+    expect(validateIndividualPerson({ ...validPerson, sourceOfIncome: 'other' }).sourceOfIncomeOther).toBe('Please specify the source of income.');
+    expect(validateIndividualPerson({ ...validPerson, purposeOfRelationship: 'other' }).purposeOther).toBe('Please specify the purpose.');
+    expect(validateIndividualPerson({ ...validPerson, sourceOfIncome: 'other', sourceOfIncomeOther: 'Gift', purposeOfRelationship: 'other', purposeOther: 'Trade' })).toEqual({});
+    expect(validateIndividualPerson({ ...validPerson, sourceOfIncome: 'salary', sourceOfIncomeOther: '' }).sourceOfIncomeOther).toBeUndefined();
+  });
+
+  it('requires a gender and at least one means of ID and transaction type', () => {
+    expect(validateIndividualPerson({ ...validPerson, gender: '' }).gender).toBe('Select a gender.');
+    expect(validateIndividualPerson({ ...validPerson, meansOfId: [] }).meansOfId).toBe('Select at least one means of ID.');
+    expect(validateIndividualPerson({ ...validPerson, expectedTransactionTypes: [] }).expectedTransactionTypes).toBe('Select at least one transaction type.');
+  });
+});
+
+describe('validateIndividualDocuments', () => {
+  it('requires consent and ignores an unticked document with a bad file', () => {
+    expect(validateIndividualDocuments(makeIndividual()).consent).toBe('Consent to processing is required.');
+    const f = makeIndividual({ consent: true });
+    f.docs.passport_photograph = { submitted: false, file: bigFile('x.exe', 9) };
+    expect(validateIndividualDocuments(f)).toEqual({});
+  });
+
+  it('blocks a ticked document with a bad file', () => {
+    const f = makeIndividual({ consent: true });
+    f.docs.valid_means_of_id = { submitted: true, file: new File(['x'], 'a.exe') };
+    expect(validateIndividualDocuments(f).valid_means_of_id).toBe('File type not allowed: a.exe');
+  });
+
+  it('accepts four files at exactly the 5MB limit (the 20MB total is unreachable with four documents)', () => {
+    const g = makeIndividual({ consent: true });
+    ['valid_means_of_id', 'proof_of_address', 'passport_photograph', 'signature_mandate_card'].forEach((id) => {
+      g.docs[id] = { submitted: true, file: bigFile(id + '.pdf', 5) };
+    });
+    expect(validateIndividualDocuments(g)).toEqual({});
+    g.docs.passport_photograph = { submitted: true, file: bigFile('p.pdf', 5.01) };
+    expect(validateIndividualDocuments(g).passport_photograph).toBe('File exceeds 5MB limit: p.pdf');
+  });
+});
+
+describe('validateIndividualDeclaration', () => {
+  it('requires name, signature, date and agreement', () => {
+    const e = validateIndividualDeclaration({});
+    ['declarationName', 'signatureName', 'signatureDate', 'signatureAgree'].forEach((k) => expect(e[k]).toBeTruthy());
+    expect(validateIndividualDeclaration({ declarationName: 'A', signatureName: 'A', signatureDate: '2026-01-01', signatureAgree: true })).toEqual({});
   });
 });

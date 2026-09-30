@@ -1,6 +1,6 @@
 export type Errors = Record<string, string>;
 
-export type CustomerType = 'corporate';
+export type CustomerType = 'corporate' | 'individual';
 
 export const DIRECTOR_FIELDS = [
   'name', 'designation', 'bvn', 'nin', 'shareholdingPercent', 'nationality', 'pep', 'residentialAddress',
@@ -51,7 +51,8 @@ export interface DocState {
   file: File | null;
 }
 
-export interface FormState {
+export interface CorporateForm {
+  customerType: 'corporate';
   entity: CorporateEntity;
   directors: Director[];
   docs: Record<string, DocState>;
@@ -60,3 +61,55 @@ export interface FormState {
   declaration: CorporateDeclaration;
   seal: File | null;
 }
+
+export type MeansOfId = 'nin' | 'bvn' | 'passport' | 'drivers_license' | 'voters_card';
+export type TransactionType = 'cash' | 'transfer' | 'cheque';
+export type Gender = '' | 'M' | 'F';
+export type IncomeSource = '' | 'salary' | 'business' | 'investment' | 'inheritance' | 'other';
+export type Purpose = '' | 'loan' | 'lease' | 'investment' | 'other';
+
+export interface IndividualPerson {
+  fullName: string;
+  dateOfBirth: string;
+  placeOfBirth: string;
+  nationality: string;
+  countryOfResidence: string;
+  residentialAddress: string;
+  lga: string;
+  state: string;
+  phone: string;
+  email: string;
+  idNumber: string;
+  idExpiry: string;
+  bvn: string;
+  nin: string;
+  occupation: string;
+  employerName: string;
+  officeAddress: string;
+  sourceOfIncomeOther: string;
+  sourceOfWealth: string;
+  purposeOther: string;
+  expectedMonthlyTurnover: string;
+  gender: Gender;
+  meansOfId: MeansOfId[];
+  sourceOfIncome: IncomeSource;
+  purposeOfRelationship: Purpose;
+  expectedTransactionTypes: TransactionType[];
+}
+
+export interface IndividualDeclaration {
+  declarationName: string;
+  signatureName: string;
+  signatureDate: string;
+  signatureAgree: boolean;
+}
+
+export interface IndividualForm {
+  customerType: 'individual';
+  person: IndividualPerson;
+  docs: Record<string, DocState>;
+  consent: boolean;
+  declaration: IndividualDeclaration;
+}
+
+export type FormState = CorporateForm | IndividualForm;
