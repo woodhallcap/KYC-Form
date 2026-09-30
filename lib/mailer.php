@@ -43,9 +43,19 @@ function build_email_shell(string $innerHtml, string $logoSrc): string
         . '</div>';
 }
 
+function submission_summary(array $data): array
+{
+    $fields = $data['fields'] ?? [];
+    return [
+        'kind' => 'Corporate KYC / CDD',
+        'name' => (string) ($fields['companyName'] ?? ''),
+        'email' => (string) ($fields['companyEmail'] ?? ''),
+    ];
+}
+
 function build_admin_email_html(array $data, string $logoSrc = 'cid:woodhall-logo'): string
 {
-    $companyName = htmlspecialchars($data['step1']['companyName'] ?? '', ENT_QUOTES);
+    $companyName = htmlspecialchars(submission_summary($data)['name'], ENT_QUOTES);
     $submittedAt = htmlspecialchars($data['submittedAt'] ?? '', ENT_QUOTES);
     $md = EMAIL_SPACE_MD;
     $inner = "<h2 style=\"color:#0E4033;margin:0 0 {$md}px 0;font-size:20px;\">New Corporate KYC / CDD Submission</h2>"
@@ -57,7 +67,7 @@ function build_admin_email_html(array $data, string $logoSrc = 'cid:woodhall-log
 
 function build_confirmation_email_html(array $data, string $logoSrc = 'cid:woodhall-logo'): string
 {
-    $companyName = htmlspecialchars($data['step1']['companyName'] ?? '', ENT_QUOTES);
+    $companyName = htmlspecialchars(submission_summary($data)['name'], ENT_QUOTES);
     $md = EMAIL_SPACE_MD;
     $inner = "<h2 style=\"color:#0E4033;margin:0 0 {$md}px 0;font-size:20px;\">Thank you for your submission</h2>"
         . email_paragraph("We have received the Corporate KYC / CDD submission for <strong>{$companyName}</strong>.")
@@ -93,7 +103,8 @@ function send_submission_emails(
     };
 
     $pdfFileName = 'woodhall-kyc-submission.pdf';
-    $companyName = $data['step1']['companyName'] ?? 'submitter';
+    $summary = submission_summary($data);
+    $companyName = $summary['name'] !== '' ? $summary['name'] : 'submitter';
     $logoPath = __DIR__ . '/../assets/logos/woodhall-capital-logo-reverse-rgb-1.png';
 
     try {
@@ -103,7 +114,7 @@ function send_submission_emails(
             $admin->addEmbeddedImage($logoPath, EMAIL_LOGO_CID, 'woodhall-logo.png');
         }
         $admin->addAddress(RECIPIENT_EMAIL, RECIPIENT_NAME);
-        $admin->Subject = 'New Corporate KYC / CDD Submission — ' . $companyName;
+        $admin->Subject = 'New ' . $summary['kind'] . ' Submission — ' . $companyName;
         $admin->Body = build_admin_email_html($data);
         $admin->addStringAttachment($pdfBytes, $pdfFileName, 'base64', 'application/pdf');
         foreach ($attachments as $attachment) {
@@ -113,7 +124,7 @@ function send_submission_emails(
             return ['success' => false, 'error' => 'Failed to send admin notification: ' . $admin->ErrorInfo];
         }
 
-        $submitterEmail = $data['step1']['companyEmail'] ?? '';
+        $submitterEmail = $summary['email'];
         if ($submitterEmail !== '') {
             $confirmation = $mailerFactory();
             configure_base_mailer($confirmation);
