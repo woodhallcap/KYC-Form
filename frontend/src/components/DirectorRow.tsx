@@ -92,8 +92,8 @@ export function DirectorRow({ index, state, dispatch, canRemove }: DirectorRowPr
         <span className="mb-1.5 block font-semibold">Attachments (optional)</span>
         <div className="grid gap-2 sm:grid-cols-2">
           {DIRECTOR_FILE_IDS.map((fileId) => (
-            <label key={fileId} className="block text-sm">
-              {FILE_LABELS[fileId]}
+            <div key={fileId} className="text-sm">
+              <span>{FILE_LABELS[fileId]}</span>
               <input
                 type="file"
                 aria-label={`Director ${n} ${FILE_LABELS[fileId]} file`}
@@ -103,7 +103,7 @@ export function DirectorRow({ index, state, dispatch, canRemove }: DirectorRowPr
                   dispatch({ type: 'setDirectorFile', index, fileId, file: e.target.files?.[0] ?? null })
                 }
               />
-            </label>
+            </div>
           ))}
         </div>
       </div>

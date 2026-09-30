@@ -5,15 +5,28 @@ import { DraftBanner } from './components/DraftBanner';
 import { Header } from './components/Header';
 import { ProgressBar } from './components/ProgressBar';
 import { Step1Entity } from './components/Step1Entity';
-import { Step2Documents } from './components/Step2Documents';
-import { Step3Declaration } from './components/Step3Declaration';
+import { Step2Directors } from './components/Step2Directors';
+import { Step3Documents } from './components/Step3Documents';
+import { Step4Funds } from './components/Step4Funds';
+import { Step5Declaration } from './components/Step5Declaration';
+import type { StepProps } from './components/stepProps';
 import { prefillActions } from './dev/prefill';
 import { clearDraft, hasAnyContent, loadDraft, saveDraft } from './lib/autosave';
-import { fieldStep, initialAppState, reducer, stepErrors } from './lib/reducer';
+import { fieldStep, flowOf, initialAppState, reducer, stepErrors } from './lib/reducer';
+import type { Flow } from './flows/types';
 import type { Errors } from './types';
 import { postSubmission } from './lib/submit';
 
 const AUTOSAVE_DEBOUNCE_MS = 800;
+
+/** One component per flow step, in order; M2 will key this by customer type. */
+const STEP_COMPONENTS: ((props: StepProps) => React.JSX.Element)[] = [
+  Step1Entity,
+  Step2Directors,
+  Step3Documents,
+  Step4Funds,
+  Step5Declaration,
+];
 
 function init() {
   const state = initialAppState();
@@ -21,9 +34,9 @@ function init() {
   return hasAnyContent(draft) ? reducer(state, { type: 'restoreDraft', draft: draft! }) : state;
 }
 
-function alertUnmatched(errors: Errors) {
+function alertUnmatched(flow: Flow, errors: Errors) {
   const unmatched = Object.keys(errors)
-    .filter((key) => fieldStep(key) === null)
+    .filter((key) => fieldStep(flow, key) === null)
     .map((key) => errors[key]);
   if (unmatched.length > 0) alert(unmatched.join('\n'));
 }
@@ -31,6 +44,8 @@ function alertUnmatched(errors: Errors) {
 export default function App() {
   const [state, dispatch] = useReducer(reducer, undefined, init);
   const { step, status, form } = state;
+  const flow = flowOf(state);
+  const lastStep = flow.steps.length;
   const sending = useRef(false);
   const mounted = useRef(false);
   const [prevStep, setPrevStep] = useState(step);
@@ -51,7 +66,7 @@ export default function App() {
   }, [form, status]);
 
   const onNext = () => {
-    alertUnmatched(stepErrors(form, step));
+    alertUnmatched(flow, stepErrors(form, flow, step));
     dispatch({ type: 'next' });
   };
   const onBack = () => dispatch({ type: 'back' });
@@ -59,7 +74,7 @@ export default function App() {
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     if (sending.current || status !== 'idle') return;
-    if (Object.keys(stepErrors(form, 3)).length > 0) {
+    if (Object.keys(stepErrors(form, flow, lastStep)).length > 0) {
       dispatch({ type: 'next' });
       return;
     }
@@ -75,7 +90,7 @@ export default function App() {
       dispatch({ type: 'submitting', value: false });
       if (payload.errors && Object.keys(payload.errors).length > 0) {
         dispatch({ type: 'serverErrors', errors: payload.errors });
-        alertUnmatched(payload.errors);
+        alertUnmatched(flow, payload.errors);
       }
       alert(payload.message || 'Submission failed. Please check the form and try again.');
     } catch {
@@ -95,7 +110,7 @@ export default function App() {
       <main className="mx-auto mb-16 max-w-[720px] px-4">
         <div className="wizard-card-bg relative overflow-hidden rounded-brand bg-white p-5 shadow-card sm:p-8">
           {status === 'done' ? (
-            <Confirmation email={form.step1.companyEmail} />
+            <Confirmation email={form.entity.companyEmail} />
           ) : (
             <>
               {state.draftRestored && (
@@ -106,12 +121,13 @@ export default function App() {
                   }}
                 />
               )}
-              <ProgressBar step={step} />
+              <ProgressBar titles={flow.steps.map((st) => st.title)} step={step} />
               <form noValidate onSubmit={onSubmit}>
                 <div key={step} className={slide}>
-                  {step === 1 && <Step1Entity {...stepProps} />}
-                  {step === 2 && <Step2Documents {...stepProps} />}
-                  {step === 3 && <Step3Declaration {...stepProps} />}
+                  {(() => {
+                    const StepComponent = STEP_COMPONENTS[step - 1];
+                    return <StepComponent {...stepProps} />;
+                  })()}
                 </div>
               </form>
             </>
