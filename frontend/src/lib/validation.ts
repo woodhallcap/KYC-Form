@@ -1,6 +1,6 @@
 import type {
   CorporateDeclaration, CorporateEntity, CorporateForm, CorporateFunds, Director, DirectorFileId, Errors,
-  IndividualDeclaration, IndividualForm, IndividualPerson, MeansOfId, TransactionType,
+  IncomeSource, IndividualDeclaration, IndividualForm, IndividualPerson, MeansOfId, Purpose, TransactionType,
 } from '../types';
 
 export const ALLOWED_FILE_EXTENSIONS = ['pdf', 'jpg', 'jpeg', 'png', 'docx'];
@@ -175,7 +175,7 @@ export const TRANSACTION_TYPE_OPTIONS: { value: TransactionType; label: string }
   { value: 'cheque', label: 'Cheque' },
 ];
 
-export const INCOME_OPTIONS = [
+export const INCOME_OPTIONS: { value: Exclude<IncomeSource, ''>; label: string }[] = [
   { value: 'salary', label: 'Salary' },
   { value: 'business', label: 'Business' },
   { value: 'investment', label: 'Investment' },
@@ -183,7 +183,7 @@ export const INCOME_OPTIONS = [
   { value: 'other', label: 'Other' },
 ];
 
-export const PURPOSE_OPTIONS = [
+export const PURPOSE_OPTIONS: { value: Exclude<Purpose, ''>; label: string }[] = [
   { value: 'loan', label: 'Loan' },
   { value: 'lease', label: 'Lease' },
   { value: 'investment', label: 'Investment' },

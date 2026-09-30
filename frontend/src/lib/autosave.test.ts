@@ -1,9 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { STORAGE_KEY, applyDraft, hasAnyContent, loadDraft, saveDraft, serialize } from './autosave';
-import type { Draft } from './autosave';
 import { emptyDirector } from './initial-state';
 import { emptyIndividual, emptyState } from '../test-utils';
-import type { IndividualDraft } from './autosave';
+import type { CorporateDraft, IndividualDraft } from './autosave';
 import { applyIndividualDraft } from './autosave';
 
 beforeEach(() => localStorage.clear());
@@ -24,7 +23,7 @@ describe('autosave v2', () => {
     saveDraft(s);
     expect(localStorage.getItem(STORAGE_KEY)).not.toContain('secret.pdf');
     expect(localStorage.getItem(STORAGE_KEY)).not.toContain('seal.png');
-    const r = applyDraft(emptyState(), loadDraft()!);
+    const r = applyDraft(emptyState(), loadDraft()! as CorporateDraft);
     expect(r.entity.companyName).toBe('Acme');
     expect(r.funds.sourceOfFunds).toBe('Sales');
     expect(r.directors.map((d) => d.name)).toEqual(['Jane', 'John']);
@@ -52,7 +51,7 @@ describe('autosave v2', () => {
       v: 2, customerType: 'corporate', entity: { companyName: 5 },
       directors: [null, 'x', { name: 'A', pep: 'maybe' }, ...Array(40).fill({ name: 'Z' })],
       documents: 'no', funds: null, declaration: [], consent: 'yes',
-    } as unknown as Draft;
+    } as unknown as CorporateDraft;
     const r = applyDraft(emptyState(), bad);
     expect(r.entity.companyName).toBe('');
     expect(r.directors.length).toBeLessThanOrEqual(25);

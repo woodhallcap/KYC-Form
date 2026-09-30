@@ -4,29 +4,36 @@ import { Confirmation } from './components/Confirmation';
 import { DraftBanner } from './components/DraftBanner';
 import { Header } from './components/Header';
 import { ProgressBar } from './components/ProgressBar';
+import { IndividualStep1Person } from './components/IndividualStep1Person';
+import { IndividualStep2Documents } from './components/IndividualStep2Documents';
+import { IndividualStep3Declaration } from './components/IndividualStep3Declaration';
 import { Step1Entity } from './components/Step1Entity';
 import { Step2Directors } from './components/Step2Directors';
 import { Step3Documents } from './components/Step3Documents';
 import { Step4Funds } from './components/Step4Funds';
 import { Step5Declaration } from './components/Step5Declaration';
 import type { StepProps } from './components/stepProps';
+import { TypeSelector } from './components/TypeSelector';
 import { prefillActions } from './dev/prefill';
 import { clearDraft, hasAnyContent, loadDraft, saveDraft } from './lib/autosave';
-import { fieldStep, flowOf, initialAppState, reducer, stepErrors } from './lib/reducer';
+import { activeForm, fieldStep, flowOf, initialAppState, reducer, stepErrors } from './lib/reducer';
+import type { AppState } from './lib/reducer';
 import type { Flow } from './flows/types';
-import type { Errors } from './types';
+import type { CustomerType, Errors } from './types';
 import { postSubmission } from './lib/submit';
 
 const AUTOSAVE_DEBOUNCE_MS = 800;
 
-/** One component per flow step, in order; M2 will key this by customer type. */
-const STEP_COMPONENTS: ((props: StepProps) => React.JSX.Element)[] = [
-  Step1Entity,
-  Step2Directors,
-  Step3Documents,
-  Step4Funds,
-  Step5Declaration,
-];
+/** One component per flow step, in order, for each customer type. */
+const STEP_COMPONENTS: Record<CustomerType, ((props: StepProps) => React.JSX.Element | null)[]> = {
+  corporate: [Step1Entity, Step2Directors, Step3Documents, Step4Funds, Step5Declaration],
+  individual: [IndividualStep1Person, IndividualStep2Documents, IndividualStep3Declaration],
+};
+
+/** Where the confirmation copy goes: the company email or the individual's email. */
+function submitterEmail(state: AppState): string {
+  return state.customerType === 'individual' ? state.individual.person.email : state.corporate.entity.companyEmail;
+}
 
 function init() {
   const state = initialAppState();
@@ -43,7 +50,8 @@ function alertUnmatched(flow: Flow, errors: Errors) {
 
 export default function App() {
   const [state, dispatch] = useReducer(reducer, undefined, init);
-  const { step, status, form } = state;
+  const { step, status, customerType } = state;
+  const form = activeForm(state);
   const flow = flowOf(state);
   const lastStep = flow.steps.length;
   const sending = useRef(false);
@@ -60,12 +68,13 @@ export default function App() {
       mounted.current = true;
       return;
     }
-    if (status === 'done') return;
+    if (status === 'done' || !form) return;
     const timer = window.setTimeout(() => saveDraft(form), AUTOSAVE_DEBOUNCE_MS);
     return () => window.clearTimeout(timer);
   }, [form, status]);
 
   const onNext = () => {
+    if (!form) return;
     alertUnmatched(flow, stepErrors(form, flow, step));
     dispatch({ type: 'next' });
   };
@@ -73,7 +82,7 @@ export default function App() {
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
-    if (sending.current || status !== 'idle') return;
+    if (!form || sending.current || status !== 'idle') return;
     if (Object.keys(stepErrors(form, flow, lastStep)).length > 0) {
       dispatch({ type: 'next' });
       return;
@@ -109,8 +118,10 @@ export default function App() {
       <Header />
       <main className="mx-auto mb-16 max-w-[720px] px-4">
         <div className="wizard-card-bg relative overflow-hidden rounded-brand bg-white p-5 shadow-card sm:p-8">
-          {status === 'done' ? (
-            <Confirmation email={form.entity.companyEmail} />
+          {!customerType ? (
+            <TypeSelector onSelect={(type) => dispatch({ type: 'selectType', customerType: type })} />
+          ) : status === 'done' ? (
+            <Confirmation email={submitterEmail(state)} />
           ) : (
             <>
               {state.draftRestored && (
@@ -121,11 +132,20 @@ export default function App() {
                   }}
                 />
               )}
+              {step === 1 && (
+                <button
+                  type="button"
+                  onClick={() => dispatch({ type: 'clearType' })}
+                  className="mb-4 cursor-pointer bg-transparent p-0 text-sm font-semibold text-primary underline"
+                >
+                  ← Change customer type
+                </button>
+              )}
               <ProgressBar titles={flow.steps.map((st) => st.title)} step={step} />
               <form noValidate onSubmit={onSubmit}>
                 <div key={step} className={slide}>
                   {(() => {
-                    const StepComponent = STEP_COMPONENTS[step - 1];
+                    const StepComponent = STEP_COMPONENTS[customerType][step - 1];
                     return <StepComponent {...stepProps} />;
                   })()}
                 </div>
@@ -137,7 +157,10 @@ export default function App() {
       {import.meta.env.DEV && status !== 'done' && (
         <button
           type="button"
-          onClick={() => prefillActions().forEach(dispatch)}
+          onClick={() => {
+            if (!customerType) dispatch({ type: 'selectType', customerType: 'corporate' });
+            prefillActions(customerType ?? 'corporate').forEach(dispatch);
+          }}
           className="fixed bottom-4 right-4 z-[100] cursor-pointer rounded-md border border-dashed border-[#7A5B00] bg-[#FFF3CD] px-3.5 py-2 text-[13px] text-[#7A5B00]"
         >
           Fill test data (dev only)
