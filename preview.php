@@ -23,41 +23,40 @@ require_once __DIR__ . '/lib/mailer.php';
 function preview_sample_data(): array
 {
     return [
+        'customerType' => 'corporate',
         'submittedAt' => date('Y-m-d H:i:s'),
-        'step1' => [
+        'fields' => [
             'companyName' => 'Acme Trading Ltd',
             'rcNumber' => 'RC1234567',
             'dateOfIncorporation' => '2015-04-01',
-            'legalStatus' => 'private',
             'registeredAddress' => '12 Marina Road, Lagos Island, Lagos',
             'businessAddress' => '4 Adeola Odeku Street, Victoria Island, Lagos',
             'natureOfBusiness' => 'Import/export trade finance',
             'tin' => '12345678-0001',
             'companyEmail' => 'finance@acmetrading.com',
-            'website' => 'https://acmetrading.com',
             'bankAccountNumber' => '0123456789',
             'bankName' => 'First Bank of Nigeria',
+            'sourceOfFunds' => 'Proceeds from import/export trade',
+            'facilityAmount' => '5,000,000',
+            'signatory1Name' => 'Jane Doe',
+            'signatory1Date' => date('Y-m-d'),
+            'signatory2Name' => 'John Roe',
+            'signatory2Date' => date('Y-m-d'),
+        ],
+        'directors' => [
+            ['name' => 'Jane Doe', 'designation' => 'Managing Director', 'bvn' => '22212345678', 'nin' => '12345678901', 'shareholdingPercent' => '60', 'nationality' => 'Nigerian', 'pep' => 'no', 'residentialAddress' => '1 Banana Island Road, Ikoyi, Lagos', 'attachments' => ['id', 'bvn', 'nin', 'proof_of_address']],
+            ['name' => 'John Roe', 'designation' => 'Director', 'bvn' => '22298765432', 'nin' => '10987654321', 'shareholdingPercent' => '40', 'nationality' => 'Ghanaian', 'pep' => 'yes', 'residentialAddress' => '7 Independence Avenue, Accra', 'attachments' => []],
         ],
         'documents' => [
-            ['label' => 'Certificate of Incorporation', 'submitted' => true],
-            ['label' => 'CAC Status Report', 'submitted' => true],
-            ['label' => 'Memorandum and Articles of Association', 'submitted' => false],
-            ['label' => 'Valid means of identification for each director, signatory, and UBO above five per cent shareholding', 'submitted' => true],
-            ['label' => 'Bank Verification Number (BVN) and National Identification Number (NIN) for each director, signatory, and Ultimate Beneficial Owner above five per cent shareholding', 'submitted' => false],
-            ['label' => 'Recent residential utility bill or proof of address for the company / director(s)', 'submitted' => true],
-            ['label' => 'Company corporate profile', 'submitted' => true],
-            ['label' => 'Applicable regulatory licences and permits, where the business is engaged in a regulated activity', 'submitted' => false],
-            ['label' => "One year's bank statements from the company's operating account(s)", 'submitted' => true],
-            ['label' => 'Three-year audited financial statements and current-year management accounts', 'submitted' => false],
-            ['label' => 'Personal Financial Information (PFI) (where applicable)', 'submitted' => false],
-            ['label' => 'Anti-Money Laundering (AML) compliance certificate, where the customer is itself a regulated financial institution', 'submitted' => false],
+            ['id' => 'certificate_of_incorporation', 'label' => 'CAC Certificate of Incorporation', 'submitted' => true],
+            ['id' => 'cac_forms', 'label' => 'CAC Forms CAC2.3 / CAC1.1 - Directors & Shareholders', 'submitted' => true],
+            ['id' => 'memorandum_articles', 'label' => 'Memorandum & Articles of Association', 'submitted' => false],
+            ['id' => 'board_resolution', 'label' => 'Board Resolution to open account and obtain facility', 'submitted' => true],
+            ['id' => 'company_bank_statement', 'label' => 'Company Bank Statement - Last 12 months', 'submitted' => true],
+            ['id' => 'corporate_id_signatories', 'label' => 'Corporate ID of Authorized Signatories', 'submitted' => false],
         ],
         'consent' => true,
-        'step3' => [
-            'certifyingName' => 'Jane Doe',
-            'designation' => 'Managing Director',
-            'signatureName' => 'Jane Doe',
-        ],
+        'sealAttached' => true,
     ];
 }
 

@@ -1,32 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { DOCUMENT_IDS, validateFileMeta, validateStep1, validateStep2, validateStep3 } from './validation';
-
-const validStep1 = {
-  companyName: 'Acme Ltd', rcNumber: 'RC123', dateOfIncorporation: '2020-01-01', legalStatus: 'private',
-  registeredAddress: '1 Main St', natureOfBusiness: 'Trading', tin: 'TIN123', companyEmail: 'info@acme.com',
-  bankAccountNumber: '0123456789', bankName: 'First Bank',
-};
-
-describe('validateStep1', () => {
-  it('flags all required fields when empty', () => {
-    const r = validateStep1({});
-    expect(r.valid).toBe(false);
-    expect(r.errors.companyName).toBeTruthy();
-    expect(r.errors.companyEmail).toBeTruthy();
-  });
-  it('passes with all required fields present', () => {
-    expect(validateStep1(validStep1).valid).toBe(true);
-  });
-  it('rejects invalid email', () => {
-    expect(validateStep1({ companyEmail: 'not-an-email' }).errors.companyEmail).toBe('Enter a valid email address.');
-  });
-  it('requires legalStatusOther when legalStatus is other', () => {
-    expect(validateStep1({ legalStatus: 'other' }).errors.legalStatusOther).toBeTruthy();
-  });
-  it('treats whitespace-only values as blank', () => {
-    expect(validateStep1({ companyName: '   ' }).errors.companyName).toBe('Company name is required.');
-  });
-});
+import {
+  validateDeclaration, validateDirectors, validateDocuments, validateEntity, validateFileMeta, validateFunds,
+} from './validation';
+import { bigFile, dir, makeForm, validEntity } from '../test-utils';
 
 describe('validateFileMeta', () => {
   it('rejects disallowed extensions', () => {
@@ -40,34 +16,81 @@ describe('validateFileMeta', () => {
   });
 });
 
-describe('validateStep2', () => {
-  it('requires consent', () => {
-    const r = validateStep2([], false);
-    expect(r.valid).toBe(false);
-    expect(r.errors.consent).toBeTruthy();
-  });
-  it('flags total attachment size over 20MB', () => {
-    const docs = DOCUMENT_IDS.slice(0, 5).map((id) => ({ id, submitted: true, file: { name: id + '.pdf', size: 4.5 * 1024 * 1024 } }));
-    expect(validateStep2(docs, true).errors._total).toBeTruthy();
-  });
-  it('does not count an unsubmitted document toward the total', () => {
-    const docs = DOCUMENT_IDS.map((id) => ({ id, submitted: false, file: { name: id + '.pdf', size: 6 * 1024 * 1024 } }));
-    expect(validateStep2(docs, true).valid).toBe(true);
-  });
-  it('attaches file-type errors to the document id', () => {
-    const r = validateStep2([{ id: 'utility_bill', submitted: true, file: { name: 'a.exe', size: 1 } }], true);
-    expect(r.errors.utility_bill).toBe('File type not allowed: a.exe');
+describe('validateEntity', () => {
+  it('flags required fields, allows empty businessAddress, checks email', () => {
+    const e = validateEntity({});
+    ['companyName', 'rcNumber', 'dateOfIncorporation', 'registeredAddress', 'natureOfBusiness', 'tin', 'companyEmail', 'bankAccountNumber', 'bankName']
+      .forEach((k) => expect(e[k]).toBeTruthy());
+    expect(e.businessAddress).toBeUndefined();
+    expect(validateEntity(validEntity)).toEqual({});
+    expect(validateEntity({ ...validEntity, companyEmail: 'nope' }).companyEmail).toBe('Enter a valid email address.');
+    expect(validateEntity({ ...validEntity, companyName: '   ' }).companyName).toBe('Company name is required.');
   });
 });
 
-describe('validateStep3', () => {
-  const base = { certifyingName: 'Jane Doe', designation: 'CEO', signatureName: 'Jane Doe' };
-  it('requires signature agreement', () => {
-    const r = validateStep3({ ...base, signatureAgree: false });
-    expect(r.valid).toBe(false);
-    expect(r.errors.signatureAgree).toBeTruthy();
+describe('validateDirectors', () => {
+  it('needs a row, keys errors by index, caps the list', () => {
+    expect(validateDirectors([]).directors).toBe('Add at least one director, signatory or UBO.');
+    const e = validateDirectors([dir(), dir({ name: '', pep: '' })]);
+    expect(e['directors.1.name']).toBe('Name is required.');
+    expect(e['directors.1.pep']).toBe('Select Yes or No.');
+    expect(e['directors.0.name']).toBeUndefined();
+    expect(validateDirectors(Array.from({ length: 26 }, () => dir())).directors).toBe('Too many directors listed (maximum 25).');
   });
-  it('passes with all fields valid', () => {
-    expect(validateStep3({ ...base, signatureAgree: true }).valid).toBe(true);
+
+  it('checks percentage boundaries identically to the server', () => {
+    ['0', '100', '12.5'].forEach((v) => expect(validateDirectors([dir({ shareholdingPercent: v })])).toEqual({}));
+    ['abc', '-1', '101', '1e2'].forEach((v) =>
+      expect(validateDirectors([dir({ shareholdingPercent: v })])['directors.0.shareholdingPercent']).toBe('Enter a percentage between 0 and 100.'));
+    expect(validateDirectors([dir({ shareholdingPercent: '' })])['directors.0.shareholdingPercent']).toBe('% shareholding is required.');
+  });
+
+  it('reports a bad director file under directorFile.<i>.<id>', () => {
+    const r = dir();
+    r.files.nin = new File(['x'], 'a.exe');
+    expect(validateDirectors([r])['directorFile.0.nin']).toBe('File type not allowed: a.exe');
+  });
+});
+
+describe('validateDocuments', () => {
+  it('requires consent', () => {
+    expect(validateDocuments(makeForm()).consent).toBe('Consent to processing is required.');
+  });
+
+  it('ignores an unticked document even with a bad file', () => {
+    const f = makeForm({ consent: true });
+    f.docs.cac_forms = { submitted: false, file: bigFile('x.exe', 9) };
+    expect(validateDocuments(f)).toEqual({});
+  });
+
+  it('blocks a ticked document with a bad file, keyed by document id', () => {
+    const f = makeForm({ consent: true });
+    f.docs.cac_forms = { submitted: true, file: new File(['x'], 'a.exe') };
+    expect(validateDocuments(f).cac_forms).toBe('File type not allowed: a.exe');
+  });
+
+  it('totals ALL uploads (documents, directors, seal) against 20MB', () => {
+    const g = makeForm({ consent: true });
+    g.docs.certificate_of_incorporation = { submitted: true, file: bigFile('a.pdf', 4.5) };
+    g.directors[0].files.id = bigFile('b.pdf', 4.5);
+    g.directors[0].files.nin = bigFile('c.pdf', 4.5);
+    g.directors[0].files.bvn = bigFile('d.pdf', 4.5);
+    g.seal = bigFile('e.png', 4.5);
+    expect(validateDocuments(g)._total).toBe('Total attachments exceed the 20MB limit.');
+  });
+});
+
+describe('validateFunds and validateDeclaration', () => {
+  it('requires both funds fields', () => {
+    expect(Object.keys(validateFunds({}))).toEqual(['sourceOfFunds', 'facilityAmount']);
+    expect(validateFunds({ sourceOfFunds: 'Sales', facilityAmount: '5,000,000' })).toEqual({});
+  });
+
+  it('requires both signatories, dates and agreement, and checks the seal', () => {
+    const e = validateDeclaration({}, null);
+    ['signatory1Name', 'signatory1Date', 'signatory2Name', 'signatory2Date', 'signatureAgree'].forEach((k) => expect(e[k]).toBeTruthy());
+    const ok = { signatory1Name: 'A', signatory1Date: '2026-01-01', signatory2Name: 'B', signatory2Date: '2026-01-01', signatureAgree: true };
+    expect(validateDeclaration(ok, null)).toEqual({});
+    expect(validateDeclaration(ok, new File(['x'], 's.exe')).sealFile).toBe('File type not allowed: s.exe');
   });
 });

@@ -1,29 +1,61 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { STORAGE_KEY, applyDraft, hasAnyContent, loadDraft, saveDraft, serialize } from './autosave';
+import type { Draft } from './autosave';
+import { emptyDirector } from './initial-state';
 import { emptyState } from '../test-utils';
 
 beforeEach(() => localStorage.clear());
 
-describe('autosave', () => {
-  it('round-trips a draft including legalStatus other', () => {
+describe('autosave v2', () => {
+  it('round-trips values incl. directors, docs and consent, and never stores files', () => {
     const s = emptyState();
-    s.step1.legalStatus = 'other';
-    s.step1.legalStatusOther = 'Trust';
-    s.docs.utility_bill.submitted = true;
+    s.entity.companyName = 'Acme';
+    s.funds.sourceOfFunds = 'Sales';
+    s.directors[0].name = 'Jane';
+    s.directors[0].pep = 'yes';
+    s.directors[0].files.id = new File(['x'], 'secret.pdf');
+    s.directors.push({ ...emptyDirector(), name: 'John' });
+    s.docs.cac_forms.submitted = true;
     s.consent = true;
+    s.declaration.signatureAgree = true;
+    s.seal = new File(['x'], 'seal.png');
     saveDraft(s);
-    const restored = applyDraft(emptyState(), loadDraft()!);
-    expect(restored.step1.legalStatus).toBe('other');
-    expect(restored.step1.legalStatusOther).toBe('Trust');
-    expect(restored.docs.utility_bill.submitted).toBe(true);
-    expect(restored.consent).toBe(true);
+    expect(localStorage.getItem(STORAGE_KEY)).not.toContain('secret.pdf');
+    expect(localStorage.getItem(STORAGE_KEY)).not.toContain('seal.png');
+    const r = applyDraft(emptyState(), loadDraft()!);
+    expect(r.entity.companyName).toBe('Acme');
+    expect(r.funds.sourceOfFunds).toBe('Sales');
+    expect(r.directors.map((d) => d.name)).toEqual(['Jane', 'John']);
+    expect(r.directors[0].pep).toBe('yes');
+    expect(r.docs.cac_forms.submitted).toBe(true);
+    expect(r.consent).toBe(true);
+    expect(r.declaration.signatureAgree).toBe(true);
+    expect(r.directors[0].files.id).toBeNull();
+    expect(r.seal).toBeNull();
   });
 
-  it('returns null for corrupt or non-object JSON', () => {
+  it('ignores v1, corrupt and non-object drafts', () => {
+    localStorage.setItem('woodhall-kyc-draft-v1', JSON.stringify({ fields: { companyName: 'Old' } }));
+    expect(loadDraft()).toBeNull();
     localStorage.setItem(STORAGE_KEY, '{oops');
     expect(loadDraft()).toBeNull();
     localStorage.setItem(STORAGE_KEY, '"str"');
     expect(loadDraft()).toBeNull();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ v: 1, entity: {} }));
+    expect(loadDraft()).toBeNull();
+  });
+
+  it('applyDraft tolerates malformed pieces and caps rows at 25', () => {
+    const bad = {
+      v: 2, customerType: 'corporate', entity: { companyName: 5 },
+      directors: [null, 'x', { name: 'A', pep: 'maybe' }, ...Array(40).fill({ name: 'Z' })],
+      documents: 'no', funds: null, declaration: [], consent: 'yes',
+    } as unknown as Draft;
+    const r = applyDraft(emptyState(), bad);
+    expect(r.entity.companyName).toBe('');
+    expect(r.directors.length).toBeLessThanOrEqual(25);
+    expect(r.directors.find((d) => d.name === 'A')!.pep).toBe('');
+    expect(r.consent).toBe(false);
   });
 
   it('swallows storage errors', () => {
@@ -34,13 +66,10 @@ describe('autosave', () => {
     spy.mockRestore();
   });
 
-  it('hasAnyContent is false for an empty draft', () => {
+  it('treats an empty draft and a single empty director row as no content', () => {
     expect(hasAnyContent(serialize(emptyState()))).toBe(false);
-  });
-
-  it('never stores files', () => {
     const s = emptyState();
-    s.docs.utility_bill.file = new File(['x'], 'a.pdf');
-    expect(JSON.stringify(serialize(s))).not.toContain('a.pdf');
+    s.directors[0].nationality = 'Nigerian';
+    expect(hasAnyContent(serialize(s))).toBe(true);
   });
 });

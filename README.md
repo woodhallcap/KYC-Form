@@ -1,7 +1,12 @@
 # Woodhall Capital — Corporate KYC / CDD Form
 
-A public web form that digitizes Woodhall Capital's Corporate Account Opening and
-Customer Due Diligence process. On submission it:
+A public web form that digitizes Woodhall Capital's Corporate KYC / CDD process (the
+customer-facing parts of the updated Corporate Customer KYC form). The wizard has five
+steps: **A** Entity Information, **B** Directors, Signatories & UBOs (>5%) — a list you can
+add to and remove from, with optional per-person attachments — **C** Required Documents,
+**D** Source of Funds and **E** Declaration (two typed-name signatories plus an optional
+company seal). Official-use sections (risk rating, sign-offs, EDD, CBN notes) are not on the
+web form. On submission it:
 
 1. Generates a branded, print-ready PDF of the full submission.
 2. Emails that PDF (plus any uploaded supporting documents) to compliance.
@@ -25,11 +30,12 @@ Node is only needed to build the front end; nothing Node-based runs in productio
 ```
 frontend/                  React app (Vite + TypeScript + Tailwind)
   src/App.tsx              wizard layout, step orchestration, submission
-  src/lib/validation.ts    client-side field validation
-  src/lib/reducer.ts       form state, touched/error logic, step navigation
-  src/lib/autosave.ts      localStorage draft autosave/restore
+  src/flows/               a flow = ordered steps (owns/touchKeys/validate); corporate.ts
+  src/lib/validation.ts    client-side validation (mirrors lib/validator.php)
+  src/lib/reducer.ts       flow-driven form state, touched/error logic, director rows
+  src/lib/autosave.ts      localStorage draft autosave/restore (key woodhall-kyc-draft-v2)
   src/lib/submit.ts        builds the FormData and POSTs to submit.php
-  src/components/          Header, ProgressBar, steps, fields, etc.
+  src/components/          Step1Entity … Step5Declaration, DirectorRow, fields, etc.
   src/dev/prefill.ts       dev-only "Fill test data" data
   public/fonts/            Vanitas heading font
 assets/logos/              brand logos — bundled into the front end AND read by the
@@ -37,14 +43,33 @@ assets/logos/              brand logos — bundled into the front end AND read b
 scripts/package.sh         builds the front end and assembles the Bluehost deploy zip
 config.php                 recipient email, SMTP settings, upload limits
 submit.php                 HTTP entry point — validates and orchestrates a submission
-lib/validator.php          shared server-side validation + input sanitization
+lib/validator.php          server-side validation + input sanitization (authoritative)
 lib/pdf-builder.php        renders the print-ready submission PDF (TCPDF)
 lib/mailer.php             builds and sends the admin + confirmation emails (PHPMailer)
-lib/submission-handler.php orchestrates validation → PDF → email → cleanup
+lib/submission-handler.php dispatches by customerType → validate → PDF → email → cleanup
 preview.php                dev-only preview of the emails/PDF using sample data
 vendor/                    vendored PHPMailer + TCPDF (no Composer)
 tests/php/                 PHP unit tests (custom harness)
 ```
+
+## Request contract
+
+`POST submit.php` (multipart). The backend currently accepts `customerType=corporate` only.
+
+- Text fields by name: `companyName, rcNumber, dateOfIncorporation, registeredAddress,
+  businessAddress, natureOfBusiness, tin, companyEmail, bankAccountNumber, bankName,
+  sourceOfFunds, facilityAmount, signatory1Name, signatory1Date, signatory2Name, signatory2Date`;
+  checkboxes `consent`, `signatureAgree` = `on`.
+- Directors: `directors[i][name|designation|bvn|nin|shareholdingPercent|nationality|pep|residentialAddress]`
+  (`pep` = `yes`/`no`, `shareholdingPercent` 0–100) and optional files
+  `directors[i][files][id|bvn|nin|proof_of_address]`.
+- Documents: `documents[<id>][submitted]=on` plus `documents[<id>][file]`. Only ticked documents
+  are validated and attached. Ids: `certificate_of_incorporation, cac_forms, memorandum_articles,
+  board_resolution, company_bank_statement, corporate_id_signatories`. Optional `sealFile`.
+- Uploads: pdf/jpg/jpeg/png/docx, 5MB each, 20MB total across all uploads.
+- Response: `{success, errors, message}`. Field errors are keyed by field name, or
+  `directors.<i>.<field>` for director rows; upload problems are keyed by document id,
+  `directorFile.<i>.<id>`, `sealFile` or `_total` and shown to the user as an alert.
 
 ## Local development
 

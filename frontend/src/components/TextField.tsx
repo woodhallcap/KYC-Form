@@ -5,7 +5,7 @@ import { Field, inputClass } from './Field';
 interface TextFieldProps {
   state: AppState;
   dispatch: Dispatch<Action>;
-  group: 'step1' | 'step3';
+  group: 'entity' | 'funds' | 'declaration';
   name: string;
   label: string;
   placeholder?: string;

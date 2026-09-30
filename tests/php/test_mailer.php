@@ -46,8 +46,9 @@ class FakePHPMailer
 }
 
 $sampleData = [
+    'customerType' => 'corporate',
     'submittedAt' => '2026-09-15 14:00:00',
-    'step1' => ['companyName' => 'Acme Trading Ltd', 'companyEmail' => 'info@acme.com'],
+    'fields' => ['companyName' => 'Acme Trading Ltd', 'companyEmail' => 'info@acme.com'],
 ];
 
 test_case('build_admin_email_html includes company name and the logo image', function () use ($sampleData) {
@@ -99,6 +100,29 @@ test_case('send_submission_emails reports failure when admin send fails', functi
 
     assert_equal(false, $result['success']);
     assert_true(strpos($result['error'], 'admin notification') !== false);
+});
+
+test_case('submission_summary describes a corporate submission', function () use ($sampleData) {
+    assert_equal(['kind' => 'Corporate KYC / CDD', 'name' => 'Acme Trading Ltd', 'email' => 'info@acme.com'], submission_summary($sampleData));
+});
+
+test_case('send_submission_emails skips the confirmation when there is no submitter email', function () {
+    $fakes = [];
+    $factory = function () use (&$fakes) {
+        return $fakes[] = new FakePHPMailer();
+    };
+    $r = send_submission_emails(['customerType' => 'corporate', 'submittedAt' => 'x', 'fields' => ['companyName' => 'A', 'companyEmail' => '']], '%PDF', [], $factory);
+    assert_equal(true, $r['success']);
+    assert_equal(1, count($fakes));
+});
+
+test_case('admin email subject names the type and the company', function () use ($sampleData) {
+    $fakes = [];
+    $factory = function () use (&$fakes) {
+        return $fakes[] = new FakePHPMailer();
+    };
+    send_submission_emails($sampleData, '%PDF', [], $factory);
+    assert_equal('New Corporate KYC / CDD Submission — Acme Trading Ltd', $fakes[0]->Subject);
 });
 
 test_summary();

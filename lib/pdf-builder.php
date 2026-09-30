@@ -12,10 +12,75 @@ const PDF_SPACE_LG = 8;
 
 function build_submission_pdf(array $data): string
 {
+    return build_corporate_pdf($data);
+}
+
+function pdf_yes_no(string $value): string
+{
+    return $value === 'yes' ? 'Yes' : ($value === 'no' ? 'No' : '');
+}
+
+function corporate_pdf_sections(array $data): array
+{
+    $f = $data['fields'] ?? [];
+    $v = fn(string $k): string => (string) ($f[$k] ?? '');
+
+    $directorGroups = [];
+    foreach (array_values($data['directors'] ?? []) as $i => $d) {
+        $attached = array_map(
+            fn($id) => $id === 'proof_of_address' ? 'Proof of address' : strtoupper((string) $id),
+            $d['attachments'] ?? []
+        );
+        $directorGroups[] = [
+            'subtitle' => 'Director / Signatory / UBO ' . ($i + 1),
+            'rows' => [
+                ['Name', (string) ($d['name'] ?? '')],
+                ['Designation', (string) ($d['designation'] ?? '')],
+                ['BVN', (string) ($d['bvn'] ?? '')],
+                ['NIN', (string) ($d['nin'] ?? '')],
+                ['% Shareholding', ($d['shareholdingPercent'] ?? '') !== '' ? $d['shareholdingPercent'] . '%' : ''],
+                ['Nationality', (string) ($d['nationality'] ?? '')],
+                ['PEP', pdf_yes_no((string) ($d['pep'] ?? ''))],
+                ['Residential Address', (string) ($d['residentialAddress'] ?? '')],
+                ['Attachments', count($attached) > 0 ? implode(', ', $attached) : 'None'],
+            ],
+        ];
+    }
+
+    $docRows = array_map(
+        fn(array $doc): array => [$doc['label'], !empty($doc['submitted']) ? 'Submitted' : 'Not submitted'],
+        $data['documents'] ?? []
+    );
+    $docRows[] = ['Consent to processing', !empty($data['consent']) ? 'Given' : 'Not given'];
+
+    return [
+        ['title' => 'Section A: Entity Information', 'groups' => [['subtitle' => null, 'rows' => [
+            ['Company Name', $v('companyName')], ['RC Number', $v('rcNumber')], ['Date of Incorporation', $v('dateOfIncorporation')],
+            ['Registered Address', $v('registeredAddress')], ['Business Address', $v('businessAddress')],
+            ['Nature of Business', $v('natureOfBusiness')], ['Tax Identification Number', $v('tin')],
+            ['Company Email', $v('companyEmail')], ['Corporate Bank Account', $v('bankAccountNumber')], ['Bank', $v('bankName')],
+        ]]]],
+        ['title' => 'Section B: Directors, Signatories & UBOs (>5%)', 'groups' => $directorGroups],
+        ['title' => 'Section C: Required Documents', 'groups' => [['subtitle' => null, 'rows' => $docRows]]],
+        ['title' => 'Section D: Source of Funds', 'groups' => [['subtitle' => null, 'rows' => [
+            ['Source of Funds', $v('sourceOfFunds')], ['Facility Amount Requested (NGN)', $v('facilityAmount')],
+        ]]]],
+        ['title' => 'Section E: Declaration', 'groups' => [['subtitle' => null, 'rows' => [
+            ['Certification', 'We certify that the above information is true. We understand Woodhall Capital is obligated to report suspicious transactions to NFIU.'],
+            ['Authorized Signatory 1', $v('signatory1Name')], ['Signatory 1 Date', $v('signatory1Date')],
+            ['Authorized Signatory 2', $v('signatory2Name')], ['Signatory 2 Date', $v('signatory2Date')],
+            ['Company Seal', !empty($data['sealAttached']) ? 'Attached' : 'Not provided'],
+            ['Typed signatures agreed', 'Yes'],
+        ]]]],
+    ];
+}
+
+function build_corporate_pdf(array $data): string
+{
     $pdf = new TCPDF('P', 'mm', 'A4', true, 'UTF-8', false);
     $pdf->SetCreator('Woodhall Capital KYC Form');
     $pdf->SetAuthor('Woodhall Capital');
-    $pdf->SetTitle('Corporate KYC / CDD Submission — ' . ($data['step1']['companyName'] ?? ''));
+    $pdf->SetTitle('Corporate KYC / CDD Submission — ' . ($data['fields']['companyName'] ?? ''));
     $pdf->setPrintHeader(false);
     $pdf->setPrintFooter(true);
     $pdf->SetMargins(18, 18, 18);
@@ -40,53 +105,27 @@ function build_submission_pdf(array $data): string
     $pdf->Cell(0, 6, 'Submitted: ' . ($data['submittedAt'] ?? ''), 0, 1, 'C');
     $pdf->Ln(PDF_SPACE_LG);
 
-    pdf_section_title($pdf, 'Section A: Entity Information', $primary);
-    $step1Rows = [
-        ['Company Name', $data['step1']['companyName'] ?? ''],
-        ['RC Number', $data['step1']['rcNumber'] ?? ''],
-        ['Date of Incorporation', $data['step1']['dateOfIncorporation'] ?? ''],
-        ['Legal Status', pdf_legal_status_label($data['step1'] ?? [])],
-        ['Registered Address', $data['step1']['registeredAddress'] ?? ''],
-        ['Business/Operating Address', $data['step1']['businessAddress'] ?? ''],
-        ['Nature of Business', $data['step1']['natureOfBusiness'] ?? ''],
-        ['Tax Identification Number', $data['step1']['tin'] ?? ''],
-        ['Company Email', $data['step1']['companyEmail'] ?? ''],
-        ['Website', $data['step1']['website'] ?? ''],
-        ['Corporate Bank Account Number', $data['step1']['bankAccountNumber'] ?? ''],
-        ['Bank', $data['step1']['bankName'] ?? ''],
-    ];
-    pdf_field_table($pdf, $step1Rows);
-
-    $pdf->Ln(PDF_SPACE_LG);
-    pdf_section_title($pdf, 'Section B: KYC / CDD Documentation', $primary);
-    $documentRows = array_map(function (array $doc): array {
-        return [$doc['label'], !empty($doc['submitted']) ? 'Submitted' : 'Not submitted'];
-    }, $data['documents'] ?? []);
-    pdf_field_table($pdf, $documentRows);
-    $pdf->Ln(PDF_SPACE_SM);
-    $pdf->SetFont('helvetica', 'I', 9);
-    $pdf->MultiCell(0, 5, 'Consent to processing: ' . (!empty($data['consent']) ? 'Given' : 'Not given'), 0, 'L');
-
-    $pdf->Ln(PDF_SPACE_LG);
-    pdf_section_title($pdf, 'Section C: Declaration', $primary);
-    $step3Rows = [
-        ['Name', $data['step3']['certifyingName'] ?? ''],
-        ['Designation', $data['step3']['designation'] ?? ''],
-        ['Typed Signature', $data['step3']['signatureName'] ?? ''],
-        ['Date', $data['submittedAt'] ?? ''],
-    ];
-    pdf_field_table($pdf, $step3Rows);
+    foreach (corporate_pdf_sections($data) as $index => $section) {
+        if ($index > 0) {
+            $pdf->Ln(PDF_SPACE_LG);
+        }
+        pdf_section_title($pdf, $section['title'], $primary);
+        foreach ($section['groups'] as $group) {
+            $neededHeight = 12 + count($group['rows']) * 8;
+            if ($group['subtitle'] !== null && $pdf->GetY() + $neededHeight > $pdf->getPageHeight() - 18) {
+                $pdf->AddPage();
+            }
+            if ($group['subtitle'] !== null) {
+                $pdf->SetFont('helvetica', 'B', 11);
+                $pdf->Cell(0, 7, $group['subtitle'], 0, 1, 'L');
+                $pdf->SetFont('helvetica', '', 10);
+            }
+            pdf_field_table($pdf, $group['rows']);
+            $pdf->Ln(PDF_SPACE_SM);
+        }
+    }
 
     return $pdf->Output('', 'S');
-}
-
-function pdf_legal_status_label(array $step1): string
-{
-    $status = $step1['legalStatus'] ?? '';
-    if ($status === 'private') return 'Private Limited Company';
-    if ($status === 'public') return 'Public Limited Company';
-    if ($status === 'other') return 'Other: ' . ($step1['legalStatusOther'] ?? '');
-    return '';
 }
 
 function pdf_section_title(TCPDF $pdf, string $title, array $color): void
