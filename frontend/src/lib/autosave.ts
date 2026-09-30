@@ -1,33 +1,51 @@
-import type { FormState, Step1Data, Step3Data } from '../types';
+import { DIRECTOR_FIELDS } from '../types';
+import type { CustomerType, Director, FormState } from '../types';
+import { emptyDirector } from './initial-state';
+import { MAX_DIRECTORS } from './validation';
 
-export const STORAGE_KEY = 'woodhall-kyc-draft-v1';
+export const STORAGE_KEY = 'woodhall-kyc-draft-v2';
 
 export interface Draft {
-  fields: Record<string, string>;
-  legalStatus: string;
+  v: 2;
+  customerType: CustomerType;
+  entity: Record<string, string>;
+  funds: Record<string, string>;
+  declaration: Record<string, string | boolean>;
+  directors: Record<string, string>[];
   documents: Record<string, boolean>;
   consent: boolean;
-  signatureAgree: boolean;
 }
 
-const STEP1_TEXT_FIELDS: (keyof Step1Data)[] = [
-  'companyName', 'rcNumber', 'dateOfIncorporation', 'legalStatusOther', 'registeredAddress',
-  'businessAddress', 'natureOfBusiness', 'tin', 'companyEmail', 'website', 'bankAccountNumber', 'bankName',
-];
-const STEP3_TEXT_FIELDS: (keyof Step3Data & string)[] = ['certifyingName', 'designation', 'signatureName'];
+const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
+
+/** Copy only the string-valued keys `base` already has, ignoring anything malformed in `src`. */
+function pickStrings<T extends object>(base: T, src: unknown): T {
+  const out = { ...base } as Record<string, unknown>;
+  if (isObj(src)) {
+    Object.keys(base).forEach((k) => {
+      if (typeof (base as Record<string, unknown>)[k] === 'string' && typeof src[k] === 'string') out[k] = src[k];
+    });
+  }
+  return out as T;
+}
 
 export function serialize(state: FormState): Draft {
-  const fields: Record<string, string> = {};
-  STEP1_TEXT_FIELDS.forEach((name) => (fields[name] = state.step1[name]));
-  STEP3_TEXT_FIELDS.forEach((name) => (fields[name] = state.step3[name] as string));
   const documents: Record<string, boolean> = {};
-  Object.keys(state.docs).forEach((id) => (documents[id] = state.docs[id].submitted));
+  Object.keys(state.docs).forEach((id) => {
+    documents[id] = state.docs[id].submitted;
+  });
   return {
-    fields,
-    legalStatus: state.step1.legalStatus,
+    v: 2,
+    customerType: 'corporate',
+    entity: { ...state.entity },
+    funds: { ...state.funds },
+    declaration: { ...state.declaration },
+    directors: state.directors.map((d) => {
+      const { files: _files, ...values } = d;
+      return values;
+    }),
     documents,
     consent: state.consent,
-    signatureAgree: state.step3.signatureAgree,
   };
 }
 
@@ -36,8 +54,7 @@ export function loadDraft(): Draft | null {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== 'object' || !parsed.fields || typeof parsed.fields !== 'object') return null;
-    return parsed as Draft;
+    return isObj(parsed) && parsed.v === 2 ? (parsed as unknown as Draft) : null;
   } catch {
     return null;
   }
@@ -59,27 +76,47 @@ export function clearDraft(): void {
   }
 }
 
-export function hasAnyContent(draft: Draft | null): boolean {
-  if (!draft) return false;
-  const hasText = Object.values(draft.fields).some((v) => typeof v === 'string' && v.trim() !== '');
-  const hasDocs = Object.values(draft.documents || {}).some(Boolean);
-  return hasText || !!draft.legalStatus || hasDocs || !!draft.consent || !!draft.signatureAgree;
+export function hasAnyContent(d: Draft | null): boolean {
+  if (!d) return false;
+  const anyText = (o: unknown) =>
+    isObj(o) && Object.values(o).some((v) => (typeof v === 'string' && v.trim() !== '') || v === true);
+  const directorHasContent = (row: unknown) =>
+    isObj(row) && DIRECTOR_FIELDS.some((f) => typeof row[f] === 'string' && (row[f] as string).trim() !== '');
+  return (
+    anyText(d.entity) ||
+    anyText(d.funds) ||
+    anyText(d.declaration) ||
+    (Array.isArray(d.directors) && d.directors.some(directorHasContent)) ||
+    (isObj(d.documents) && Object.values(d.documents).some((v) => v === true)) ||
+    d.consent === true
+  );
 }
 
-export function applyDraft(state: FormState, draft: Draft): FormState {
-  const step1 = { ...state.step1 };
-  const step3 = { ...state.step3 };
-  STEP1_TEXT_FIELDS.forEach((name) => {
-    if (typeof draft.fields[name] === 'string') step1[name] = draft.fields[name];
-  });
-  STEP3_TEXT_FIELDS.forEach((name) => {
-    if (typeof draft.fields[name] === 'string') (step3[name] as string) = draft.fields[name];
-  });
-  if (typeof draft.legalStatus === 'string') step1.legalStatus = draft.legalStatus;
-  step3.signatureAgree = !!draft.signatureAgree;
+export function applyDraft(state: FormState, d: Draft): FormState {
+  const directors: Director[] = Array.isArray(d.directors)
+    ? d.directors
+        .filter(isObj)
+        .slice(0, MAX_DIRECTORS)
+        .map((row) => ({
+          ...pickStrings(emptyDirector(), row),
+          pep: row.pep === 'yes' || row.pep === 'no' ? row.pep : '',
+        }))
+    : [];
   const docs = { ...state.docs };
-  Object.keys(draft.documents || {}).forEach((id) => {
-    if (docs[id] && draft.documents[id]) docs[id] = { ...docs[id], submitted: true };
-  });
-  return { ...state, step1, step3, docs, consent: !!draft.consent };
+  if (isObj(d.documents)) {
+    Object.keys(d.documents).forEach((id) => {
+      if (docs[id] && d.documents[id] === true) docs[id] = { ...docs[id], submitted: true };
+    });
+  }
+  const declaration = pickStrings(state.declaration, d.declaration);
+  declaration.signatureAgree = isObj(d.declaration) && d.declaration.signatureAgree === true;
+  return {
+    ...state,
+    entity: pickStrings(state.entity, d.entity),
+    funds: pickStrings(state.funds, d.funds),
+    declaration,
+    docs,
+    directors: directors.length > 0 ? directors : state.directors,
+    consent: d.consent === true,
+  };
 }

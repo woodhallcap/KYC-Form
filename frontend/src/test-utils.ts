@@ -32,3 +32,5 @@ export function makeForm(o: Partial<FormState> = {}): FormState {
 }
 
 export const bigFile = (name: string, mb: number) => new File([new Uint8Array(Math.floor(mb * 1024 * 1024))], name);
+
+export { initialState as emptyState } from './lib/initial-state';

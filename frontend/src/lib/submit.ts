@@ -1,4 +1,6 @@
+import { DIRECTOR_FIELDS } from '../types';
 import type { FormState } from '../types';
+import { DIRECTOR_FILE_IDS, DOCUMENT_IDS } from './validation';
 
 export interface SubmitResult {
   success: boolean;
@@ -8,24 +10,27 @@ export interface SubmitResult {
 
 export function buildFormData(state: FormState): FormData {
   const fd = new FormData();
-  const { step1, step3 } = state;
-  (Object.keys(step1) as (keyof typeof step1)[]).forEach((name) => {
-    if (name === 'legalStatus') {
-      if (step1.legalStatus) fd.append('legalStatus', step1.legalStatus);
-    } else {
-      fd.append(name, step1[name]);
-    }
+  fd.append('customerType', 'corporate');
+  Object.entries(state.entity).forEach(([k, v]) => fd.append(k, v));
+  Object.entries(state.funds).forEach(([k, v]) => fd.append(k, v));
+  const { signatureAgree, ...signatories } = state.declaration;
+  Object.entries(signatories).forEach(([k, v]) => fd.append(k, v));
+  if (signatureAgree) fd.append('signatureAgree', 'on');
+  if (state.consent) fd.append('consent', 'on');
+  state.directors.forEach((row, i) => {
+    DIRECTOR_FIELDS.forEach((f) => fd.append(`directors[${i}][${f}]`, row[f]));
+    DIRECTOR_FILE_IDS.forEach((id) => {
+      const file = row.files[id];
+      if (file) fd.append(`directors[${i}][files][${id}]`, file);
+    });
   });
-  Object.keys(state.docs).forEach((id) => {
+  DOCUMENT_IDS.forEach((id) => {
     const doc = state.docs[id];
-    if (doc.submitted) fd.append(`documents[${id}][submitted]`, 'on');
+    if (!doc.submitted) return;
+    fd.append(`documents[${id}][submitted]`, 'on');
     if (doc.file) fd.append(`documents[${id}][file]`, doc.file);
   });
-  if (state.consent) fd.append('consent', 'on');
-  fd.append('certifyingName', step3.certifyingName);
-  fd.append('designation', step3.designation);
-  fd.append('signatureName', step3.signatureName);
-  if (step3.signatureAgree) fd.append('signatureAgree', 'on');
+  if (state.seal) fd.append('sealFile', state.seal);
   return fd;
 }
 
