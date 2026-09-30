@@ -46,20 +46,23 @@ function build_email_shell(string $innerHtml, string $logoSrc): string
 function submission_summary(array $data): array
 {
     $fields = $data['fields'] ?? [];
-    return [
-        'kind' => 'Corporate KYC / CDD',
-        'name' => (string) ($fields['companyName'] ?? ''),
-        'email' => (string) ($fields['companyEmail'] ?? ''),
-    ];
+    $str = fn(string $k): string => is_string($fields[$k] ?? null) ? $fields[$k] : '';
+    if (($data['customerType'] ?? 'corporate') === 'individual') {
+        return ['kind' => 'Individual KYC / CDD', 'nameLabel' => 'Customer', 'name' => $str('fullName'), 'email' => $str('email')];
+    }
+    return ['kind' => 'Corporate KYC / CDD', 'nameLabel' => 'Company', 'name' => $str('companyName'), 'email' => $str('companyEmail')];
 }
 
 function build_admin_email_html(array $data, string $logoSrc = 'cid:woodhall-logo'): string
 {
-    $companyName = htmlspecialchars(submission_summary($data)['name'], ENT_QUOTES);
+    $summary = submission_summary($data);
+    $kind = htmlspecialchars($summary['kind'], ENT_QUOTES);
+    $nameLabel = htmlspecialchars($summary['nameLabel'], ENT_QUOTES);
+    $name = htmlspecialchars($summary['name'], ENT_QUOTES);
     $submittedAt = htmlspecialchars($data['submittedAt'] ?? '', ENT_QUOTES);
     $md = EMAIL_SPACE_MD;
-    $inner = "<h2 style=\"color:#0E4033;margin:0 0 {$md}px 0;font-size:20px;\">New Corporate KYC / CDD Submission</h2>"
-        . email_paragraph("<strong>Company:</strong> {$companyName}")
+    $inner = "<h2 style=\"color:#0E4033;margin:0 0 {$md}px 0;font-size:20px;\">New {$kind} Submission</h2>"
+        . email_paragraph("<strong>{$nameLabel}:</strong> {$name}")
         . email_paragraph("<strong>Submitted:</strong> {$submittedAt}")
         . email_paragraph('The full submission is attached as a print-ready PDF, along with any supporting documents provided.', true);
     return build_email_shell($inner, $logoSrc);
@@ -67,10 +70,12 @@ function build_admin_email_html(array $data, string $logoSrc = 'cid:woodhall-log
 
 function build_confirmation_email_html(array $data, string $logoSrc = 'cid:woodhall-logo'): string
 {
-    $companyName = htmlspecialchars(submission_summary($data)['name'], ENT_QUOTES);
+    $summary = submission_summary($data);
+    $kind = htmlspecialchars($summary['kind'], ENT_QUOTES);
+    $name = htmlspecialchars($summary['name'], ENT_QUOTES);
     $md = EMAIL_SPACE_MD;
     $inner = "<h2 style=\"color:#0E4033;margin:0 0 {$md}px 0;font-size:20px;\">Thank you for your submission</h2>"
-        . email_paragraph("We have received the Corporate KYC / CDD submission for <strong>{$companyName}</strong>.")
+        . email_paragraph("We have received the {$kind} submission for <strong>{$name}</strong>.")
         . email_paragraph('A copy of your submission, formatted for printing, is attached for your records.')
         . email_paragraph('&mdash; Woodhall Capital', true);
     return build_email_shell($inner, $logoSrc);

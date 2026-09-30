@@ -12,7 +12,14 @@ const PDF_SPACE_LG = 8;
 
 function build_submission_pdf(array $data): string
 {
-    return build_corporate_pdf($data);
+    switch ($data['customerType'] ?? '') {
+        case 'corporate':
+            return build_corporate_pdf($data);
+        case 'individual':
+            return build_individual_pdf($data);
+        default:
+            throw new InvalidArgumentException('Unsupported customer type.');
+    }
 }
 
 function pdf_yes_no(string $value): string
@@ -75,12 +82,12 @@ function corporate_pdf_sections(array $data): array
     ];
 }
 
-function build_corporate_pdf(array $data): string
+function render_pdf(string $title, string $subject, array $data, array $sections): string
 {
     $pdf = new TCPDF('P', 'mm', 'A4', true, 'UTF-8', false);
     $pdf->SetCreator('Woodhall Capital KYC Form');
     $pdf->SetAuthor('Woodhall Capital');
-    $pdf->SetTitle('Corporate KYC / CDD Submission — ' . ($data['fields']['companyName'] ?? ''));
+    $pdf->SetTitle($title . ' — ' . $subject);
     $pdf->setPrintHeader(false);
     $pdf->setPrintFooter(true);
     $pdf->SetMargins(18, 18, 18);
@@ -99,15 +106,18 @@ function build_corporate_pdf(array $data): string
     $pdf->SetY(30);
     $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
     $pdf->SetFont('helvetica', 'B', 16);
-    $pdf->Cell(0, 10, 'Corporate KYC / CDD Submission', 0, 1, 'C');
+    $pdf->Cell(0, 10, $title, 0, 1, 'C');
     $pdf->SetFont('helvetica', '', 10);
     $pdf->SetTextColor($ink[0], $ink[1], $ink[2]);
     $pdf->Cell(0, 6, 'Submitted: ' . ($data['submittedAt'] ?? ''), 0, 1, 'C');
     $pdf->Ln(PDF_SPACE_LG);
 
-    foreach (corporate_pdf_sections($data) as $index => $section) {
+    foreach ($sections as $index => $section) {
         if ($index > 0) {
             $pdf->Ln(PDF_SPACE_LG);
+        }
+        if ($pdf->GetY() + 40 > $pdf->getPageHeight() - 18) {
+            $pdf->AddPage();
         }
         pdf_section_title($pdf, $section['title'], $primary);
         foreach ($section['groups'] as $group) {
@@ -126,6 +136,79 @@ function build_corporate_pdf(array $data): string
     }
 
     return $pdf->Output('', 'S');
+}
+
+function build_corporate_pdf(array $data): string
+{
+    return render_pdf('Corporate KYC / CDD Submission', (string) ($data['fields']['companyName'] ?? ''), $data, corporate_pdf_sections($data));
+}
+
+function build_individual_pdf(array $data): string
+{
+    $name = is_string($data['fields']['fullName'] ?? null) ? $data['fields']['fullName'] : '';
+    return render_pdf('Individual KYC / CDD Submission', $name, $data, individual_pdf_sections($data));
+}
+
+const MEANS_OF_ID_LABELS = ['nin' => 'NIN', 'bvn' => 'BVN', 'passport' => "Int'l Passport", 'drivers_license' => "Driver's License", 'voters_card' => "Voter's Card"];
+const TRANSACTION_TYPE_LABELS = ['cash' => 'Cash', 'transfer' => 'Transfer', 'cheque' => 'Cheque'];
+const SOURCE_OF_INCOME_LABELS = ['salary' => 'Salary', 'business' => 'Business', 'investment' => 'Investment', 'inheritance' => 'Inheritance', 'other' => 'Other'];
+const PURPOSE_LABELS = ['loan' => 'Loan', 'lease' => 'Lease', 'investment' => 'Investment', 'other' => 'Other'];
+
+function pdf_choice_list($values, array $labels): string
+{
+    if (!is_array($values)) {
+        return '';
+    }
+    $out = [];
+    foreach ($values as $v) {
+        if (is_string($v) && isset($labels[$v])) {
+            $out[] = $labels[$v];
+        }
+    }
+    return implode(', ', $out);
+}
+
+function pdf_choice_with_other($value, array $labels, $other): string
+{
+    if (!is_string($value) || !isset($labels[$value])) {
+        return '';
+    }
+    return $value === 'other' && is_string($other) && $other !== '' ? 'Other: ' . $other : $labels[$value];
+}
+
+function individual_pdf_sections(array $data): array
+{
+    $f = $data['fields'] ?? [];
+    $v = fn(string $k): string => is_string($f[$k] ?? null) ? $f[$k] : '';
+    $gender = ['M' => 'Male', 'F' => 'Female'][is_string($f['gender'] ?? null) ? $f['gender'] : ''] ?? '';
+    $docRows = array_map(
+        fn(array $doc): array => [$doc['label'], !empty($doc['submitted']) ? 'Submitted' : 'Not submitted'],
+        $data['documents'] ?? []
+    );
+    $docRows[] = ['Consent to processing', !empty($data['consent']) ? 'Given' : 'Not given'];
+
+    return [
+        ['title' => 'Section A: Customer Information', 'groups' => [['subtitle' => null, 'rows' => [
+            ['Full Name', $v('fullName')], ['Date of Birth', $v('dateOfBirth')], ['Place of Birth', $v('placeOfBirth')], ['Gender', $gender],
+            ['Nationality', $v('nationality')], ['Country of Residence', $v('countryOfResidence')],
+            ['Residential Address', $v('residentialAddress')], ['LGA', $v('lga')], ['State', $v('state')],
+            ['Phone No', $v('phone')], ['Email', $v('email')],
+            ['Means of ID', pdf_choice_list($f['meansOfId'] ?? null, MEANS_OF_ID_LABELS)],
+            ['ID No', $v('idNumber')], ['ID Expiry Date', $v('idExpiry')], ['BVN', $v('bvn')], ['NIN', $v('nin')],
+            ['Occupation', $v('occupation')], ['Employer/Business Name', $v('employerName')], ['Office Address', $v('officeAddress')],
+            ['Source of Income', pdf_choice_with_other($f['sourceOfIncome'] ?? null, SOURCE_OF_INCOME_LABELS, $f['sourceOfIncomeOther'] ?? null)],
+            ['Source of Wealth', $v('sourceOfWealth')],
+            ['Purpose of Relationship', pdf_choice_with_other($f['purposeOfRelationship'] ?? null, PURPOSE_LABELS, $f['purposeOther'] ?? null)],
+            ['Expected Monthly Turnover (NGN)', $v('expectedMonthlyTurnover')],
+            ['Expected Transaction Type', pdf_choice_list($f['expectedTransactionTypes'] ?? null, TRANSACTION_TYPE_LABELS)],
+        ]]]],
+        ['title' => 'Section B: Verification Documents', 'groups' => [['subtitle' => null, 'rows' => $docRows]]],
+        ['title' => 'Section C: Declaration', 'groups' => [['subtitle' => null, 'rows' => [
+            ['Declaration', 'I hereby declare that the information provided is true and correct. I authorize Woodhall Capital to verify my details with NIBSS, NIMC, Credit Bureaus and report to NFIU/CBN as required by law.'],
+            ['Name', $v('declarationName')], ['Typed Signature', $v('signatureName')], ['Date', $v('signatureDate')],
+            ['Typed signature agreed', 'Yes'],
+        ]]]],
+    ];
 }
 
 function pdf_section_title(TCPDF $pdf, string $title, array $color): void

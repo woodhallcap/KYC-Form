@@ -79,4 +79,72 @@ test_case('build_submission_pdf survives missing/empty directors', function () {
     assert_true(strpos(build_submission_pdf($d), '%PDF-') === 0);
 });
 
+function sample_individual_data(): array
+{
+    return [
+        'customerType' => 'individual',
+        'submittedAt' => '2026-09-15 14:00:00',
+        'fields' => [
+            'fullName' => 'Jane Doe', 'dateOfBirth' => '1990-01-01', 'placeOfBirth' => 'Lagos', 'gender' => 'F', 'nationality' => 'Nigerian',
+            'countryOfResidence' => 'Nigeria', 'residentialAddress' => '1 Rd', 'lga' => 'Ikeja', 'state' => 'Lagos', 'phone' => '08000000000',
+            'email' => 'jane@example.com', 'meansOfId' => ['nin', 'drivers_license'], 'idNumber' => 'A123', 'idExpiry' => '', 'bvn' => '222', 'nin' => '333',
+            'occupation' => 'Engineer', 'employerName' => '', 'officeAddress' => '', 'sourceOfIncome' => 'other', 'sourceOfIncomeOther' => 'Gift',
+            'sourceOfWealth' => 'Savings', 'purposeOfRelationship' => 'loan', 'purposeOther' => '', 'expectedMonthlyTurnover' => '500,000',
+            'expectedTransactionTypes' => ['cash', 'transfer'],
+            'declarationName' => 'Jane Doe', 'signatureName' => 'Jane Doe', 'signatureDate' => '2026-09-15',
+        ],
+        'documents' => [
+            ['id' => 'valid_means_of_id', 'label' => 'Valid Means of ID', 'submitted' => true],
+            ['id' => 'passport_photograph', 'label' => 'Passport Photograph', 'submitted' => false],
+        ],
+        'consent' => true,
+    ];
+}
+
+test_case('build_submission_pdf renders an individual submission', function () {
+    $pdf = build_submission_pdf(sample_individual_data());
+    assert_true(strpos($pdf, '%PDF-') === 0);
+    assert_true(strlen($pdf) > 1000);
+});
+
+test_case('individual_pdf_sections lists sections A-C and formats choices', function () {
+    $s = individual_pdf_sections(sample_individual_data());
+    assert_equal(['Section A: Customer Information', 'Section B: Verification Documents', 'Section C: Declaration'], array_map(fn($x) => $x['title'], $s));
+    $a = array_column($s[0]['groups'][0]['rows'], 1, 0);
+    assert_equal('Female', $a['Gender']);
+    assert_equal("NIN, Driver's License", $a['Means of ID']);
+    assert_equal('Other: Gift', $a['Source of Income']);
+    assert_equal('Loan', $a['Purpose of Relationship']);
+    assert_equal('Cash, Transfer', $a['Expected Transaction Type']);
+    assert_equal('500,000', $a['Expected Monthly Turnover (NGN)']);
+    $b = array_column($s[1]['groups'][0]['rows'], 1, 0);
+    assert_equal('Submitted', $b['Valid Means of ID']);
+    assert_equal('Given', $b['Consent to processing']);
+    $c = array_column($s[2]['groups'][0]['rows'], 1, 0);
+    assert_equal('Jane Doe', $c['Name']);
+    assert_equal('2026-09-15', $c['Date']);
+});
+
+test_case('individual sections tolerate missing/odd fields', function () {
+    $d = sample_individual_data();
+    $d['fields']['meansOfId'] = 'nin';
+    unset($d['fields']['expectedTransactionTypes']);
+    $d['fields']['gender'] = 'X';
+    $a = array_column(individual_pdf_sections($d)[0]['groups'][0]['rows'], 1, 0);
+    assert_equal('', $a['Means of ID']);
+    assert_equal('', $a['Expected Transaction Type']);
+    assert_equal('', $a['Gender']);
+    assert_true(strpos(build_submission_pdf($d), '%PDF-') === 0);
+});
+
+test_case('build_submission_pdf rejects an unknown customer type', function () {
+    $threw = false;
+    try {
+        build_submission_pdf(['customerType' => 'partnership']);
+    } catch (InvalidArgumentException $e) {
+        $threw = true;
+    }
+    assert_true($threw);
+});
+
 test_summary();

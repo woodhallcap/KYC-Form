@@ -103,7 +103,7 @@ test_case('send_submission_emails reports failure when admin send fails', functi
 });
 
 test_case('submission_summary describes a corporate submission', function () use ($sampleData) {
-    assert_equal(['kind' => 'Corporate KYC / CDD', 'name' => 'Acme Trading Ltd', 'email' => 'info@acme.com'], submission_summary($sampleData));
+    assert_equal(['kind' => 'Corporate KYC / CDD', 'nameLabel' => 'Company', 'name' => 'Acme Trading Ltd', 'email' => 'info@acme.com'], submission_summary($sampleData));
 });
 
 test_case('send_submission_emails skips the confirmation when there is no submitter email', function () {
@@ -123,6 +123,25 @@ test_case('admin email subject names the type and the company', function () use 
     };
     send_submission_emails($sampleData, '%PDF', [], $factory);
     assert_equal('New Corporate KYC / CDD Submission — Acme Trading Ltd', $fakes[0]->Subject);
+});
+
+test_case('submission_summary describes an individual', function () {
+    $d = ['customerType' => 'individual', 'fields' => ['fullName' => 'Jane Doe', 'email' => 'jane@example.com']];
+    assert_equal(['kind' => 'Individual KYC / CDD', 'nameLabel' => 'Customer', 'name' => 'Jane Doe', 'email' => 'jane@example.com'], submission_summary($d));
+});
+
+test_case('individual admin subject and confirmation go to the person', function () {
+    $fakes = [];
+    $factory = function () use (&$fakes) {
+        return $fakes[] = new FakePHPMailer();
+    };
+    $d = ['customerType' => 'individual', 'submittedAt' => 'x', 'fields' => ['fullName' => 'Jane Doe', 'email' => 'jane@example.com']];
+    $r = send_submission_emails($d, '%PDF', [], $factory);
+    assert_equal(true, $r['success']);
+    assert_equal('New Individual KYC / CDD Submission — Jane Doe', $fakes[0]->Subject);
+    assert_equal(['jane@example.com'], $fakes[1]->sentTo);
+    assert_true(strpos(build_admin_email_html($d), 'Jane Doe') !== false);
+    assert_true(strpos(build_confirmation_email_html($d), 'Individual KYC / CDD') !== false);
 });
 
 test_summary();

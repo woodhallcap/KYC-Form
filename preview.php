@@ -60,7 +60,33 @@ function preview_sample_data(): array
     ];
 }
 
-$data = preview_sample_data();
+function preview_individual_data(): array
+{
+    return [
+        'customerType' => 'individual',
+        'submittedAt' => date('Y-m-d H:i:s'),
+        'fields' => [
+            'fullName' => 'Jane Doe', 'dateOfBirth' => '1990-01-01', 'placeOfBirth' => 'Lagos', 'gender' => 'F', 'nationality' => 'Nigerian',
+            'countryOfResidence' => 'Nigeria', 'residentialAddress' => '1 Banana Island Road, Ikoyi, Lagos', 'lga' => 'Eti-Osa', 'state' => 'Lagos',
+            'phone' => '08012345678', 'email' => 'jane@example.com', 'meansOfId' => ['nin', 'passport'], 'idNumber' => 'A12345678',
+            'idExpiry' => '2030-06-30', 'bvn' => '22212345678', 'nin' => '12345678901', 'occupation' => 'Engineer',
+            'employerName' => 'Acme Engineering', 'officeAddress' => '4 Adeola Odeku Street, Victoria Island, Lagos',
+            'sourceOfIncome' => 'salary', 'sourceOfIncomeOther' => '', 'sourceOfWealth' => 'Savings and property rental',
+            'purposeOfRelationship' => 'loan', 'purposeOther' => '', 'expectedMonthlyTurnover' => '500,000',
+            'expectedTransactionTypes' => ['transfer', 'cash'],
+            'declarationName' => 'Jane Doe', 'signatureName' => 'Jane Doe', 'signatureDate' => date('Y-m-d'),
+        ],
+        'documents' => [
+            ['id' => 'valid_means_of_id', 'label' => 'Valid Means of ID', 'submitted' => true],
+            ['id' => 'proof_of_address', 'label' => 'Proof of Address (less than 3 months): Utility Bill / Bank Statement', 'submitted' => true],
+            ['id' => 'passport_photograph', 'label' => 'Passport Photograph', 'submitted' => true],
+            ['id' => 'signature_mandate_card', 'label' => 'Signature Mandate Card', 'submitted' => false],
+        ],
+        'consent' => true,
+    ];
+}
+
+$data = (($_GET['type'] ?? '') === 'individual') ? preview_individual_data() : preview_sample_data();
 
 if (($_GET['view'] ?? '') === 'pdf') {
     $pdfBytes = build_submission_pdf($data);
