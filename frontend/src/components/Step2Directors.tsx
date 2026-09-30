@@ -4,7 +4,7 @@ import { DirectorRow } from './DirectorRow';
 import type { StepProps } from './stepProps';
 
 export function Step2Directors({ state, dispatch, onNext, onBack }: StepProps) {
-  const { directors } = state.form;
+  const { directors } = state.corporate;
   return (
     <section>
       <h2>Section B: Directors, Signatories and UBOs</h2>

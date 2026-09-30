@@ -19,7 +19,7 @@ const FILE_LABELS: Record<DirectorFileId, string> = {
 };
 
 export function DirectorRow({ index, state, dispatch, canRemove }: DirectorRowProps) {
-  const row = state.form.directors[index];
+  const row = state.corporate.directors[index];
   const n = index + 1;
   const errorOf = (field: DirectorField) => state.errors[`directors.${index}.${field}`];
   const touch = (field: DirectorField) => dispatch({ type: 'touch', name: `directors.${index}.${field}` });

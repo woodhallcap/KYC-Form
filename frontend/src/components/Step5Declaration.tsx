@@ -1,10 +1,9 @@
-import { Button } from './Button';
 import { Field } from './Field';
+import { SubmitActions } from './SubmitActions';
 import { TextField } from './TextField';
 import type { StepProps } from './stepProps';
 
 export function Step5Declaration({ state, dispatch, onBack }: StepProps) {
-  const submitting = state.status === 'submitting';
   const common = { state, dispatch, group: 'declaration' as const };
   return (
     <section>
@@ -34,7 +33,7 @@ export function Step5Declaration({ state, dispatch, onBack }: StepProps) {
             type="checkbox"
             id="signatureAgree"
             name="signatureAgree"
-            checked={state.form.declaration.signatureAgree}
+            checked={state.corporate.declaration.signatureAgree}
             className="mt-1"
             onChange={(e) => {
               dispatch({ type: 'setField', group: 'declaration', name: 'signatureAgree', value: e.target.checked });
@@ -45,17 +44,7 @@ export function Step5Declaration({ state, dispatch, onBack }: StepProps) {
         </label>
       </Field>
 
-      <div className="mt-7 flex justify-between">
-        <Button variant="secondary" onClick={onBack} disabled={submitting}>
-          Back
-        </Button>
-        <Button type="submit" disabled={submitting}>
-          {submitting && (
-            <span className="size-3.5 rounded-full border-2 border-white/40 border-t-white motion-safe:animate-spin" />
-          )}
-          <span>{submitting ? 'Submitting…' : 'Submit Form'}</span>
-        </Button>
-      </div>
+      <SubmitActions state={state} onBack={onBack} />
     </section>
   );
 }
