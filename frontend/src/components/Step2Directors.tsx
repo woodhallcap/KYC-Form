@@ -7,8 +7,11 @@ export function Step2Directors({ state, dispatch, onNext, onBack }: StepProps) {
   const { directors } = state.form;
   return (
     <section>
-      <h2>Section B: Directors, Signatories &amp; UBOs (&gt;5%)</h2>
-      <p>Attach ID, BVN, NIN and proof of address for each person where available.</p>
+      <h2>Section B: Directors, Signatories and UBOs</h2>
+      <p>
+        List every director, signatory and ultimate beneficial owner (UBO) holding more than 5% of the company.
+        Attach ID, BVN, NIN and proof of address for each person where available.
+      </p>
 
       {directors.map((_, index) => (
         <DirectorRow key={index} index={index} state={state} dispatch={dispatch} canRemove={directors.length > 1} />
