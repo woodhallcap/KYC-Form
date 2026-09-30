@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { buildFormData, postSubmission } from './submit';
 import { emptyDirector } from './initial-state';
-import { emptyState } from '../test-utils';
+import { emptyIndividual, emptyState } from '../test-utils';
 
 describe('buildFormData', () => {
   it('builds the corporate FormData contract', () => {
@@ -56,5 +56,50 @@ describe('postSubmission', () => {
     const r = await postSubmission(emptyState(), f as unknown as typeof fetch);
     expect(r.errors).toEqual({ tin: 'bad' });
     expect(f).toHaveBeenCalledWith('submit.php', expect.objectContaining({ method: 'POST' }));
+  });
+});
+
+describe('buildFormData: individual', () => {
+  it('builds the individual contract with array fields', () => {
+    const f = emptyIndividual();
+    f.person.fullName = 'Jane Doe';
+    f.person.email = 'jane@example.com';
+    f.person.gender = 'F';
+    f.person.meansOfId = ['nin', 'passport'];
+    f.person.expectedTransactionTypes = ['cash', 'transfer'];
+    f.person.sourceOfIncome = 'other';
+    f.person.sourceOfIncomeOther = 'Gift';
+    f.docs.valid_means_of_id = { submitted: true, file: new File(['x'], 'id.pdf') };
+    f.docs.passport_photograph = { submitted: false, file: new File(['x'], 'p.jpg') };
+    f.consent = true;
+    f.declaration = { declarationName: 'Jane Doe', signatureName: 'Jane Doe', signatureDate: '2026-09-15', signatureAgree: true };
+    const fd = buildFormData(f);
+    expect(fd.get('customerType')).toBe('individual');
+    expect(fd.get('fullName')).toBe('Jane Doe');
+    expect(fd.get('email')).toBe('jane@example.com');
+    expect(fd.get('gender')).toBe('F');
+    expect(fd.getAll('meansOfId[]')).toEqual(['nin', 'passport']);
+    expect(fd.getAll('expectedTransactionTypes[]')).toEqual(['cash', 'transfer']);
+    expect(fd.get('sourceOfIncome')).toBe('other');
+    expect(fd.get('sourceOfIncomeOther')).toBe('Gift');
+    expect(fd.get('documents[valid_means_of_id][submitted]')).toBe('on');
+    expect((fd.get('documents[valid_means_of_id][file]') as File).name).toBe('id.pdf');
+    expect(fd.has('documents[passport_photograph][submitted]')).toBe(false);
+    expect(fd.has('documents[passport_photograph][file]')).toBe(false);
+    expect(fd.get('consent')).toBe('on');
+    expect(fd.get('declarationName')).toBe('Jane Doe');
+    expect(fd.get('signatureDate')).toBe('2026-09-15');
+    expect(fd.get('signatureAgree')).toBe('on');
+  });
+
+  it('appends nothing for empty arrays, unset gender, or unticked checkboxes', () => {
+    const fd = buildFormData(emptyIndividual());
+    ['meansOfId[]', 'expectedTransactionTypes[]', 'gender', 'consent', 'signatureAgree'].forEach((k) => expect(fd.has(k), k).toBe(false));
+    expect(fd.get('fullName')).toBe('');
+  });
+
+  it('does not send any corporate fields', () => {
+    const fd = buildFormData(emptyIndividual());
+    ['companyName', 'sealFile', 'directors[0][name]'].forEach((k) => expect(fd.has(k), k).toBe(false));
   });
 });

@@ -1,5 +1,5 @@
-import type { Director, DocState, FormState } from '../types';
-import { DOCUMENT_IDS } from './validation';
+import type { CorporateForm, Director, DocState, IndividualForm } from '../types';
+import { DOCUMENT_IDS, INDIVIDUAL_DOCUMENT_IDS } from './validation';
 
 export function emptyDirector(): Director {
   return {
@@ -8,12 +8,13 @@ export function emptyDirector(): Director {
   };
 }
 
-export function initialState(): FormState {
+export function initialCorporateForm(): CorporateForm {
   const docs: Record<string, DocState> = {};
   DOCUMENT_IDS.forEach((id) => {
     docs[id] = { submitted: false, file: null };
   });
   return {
+    customerType: 'corporate',
     entity: {
       companyName: '', rcNumber: '', dateOfIncorporation: '', registeredAddress: '', businessAddress: '',
       natureOfBusiness: '', tin: '', companyEmail: '', bankAccountNumber: '', bankName: '',
@@ -24,5 +25,24 @@ export function initialState(): FormState {
     funds: { sourceOfFunds: '', facilityAmount: '' },
     declaration: { signatory1Name: '', signatory1Date: '', signatory2Name: '', signatory2Date: '', signatureAgree: false },
     seal: null,
+  };
+}
+
+export function initialIndividualForm(): IndividualForm {
+  const docs: Record<string, DocState> = {};
+  INDIVIDUAL_DOCUMENT_IDS.forEach((id) => {
+    docs[id] = { submitted: false, file: null };
+  });
+  return {
+    customerType: 'individual',
+    person: {
+      fullName: '', dateOfBirth: '', placeOfBirth: '', nationality: '', countryOfResidence: '', residentialAddress: '', lga: '', state: '',
+      phone: '', email: '', idNumber: '', idExpiry: '', bvn: '', nin: '', occupation: '', employerName: '', officeAddress: '',
+      sourceOfIncomeOther: '', sourceOfWealth: '', purposeOther: '', expectedMonthlyTurnover: '',
+      gender: '', meansOfId: [], sourceOfIncome: '', purposeOfRelationship: '', expectedTransactionTypes: [],
+    },
+    docs,
+    consent: false,
+    declaration: { declarationName: '', signatureName: '', signatureDate: '', signatureAgree: false },
   };
 }

@@ -34,7 +34,7 @@ export function makeForm(o: Partial<CorporateForm> = {}): CorporateForm {
 
 export const bigFile = (name: string, mb: number) => new File([new Uint8Array(Math.floor(mb * 1024 * 1024))], name);
 
-export { initialState as emptyState } from './lib/initial-state';
+export { initialCorporateForm as emptyState, initialIndividualForm as emptyIndividual } from './lib/initial-state';
 
 /** A complete, valid person. */
 export const validPerson: IndividualPerson = {

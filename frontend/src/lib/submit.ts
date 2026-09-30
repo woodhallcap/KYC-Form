@@ -1,6 +1,6 @@
 import { DIRECTOR_FIELDS } from '../types';
-import type { FormState } from '../types';
-import { DIRECTOR_FILE_IDS, DOCUMENT_IDS } from './validation';
+import type { CorporateForm, FormState, IndividualForm } from '../types';
+import { DIRECTOR_FILE_IDS, DOCUMENT_IDS, INDIVIDUAL_DOCUMENT_IDS } from './validation';
 
 export interface SubmitResult {
   success: boolean;
@@ -8,7 +8,7 @@ export interface SubmitResult {
   errors?: Record<string, string>;
 }
 
-export function buildFormData(state: FormState): FormData {
+function buildCorporateFormData(state: CorporateForm): FormData {
   const fd = new FormData();
   fd.append('customerType', 'corporate');
   Object.entries(state.entity).forEach(([k, v]) => fd.append(k, v));
@@ -24,14 +24,38 @@ export function buildFormData(state: FormState): FormData {
       if (file) fd.append(`directors[${i}][files][${id}]`, file);
     });
   });
-  DOCUMENT_IDS.forEach((id) => {
-    const doc = state.docs[id];
+  appendDocuments(fd, state, DOCUMENT_IDS);
+  if (state.seal) fd.append('sealFile', state.seal);
+  return fd;
+}
+
+function appendDocuments(fd: FormData, form: CorporateForm | IndividualForm, ids: readonly string[]): void {
+  ids.forEach((id) => {
+    const doc = form.docs[id];
     if (!doc.submitted) return;
     fd.append(`documents[${id}][submitted]`, 'on');
     if (doc.file) fd.append(`documents[${id}][file]`, doc.file);
   });
-  if (state.seal) fd.append('sealFile', state.seal);
+}
+
+function buildIndividualFormData(form: IndividualForm): FormData {
+  const fd = new FormData();
+  fd.append('customerType', 'individual');
+  const { meansOfId, expectedTransactionTypes, gender, ...scalars } = form.person;
+  Object.entries(scalars).forEach(([k, v]) => fd.append(k, v));
+  if (gender) fd.append('gender', gender);
+  meansOfId.forEach((v) => fd.append('meansOfId[]', v));
+  expectedTransactionTypes.forEach((v) => fd.append('expectedTransactionTypes[]', v));
+  const { signatureAgree, ...declaration } = form.declaration;
+  Object.entries(declaration).forEach(([k, v]) => fd.append(k, v));
+  if (signatureAgree) fd.append('signatureAgree', 'on');
+  if (form.consent) fd.append('consent', 'on');
+  appendDocuments(fd, form, INDIVIDUAL_DOCUMENT_IDS);
   return fd;
+}
+
+export function buildFormData(state: FormState): FormData {
+  return state.customerType === 'individual' ? buildIndividualFormData(state) : buildCorporateFormData(state);
 }
 
 export async function postSubmission(state: FormState, fetchImpl: typeof fetch = fetch): Promise<SubmitResult> {
