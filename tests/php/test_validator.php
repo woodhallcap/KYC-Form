@@ -147,4 +147,67 @@ test_case('is_blank treats arrays as blank', function () {
     assert_equal(true, is_blank(['x']));
 });
 
+function valid_person(array $o = []): array
+{
+    return array_replace([
+        'fullName' => 'Jane Doe', 'dateOfBirth' => '1990-01-01', 'placeOfBirth' => 'Lagos', 'gender' => 'F', 'nationality' => 'Nigerian',
+        'countryOfResidence' => 'Nigeria', 'residentialAddress' => '1 Rd', 'lga' => 'Ikeja', 'state' => 'Lagos', 'phone' => '08000000000', 'email' => 'jane@example.com',
+        'meansOfId' => ['nin', 'passport'], 'idNumber' => 'A123', 'bvn' => '222', 'nin' => '333', 'occupation' => 'Engineer',
+        'sourceOfIncome' => 'salary', 'sourceOfWealth' => 'Savings', 'purposeOfRelationship' => 'loan',
+        'expectedMonthlyTurnover' => '500,000', 'expectedTransactionTypes' => ['transfer'],
+    ], $o);
+}
+
+test_case('validate_individual_person flags every required field when empty, but not the optional ones', function () {
+    $r = validate_individual_person([]);
+    foreach (['fullName', 'dateOfBirth', 'placeOfBirth', 'gender', 'nationality', 'countryOfResidence', 'residentialAddress', 'lga', 'state', 'phone', 'email', 'meansOfId', 'idNumber', 'bvn', 'nin', 'occupation', 'sourceOfIncome', 'sourceOfWealth', 'purposeOfRelationship', 'expectedMonthlyTurnover', 'expectedTransactionTypes'] as $k) {
+        assert_true(isset($r['errors'][$k]), $k);
+    }
+    foreach (['idExpiry', 'employerName', 'officeAddress', 'sourceOfIncomeOther', 'purposeOther'] as $k) {
+        assert_true(!isset($r['errors'][$k]), $k);
+    }
+});
+
+test_case('validate_individual_person passes a complete person and checks the email', function () {
+    assert_equal(true, validate_individual_person(valid_person())['valid']);
+    assert_equal('Enter a valid email address.', validate_individual_person(valid_person(['email' => 'nope']))['errors']['email']);
+});
+
+test_case('validate_individual_person: Other needs its text, other choices do not', function () {
+    assert_equal('Please specify the source of income.', validate_individual_person(valid_person(['sourceOfIncome' => 'other']))['errors']['sourceOfIncomeOther']);
+    assert_equal('Please specify the purpose.', validate_individual_person(valid_person(['purposeOfRelationship' => 'other']))['errors']['purposeOther']);
+    assert_equal(true, validate_individual_person(valid_person(['sourceOfIncome' => 'other', 'sourceOfIncomeOther' => 'Gift', 'purposeOfRelationship' => 'other', 'purposeOther' => 'Trade']))['valid']);
+    assert_true(!isset(validate_individual_person(valid_person(['sourceOfIncomeOther' => '']))['errors']['sourceOfIncomeOther']));
+});
+
+test_case('validate_individual_person rejects unknown/odd choice values without fataling', function () {
+    foreach (['gender' => 'X', 'sourceOfIncome' => 'lottery', 'purposeOfRelationship' => 'gift'] as $k => $v) {
+        assert_true(isset(validate_individual_person(valid_person([$k => $v]))['errors'][$k]), $k);
+    }
+    foreach ([['nin', 'bogus'], 'nin', [['nin']], [], [1, 2]] as $bad) {
+        assert_equal('Select at least one means of ID.', validate_individual_person(valid_person(['meansOfId' => $bad]))['errors']['meansOfId'], json_encode($bad));
+    }
+    foreach ([['cash', 'bogus'], 'cash', [], [['cash']]] as $bad) {
+        assert_equal('Select at least one transaction type.', validate_individual_person(valid_person(['expectedTransactionTypes' => $bad]))['errors']['expectedTransactionTypes'], json_encode($bad));
+    }
+    assert_true(isset(validate_individual_person(valid_person(['fullName' => ['x']]))['errors']['fullName']));
+});
+
+test_case('validate_individual_declaration requires name, signature, date and agreement', function () {
+    $r = validate_individual_declaration([]);
+    foreach (['declarationName', 'signatureName', 'signatureDate', 'signatureAgree'] as $k) {
+        assert_true(isset($r['errors'][$k]), $k);
+    }
+    assert_equal(true, validate_individual_declaration(['declarationName' => 'A', 'signatureName' => 'A', 'signatureDate' => '2026-01-01', 'signatureAgree' => 'on'])['valid']);
+});
+
+test_case('sanitize_submission_input cleans individual fields and array fields', function () {
+    $r = sanitize_submission_input(['fullName' => "Jane\r\nBcc: x", 'residentialAddress' => "1 Rd\r\nLagos", 'officeAddress' => "2 Rd\x00", 'meansOfId' => ["nin\r\n", ['x'], 5, 'bvn'], 'expectedTransactionTypes' => 'cash']);
+    assert_equal('JaneBcc: x', $r['fullName']);
+    assert_equal("1 Rd\nLagos", $r['residentialAddress']);
+    assert_equal('2 Rd', $r['officeAddress']);
+    assert_equal(['nin', 'bvn'], $r['meansOfId']);
+    assert_equal('cash', $r['expectedTransactionTypes']);
+});
+
 test_summary();

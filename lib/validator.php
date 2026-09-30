@@ -12,12 +12,22 @@ const CORPORATE_DOCUMENT_IDS = [
 const DIRECTOR_FILE_IDS = ['id', 'bvn', 'nin', 'proof_of_address'];
 const MAX_DIRECTORS = 25;
 
+const INDIVIDUAL_DOCUMENT_IDS = ['valid_means_of_id', 'proof_of_address', 'passport_photograph', 'signature_mandate_card'];
+const MEANS_OF_ID = ['nin', 'bvn', 'passport', 'drivers_license', 'voters_card'];
+const TRANSACTION_TYPES = ['cash', 'transfer', 'cheque'];
+const SOURCE_OF_INCOME_OPTIONS = ['salary', 'business', 'investment', 'inheritance', 'other'];
+const PURPOSE_OPTIONS = ['loan', 'lease', 'investment', 'other'];
+const ARRAY_TEXT_FIELDS = ['meansOfId', 'expectedTransactionTypes'];
+
 const SINGLE_LINE_TEXT_FIELDS = [
     'customerType', 'companyName', 'rcNumber', 'dateOfIncorporation', 'natureOfBusiness', 'tin', 'companyEmail',
     'bankAccountNumber', 'bankName', 'sourceOfFunds', 'facilityAmount',
     'signatory1Name', 'signatory1Date', 'signatory2Name', 'signatory2Date',
+    'fullName', 'dateOfBirth', 'placeOfBirth', 'gender', 'nationality', 'countryOfResidence', 'lga', 'state', 'phone', 'email',
+    'idNumber', 'idExpiry', 'bvn', 'nin', 'occupation', 'employerName', 'sourceOfIncome', 'sourceOfIncomeOther', 'sourceOfWealth',
+    'purposeOfRelationship', 'purposeOther', 'expectedMonthlyTurnover', 'declarationName', 'signatureName', 'signatureDate',
 ];
-const MULTILINE_TEXT_FIELDS = ['registeredAddress', 'businessAddress'];
+const MULTILINE_TEXT_FIELDS = ['registeredAddress', 'businessAddress', 'residentialAddress', 'officeAddress'];
 const DIRECTOR_SINGLE_LINE_FIELDS = ['name', 'designation', 'bvn', 'nin', 'shareholdingPercent', 'nationality', 'pep'];
 const DIRECTOR_MULTILINE_FIELDS = ['residentialAddress'];
 
@@ -64,6 +74,17 @@ function sanitize_submission_input(array $post): array
     foreach (MULTILINE_TEXT_FIELDS as $field) {
         if (isset($post[$field]) && is_string($post[$field])) {
             $post[$field] = sanitize_multiline_text($post[$field]);
+        }
+    }
+    foreach (ARRAY_TEXT_FIELDS as $field) {
+        if (isset($post[$field]) && is_array($post[$field])) {
+            $clean = [];
+            foreach ($post[$field] as $item) {
+                if (is_string($item)) {
+                    $clean[] = sanitize_text($item);
+                }
+            }
+            $post[$field] = $clean;
         }
     }
     if (isset($post['directors']) && is_array($post['directors'])) {
@@ -210,6 +231,75 @@ function validate_declaration(array $data): array
         if (is_blank($data["signatory{$n}Name"] ?? null)) $errors["signatory{$n}Name"] = "Authorized signatory {$n} name is required.";
         if (is_blank($data["signatory{$n}Date"] ?? null)) $errors["signatory{$n}Date"] = "Authorized signatory {$n} date is required.";
     }
+    if (empty($data['signatureAgree'])) $errors['signatureAgree'] = 'You must confirm this constitutes your signature.';
+    return validation_result($errors);
+}
+
+function is_choice($value, array $options): bool
+{
+    return is_string($value) && in_array($value, $options, true);
+}
+
+function are_choices($value, array $options): bool
+{
+    if (!is_array($value) || count($value) === 0) {
+        return false;
+    }
+    foreach ($value as $item) {
+        if (!is_choice($item, $options)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+function validate_individual_person(array $data): array
+{
+    $errors = [];
+    $required = [
+        'fullName' => 'Full name is required.', 'dateOfBirth' => 'Date of birth is required.',
+        'placeOfBirth' => 'Place of birth is required.', 'nationality' => 'Nationality is required.',
+        'countryOfResidence' => 'Country of residence is required.', 'residentialAddress' => 'Residential address is required.',
+        'lga' => 'LGA is required.', 'state' => 'State is required.', 'phone' => 'Phone number is required.',
+        'idNumber' => 'ID number is required.', 'bvn' => 'BVN is required.', 'nin' => 'NIN is required.',
+        'occupation' => 'Occupation is required.', 'sourceOfWealth' => 'Source of wealth is required.',
+        'expectedMonthlyTurnover' => 'Expected monthly turnover is required.',
+    ];
+    foreach ($required as $field => $message) {
+        if (is_blank($data[$field] ?? null)) $errors[$field] = $message;
+    }
+    if (!is_choice($data['gender'] ?? null, ['M', 'F'])) $errors['gender'] = 'Select a gender.';
+    $email = $data['email'] ?? null;
+    if (is_blank($email)) {
+        $errors['email'] = 'Email is required.';
+    } elseif (!is_valid_email((string) $email)) {
+        $errors['email'] = 'Enter a valid email address.';
+    }
+    if (!are_choices($data['meansOfId'] ?? null, MEANS_OF_ID)) $errors['meansOfId'] = 'Select at least one means of ID.';
+    $income = $data['sourceOfIncome'] ?? null;
+    if (!is_choice($income, SOURCE_OF_INCOME_OPTIONS)) {
+        $errors['sourceOfIncome'] = 'Select a source of income.';
+    } elseif ($income === 'other' && is_blank($data['sourceOfIncomeOther'] ?? null)) {
+        $errors['sourceOfIncomeOther'] = 'Please specify the source of income.';
+    }
+    $purpose = $data['purposeOfRelationship'] ?? null;
+    if (!is_choice($purpose, PURPOSE_OPTIONS)) {
+        $errors['purposeOfRelationship'] = 'Select the purpose of the relationship.';
+    } elseif ($purpose === 'other' && is_blank($data['purposeOther'] ?? null)) {
+        $errors['purposeOther'] = 'Please specify the purpose.';
+    }
+    if (!are_choices($data['expectedTransactionTypes'] ?? null, TRANSACTION_TYPES)) {
+        $errors['expectedTransactionTypes'] = 'Select at least one transaction type.';
+    }
+    return validation_result($errors);
+}
+
+function validate_individual_declaration(array $data): array
+{
+    $errors = [];
+    if (is_blank($data['declarationName'] ?? null)) $errors['declarationName'] = 'Name is required.';
+    if (is_blank($data['signatureName'] ?? null)) $errors['signatureName'] = 'Typed signature is required.';
+    if (is_blank($data['signatureDate'] ?? null)) $errors['signatureDate'] = 'Signature date is required.';
     if (empty($data['signatureAgree'])) $errors['signatureAgree'] = 'You must confirm this constitutes your signature.';
     return validation_result($errors);
 }
