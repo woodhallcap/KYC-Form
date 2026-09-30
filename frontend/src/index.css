@@ -1,0 +1,58 @@
+@import 'tailwindcss';
+
+@font-face { font-family: 'Vanitas'; src: url('/fonts/Vanitas Font Family/fonts/fonnts.com-Vanitas-Regular.otf') format('opentype'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Vanitas'; src: url('/fonts/Vanitas Font Family/fonts/fonnts.com-Vanitas-Bold.otf') format('opentype'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Vanitas'; src: url('/fonts/Vanitas Font Family/fonts/fonnts.com-Vanitas-Italic.otf') format('opentype'); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: 'Vanitas'; src: url('/fonts/Vanitas Font Family/fonts/fonnts.com-Vanitas-BoldItalic.otf') format('opentype'); font-weight: 700; font-style: italic; font-display: swap; }
+
+@theme {
+  --color-primary: #0E4033;
+  --color-primary-dark: #0B473A;
+  --color-accent: #8FD299;
+  --color-bg: #F9F3F0;
+  --color-bg-alt: #F4E7E1;
+  --color-ink: #161616;
+  --color-error: #B3261E;
+  --font-heading: 'Vanitas', Georgia, 'Times New Roman', serif;
+  --font-body: 'Jost', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --radius-brand: 10px;
+  --shadow-card: 0 10px 30px rgba(14, 64, 51, 0.08);
+}
+
+body { @apply bg-bg font-body text-ink min-h-screen m-0; }
+h1, h2, h3 { @apply font-heading text-primary mt-0 mb-5 text-2xl font-bold; }
+p { @apply mb-4; }
+[hidden] { display: none !important; }
+
+@theme {
+  --animate-slide-in-right: slide-in-right 180ms ease-out;
+  --animate-slide-in-left: slide-in-left 180ms ease-out;
+  @keyframes slide-in-right {
+    from { opacity: 0; transform: translateX(24px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes slide-in-left {
+    from { opacity: 0; transform: translateX(-24px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+}
+
+.wizard-card-bg {
+  background-repeat: no-repeat;
+  background-image:
+    url('../../assets/logos/woodhall-emblem-faint.png'), url('../../assets/logos/woodhall-emblem-faint.png'),
+    url('../../assets/logos/woodhall-emblem-faint.png'), url('../../assets/logos/woodhall-emblem-faint.png');
+  background-size: 60px auto, 60px auto, 60px auto, 60px auto;
+  background-position:
+    -12px -12px, calc(100% + 12px) -12px,
+    -12px calc(100% + 12px), calc(100% + 12px) calc(100% + 12px);
+}
+
+@media (min-width: 640px) {
+  .wizard-card-bg {
+    background-size: 90px auto, 90px auto, 90px auto, 90px auto;
+    background-position:
+      -18px -18px, calc(100% + 18px) -18px,
+      -18px calc(100% + 18px), calc(100% + 18px) calc(100% + 18px);
+  }
+}

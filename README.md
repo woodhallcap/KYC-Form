@@ -9,27 +9,32 @@ Customer Due Diligence process. On submission it:
 
 ## Tech stack
 
-Static HTML/CSS/JS front end (no build step, no framework) backed by a PHP endpoint.
+React + TypeScript front end (built with Vite into static files) backed by a PHP endpoint.
 No Composer dependency at deploy time — PHPMailer and TCPDF are vendored directly
 into `vendor/` since Bluehost shared hosting doesn't guarantee Composer is available.
+Node is only needed to build the front end; nothing Node-based runs in production.
 
-- **Front end:** vanilla JS (ES5-safe), vanilla CSS
+- **Front end:** React 19, TypeScript, Tailwind CSS v4, Vite
 - **Backend:** PHP 8+
 - **Email:** [PHPMailer](https://github.com/PHPMailer/PHPMailer) (vendored, no Composer)
 - **PDF generation:** [TCPDF](https://github.com/tecnickcom/TCPDF) (vendored, pruned to the 14 core fonts only)
-- **Tests:** Node's built-in `node:test` for JS, a small custom assertion harness for PHP (no PHPUnit dependency)
+- **Tests:** Vitest + React Testing Library for the front end, a small custom assertion harness for PHP (no PHPUnit dependency)
 
 ## Project structure
 
 ```
-index.html                 3-step wizard markup
-assets/css/style.css       brand styling, layout, responsive rules
-assets/js/validation.js    shared client-side field validation
-assets/js/form.js          step navigation, inline validation, submission
-assets/js/autosave.js      localStorage draft autosave/restore
-assets/js/dev-tools.js     dev-only prefill button (localhost only)
-assets/logos/              brand logos (full-colour, reverse, cropped emblem)
-assets/fonts/               Vanitas heading font
+frontend/                  React app (Vite + TypeScript + Tailwind)
+  src/App.tsx              wizard layout, step orchestration, submission
+  src/lib/validation.ts    client-side field validation
+  src/lib/reducer.ts       form state, touched/error logic, step navigation
+  src/lib/autosave.ts      localStorage draft autosave/restore
+  src/lib/submit.ts        builds the FormData and POSTs to submit.php
+  src/components/          Header, ProgressBar, steps, fields, etc.
+  src/dev/prefill.ts       dev-only "Fill test data" data
+  public/fonts/            Vanitas heading font
+assets/logos/              brand logos — bundled into the front end AND read by the
+                           PHP PDF/email code (lib/pdf-builder.php, lib/mailer.php)
+scripts/package.sh         builds the front end and assembles the Bluehost deploy zip
 config.php                 recipient email, SMTP settings, upload limits
 submit.php                 HTTP entry point — validates and orchestrates a submission
 lib/validator.php          shared server-side validation + input sanitization
@@ -38,24 +43,23 @@ lib/mailer.php             builds and sends the admin + confirmation emails (PHP
 lib/submission-handler.php orchestrates validation → PDF → email → cleanup
 preview.php                dev-only preview of the emails/PDF using sample data
 vendor/                    vendored PHPMailer + TCPDF (no Composer)
-tests/js/                  JS unit tests (node:test)
 tests/php/                 PHP unit tests (custom harness)
 ```
 
 ## Local development
 
-Requires PHP 8+ and Node.js (for running the JS test suite only — no Node server is
-used at runtime).
+Requires PHP 8+ and Node.js 20+. Run both servers:
 
 ```bash
-php -S localhost:8000
+php -S localhost:8000          # backend (repo root)
+cd frontend && npm install     # first time only
+npm run dev                    # front end on http://localhost:5173
 ```
 
-Then open `http://localhost:8000/index.html`.
-
-On `localhost`/`127.0.0.1` only, a **"Fill test data (dev only)"** button appears
-in the bottom-right corner to speed up manual testing — it never appears on the
-live site.
+Vite proxies `/submit.php` to the PHP server on :8000. In `npm run dev` only, a
+**"Fill test data (dev only)"** button appears bottom-right; it is compiled out of
+production builds. **Careful:** a real submission emails `RECIPIENT_EMAIL` from
+`config.php` — point it at a test inbox or configure a sandbox SMTP before testing.
 
 ## Configuration
 
@@ -88,8 +92,8 @@ beyond the IP check.
 ## Running tests
 
 ```bash
-# JS validation tests
-node --test tests/js/validation.test.js
+# Front end (Vitest)
+cd frontend && npm test
 
 # PHP tests (suppress harmless PHP 8.4+ deprecation notices from TCPDF's
 # legacy XML parser calls)
@@ -101,12 +105,13 @@ php -d error_reporting="E_ALL & ~E_DEPRECATED" tests/php/test_submission_handler
 
 ## Deploying to Bluehost
 
-1. Upload the entire project (including `vendor/`, `.user.ini`, and `.htaccess`
-   if added later) via FTP/File Manager to the target directory.
-2. Set the real values in `config.php` (recipient email, SMTP credentials).
-3. Delete `preview.php` and `assets/js/dev-tools.js`'s script tag reference in
-   `index.html` (or just delete `preview.php` — the dev prefill button already
-   hides itself outside `localhost`).
+1. Set the real values in `config.php` (recipient email, SMTP credentials).
+2. Run `scripts/package.sh`. It builds the front end and writes
+   `build/woodhall-kyc-deploy.zip` (also unpacked in `build/woodhall-kyc/`). The package
+   contains the built site, `submit.php`, `config.php`, `lib/`, `vendor/`, `assets/logos/`,
+   `.htaccess` and `.user.ini`. `preview.php` and `tests/` are excluded.
+3. Upload the package contents to the target directory via FTP/File Manager. The site
+   uses relative URLs, so it works from a subdirectory as well as the domain root.
 4. Confirm PHP 8+ is selected in the hosting control panel.
 5. Submit a real test form end-to-end and confirm both emails arrive with the
    PDF and any attachments intact.
