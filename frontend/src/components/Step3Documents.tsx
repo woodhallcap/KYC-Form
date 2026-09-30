@@ -5,10 +5,10 @@ import { DocumentRow } from './DocumentRow';
 import { Field } from './Field';
 import type { StepProps } from './stepProps';
 
-export function Step2Documents({ state, dispatch, onNext, onBack }: StepProps) {
+export function Step3Documents({ state, dispatch, onNext, onBack }: StepProps) {
   return (
     <section>
-      <h2>Section B: KYC / CDD Documentation</h2>
+      <h2>Section C: Required Documents</h2>
       <p>Tick each document submitted and attach a copy where available.</p>
 
       <div>
@@ -50,7 +50,7 @@ export function Step2Documents({ state, dispatch, onNext, onBack }: StepProps) {
         <Button variant="secondary" onClick={onBack}>
           Back
         </Button>
-        <Button onClick={onNext}>Next: Declaration</Button>
+        <Button onClick={onNext}>Next: Source of Funds</Button>
       </div>
     </section>
   );
