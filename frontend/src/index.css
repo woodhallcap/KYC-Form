@@ -39,8 +39,8 @@ h1, h2, h3 { @apply font-heading text-primary mt-0; }
 .wizard-card-bg {
   background-repeat: no-repeat;
   background-image:
-    url('/logos/woodhall-emblem-faint.png'), url('/logos/woodhall-emblem-faint.png'),
-    url('/logos/woodhall-emblem-faint.png'), url('/logos/woodhall-emblem-faint.png');
+    url('../../assets/logos/woodhall-emblem-faint.png'), url('../../assets/logos/woodhall-emblem-faint.png'),
+    url('../../assets/logos/woodhall-emblem-faint.png'), url('../../assets/logos/woodhall-emblem-faint.png');
   background-size: 60px auto, 60px auto, 60px auto, 60px auto;
   background-position:
     -12px -12px, calc(100% + 12px) -12px,

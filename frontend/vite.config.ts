@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
+  base: './',
   plugins: [react(), tailwindcss()],
   server: { proxy: { '/submit.php': 'http://localhost:8000' } },
   test: { environment: 'jsdom', globals: true, setupFiles: './src/test-setup.ts' },
