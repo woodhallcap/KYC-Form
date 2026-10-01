@@ -127,6 +127,16 @@ Before deploying, edit `config.php`:
 comfortably exceed the app's caps above — without it, some hosts' lower defaults
 would silently reject uploads before the app's own validation ever runs.
 
+## Link preview (Open Graph)
+
+When the form's link is pasted into WhatsApp, Slack, LinkedIn or iMessage, the preview card uses the
+tags in `frontend/index.html` and the 1200×630 image `frontend/public/og-image.png` (the Woodhall
+Finance logo). Crawlers need absolute addresses, so the page's public address comes from
+`VITE_SITE_URL` in `frontend/.env` (default `https://kyc.woodhallfinanceltd.com`, no trailing
+slash). To preview from another host, set `VITE_SITE_URL` at build time, for example as an
+environment variable in the Vercel project settings. Social apps cache previews, so a changed
+image can take a while to show up, or use the platform's link debugger to refresh it.
+
 ## Previewing emails and the PDF
 
 `preview.php` renders the admin email, confirmation email, and generated PDF using
