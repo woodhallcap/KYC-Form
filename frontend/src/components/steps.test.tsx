@@ -301,3 +301,15 @@ describe('IndividualStep3Declaration', () => {
     expect(screen.getByRole('button', { name: 'Submit Form' })).toBeEnabled();
   });
 });
+
+describe('declaration wording', () => {
+  it('names Woodhall Finance Company Ltd in both declarations', () => {
+    const { unmount } = render(<Host Step={Step5Declaration} init={corp(5)} />);
+    expect(screen.getByText(/Woodhall Finance Company Ltd is obligated to report suspicious transactions to NFIU/)).toBeInTheDocument();
+    expect(screen.queryByText(/Woodhall Capital/)).toBeNull();
+    unmount();
+    render(<Host Step={IndividualStep3Declaration} init={indiv(3)} />);
+    expect(screen.getByText(/authorize Woodhall Finance Company Ltd to verify my details/)).toBeInTheDocument();
+    expect(screen.queryByText(/Woodhall Capital/)).toBeNull();
+  });
+});

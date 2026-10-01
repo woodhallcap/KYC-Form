@@ -1,6 +1,6 @@
-# Woodhall Capital — Corporate KYC / CDD Form
+# Woodhall Finance — KYC / CDD Form
 
-A public web form that digitizes Woodhall Capital's KYC / CDD process (the customer-facing
+A public web form that digitizes Woodhall Finance's KYC / CDD process (the customer-facing
 parts of the updated KYC document). The first screen asks whether the customer is an
 **Individual** or a **Corporate** customer, then shows the matching wizard:
 

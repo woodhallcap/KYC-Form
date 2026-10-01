@@ -11,7 +11,7 @@ export function IndividualStep3Declaration({ state, dispatch, onBack }: StepProp
     <section>
       <SectionHeading text="Section C: Declaration" />
       <p>
-        I hereby declare that the information provided is true and correct. I authorize Woodhall Capital to verify my
+        I hereby declare that the information provided is true and correct. I authorize Woodhall Finance Company Ltd to verify my
         details with NIBSS, NIMC, Credit Bureaus and report to NFIU/CBN as required by law.
       </p>
 

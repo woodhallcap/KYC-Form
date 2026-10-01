@@ -37,7 +37,7 @@ function build_email_shell(string $innerHtml, string $logoSrc): string
         . $innerHtml
         . '</div>'
         . "<div style=\"padding:{$md}px {$lg}px {$lg}px;text-align:center;color:#8a8a8a;font-size:12px;border-top:1px solid #EEE2DA;margin-top:{$md}px;\">"
-        . 'Woodhall Capital &mdash; A uniquely elevated financial advisory firm'
+        . 'Woodhall Finance &mdash; Licensed by the CBN as a finance company'
         . '</div>'
         . '</div>'
         . '</div>';
@@ -77,7 +77,7 @@ function build_confirmation_email_html(array $data, string $logoSrc = 'cid:woodh
     $inner = "<h2 style=\"color:#224834;margin:0 0 {$md}px 0;font-size:20px;\">Thank you for your submission</h2>"
         . email_paragraph("We have received the {$kind} submission for <strong>{$name}</strong>.")
         . email_paragraph('A copy of your submission, formatted for printing, is attached for your records.')
-        . email_paragraph('&mdash; Woodhall Capital', true);
+        . email_paragraph('&mdash; Woodhall Finance', true);
     return build_email_shell($inner, $logoSrc);
 }
 
@@ -137,7 +137,7 @@ function send_submission_emails(
                 $confirmation->addEmbeddedImage($logoPath, EMAIL_LOGO_CID, 'woodhall-logo.png');
             }
             $confirmation->addAddress($submitterEmail, $companyName);
-            $confirmation->Subject = 'We received your Woodhall Capital KYC submission';
+            $confirmation->Subject = 'We received your Woodhall Finance KYC submission';
             $confirmation->Body = build_confirmation_email_html($data);
             $confirmation->addStringAttachment($pdfBytes, $pdfFileName, 'base64', 'application/pdf');
             if (!$confirmation->send()) {

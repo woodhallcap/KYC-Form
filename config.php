@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 define('RECIPIENT_EMAIL', 'analyst@woodhallcap.com');
-define('RECIPIENT_NAME', 'Woodhall Capital');
+define('RECIPIENT_NAME', 'Woodhall Finance');
 
 // Leave SMTP_HOST empty to fall back to PHP's mail() function.
 define('SMTP_HOST', '');
@@ -11,7 +11,7 @@ define('SMTP_USERNAME', '');
 define('SMTP_PASSWORD', '');
 define('SMTP_SECURE', 'tls');
 define('MAIL_FROM_ADDRESS', 'no-reply@woodhallcap.com');
-define('MAIL_FROM_NAME', 'Woodhall Capital');
+define('MAIL_FROM_NAME', 'Woodhall Finance');
 
 define('MAX_FILE_SIZE_BYTES', 5 * 1024 * 1024);
 define('MAX_TOTAL_SIZE_BYTES', 20 * 1024 * 1024);

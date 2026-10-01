@@ -144,4 +144,24 @@ test_case('individual admin subject and confirmation go to the person', function
     assert_true(strpos(build_confirmation_email_html($d), 'Individual KYC / CDD') !== false);
 });
 
+test_case('emails and their subjects say Woodhall Finance, never Woodhall Capital', function () use ($sampleData) {
+    $admin = build_admin_email_html($sampleData);
+    $confirmation = build_confirmation_email_html($sampleData);
+    assert_true(strpos($admin, 'Woodhall Finance') !== false);
+    assert_true(strpos($confirmation, 'Woodhall Finance') !== false);
+    assert_true(strpos($admin . $confirmation, 'Woodhall Capital') === false);
+    $fakes = [];
+    $factory = function () use (&$fakes) {
+        return $fakes[] = new FakePHPMailer();
+    };
+    send_submission_emails($sampleData, '%PDF', [], $factory);
+    assert_equal('We received your Woodhall Finance KYC submission', $fakes[1]->Subject);
+    assert_true(strpos(file_get_contents(__DIR__ . '/../../lib/mailer.php'), 'Woodhall Capital') === false);
+});
+
+test_case('configured sender and recipient names say Woodhall Finance', function () {
+    assert_equal('Woodhall Finance', MAIL_FROM_NAME);
+    assert_equal('Woodhall Finance', RECIPIENT_NAME);
+});
+
 test_summary();

@@ -73,7 +73,7 @@ function corporate_pdf_sections(array $data): array
             ['Source of Funds', $v('sourceOfFunds')], ['Facility Amount Requested (NGN)', $v('facilityAmount')],
         ]]]],
         ['title' => 'Section E: Declaration', 'groups' => [['subtitle' => null, 'rows' => [
-            ['Certification', 'We certify that the above information is true. We understand Woodhall Capital is obligated to report suspicious transactions to NFIU.'],
+            ['Certification', 'We certify that the above information is true. We understand Woodhall Finance Company Ltd is obligated to report suspicious transactions to NFIU.'],
             ['Authorized Signatory 1', $v('signatory1Name')], ['Signatory 1 Date', $v('signatory1Date')],
             ['Authorized Signatory 2', $v('signatory2Name')], ['Signatory 2 Date', $v('signatory2Date')],
             ['Company Seal', !empty($data['sealAttached']) ? 'Attached' : 'Not provided'],
@@ -85,8 +85,8 @@ function corporate_pdf_sections(array $data): array
 function render_pdf(string $title, string $subject, array $data, array $sections): string
 {
     $pdf = new TCPDF('P', 'mm', 'A4', true, 'UTF-8', false);
-    $pdf->SetCreator('Woodhall Capital KYC Form');
-    $pdf->SetAuthor('Woodhall Capital');
+    $pdf->SetCreator('Woodhall Finance KYC Form');
+    $pdf->SetAuthor('Woodhall Finance');
     $pdf->SetTitle($title . ' — ' . $subject);
     $pdf->setPrintHeader(false);
     $pdf->setPrintFooter(true);
@@ -204,7 +204,7 @@ function individual_pdf_sections(array $data): array
         ]]]],
         ['title' => 'Section B: Verification Documents', 'groups' => [['subtitle' => null, 'rows' => $docRows]]],
         ['title' => 'Section C: Declaration', 'groups' => [['subtitle' => null, 'rows' => [
-            ['Declaration', 'I hereby declare that the information provided is true and correct. I authorize Woodhall Capital to verify my details with NIBSS, NIMC, Credit Bureaus and report to NFIU/CBN as required by law.'],
+            ['Declaration', 'I hereby declare that the information provided is true and correct. I authorize Woodhall Finance Company Ltd to verify my details with NIBSS, NIMC, Credit Bureaus and report to NFIU/CBN as required by law.'],
             ['Name', $v('declarationName')], ['Typed Signature', $v('signatureName')], ['Date', $v('signatureDate')],
             ['Typed signature agreed', 'Yes'],
         ]]]],
