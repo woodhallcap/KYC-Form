@@ -12,7 +12,7 @@ export function Step5Declaration({ state, dispatch, onBack }: StepProps) {
     <section>
       <SectionHeading text="Section E: Declaration" />
       <p>
-        We certify that the above information is true. We understand Woodhall Capital is obligated to report
+        We certify that the above information is true. We understand Woodhall Finance Company Ltd is obligated to report
         suspicious transactions to NFIU.
       </p>
 

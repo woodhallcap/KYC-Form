@@ -147,4 +147,16 @@ test_case('build_submission_pdf rejects an unknown customer type', function () {
     assert_true($threw);
 });
 
+test_case('declarations name Woodhall Finance Company Ltd and nothing says Woodhall Capital', function () {
+    $corporate = json_encode(corporate_pdf_sections(sample_corporate_data()));
+    $individual = json_encode(individual_pdf_sections(sample_individual_data()));
+    assert_true(strpos($corporate, 'Woodhall Finance Company Ltd') !== false);
+    assert_true(strpos($individual, 'Woodhall Finance Company Ltd') !== false);
+    assert_true(strpos($corporate . $individual, 'Woodhall Capital') === false);
+});
+
+test_case('the PDF source no longer credits Woodhall Capital', function () {
+    assert_true(strpos(file_get_contents(__DIR__ . '/../../lib/pdf-builder.php'), 'Woodhall Capital') === false);
+});
+
 test_summary();
