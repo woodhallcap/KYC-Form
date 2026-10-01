@@ -14,7 +14,7 @@ export function SubmitActions({ state, onBack }: SubmitActionsProps) {
       <Button variant="secondary" onClick={onBack} disabled={submitting}>
         Back
       </Button>
-      <Button type="submit" disabled={submitting}>
+      <Button type="submit" arrow disabled={submitting}>
         {submitting && (
           <span className="size-3.5 rounded-full border-2 border-white/40 border-t-white motion-safe:animate-spin" />
         )}

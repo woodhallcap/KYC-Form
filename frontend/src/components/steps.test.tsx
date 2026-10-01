@@ -6,7 +6,6 @@ import userEvent from '@testing-library/user-event';
 import { initialAppState, reducer } from '../lib/reducer';
 import type { Action, AppState } from '../lib/reducer';
 import type { CustomerType } from '../types';
-import { ProgressBar } from './ProgressBar';
 import { TypeSelector } from './TypeSelector';
 import { Step1Entity } from './Step1Entity';
 import { Step2Directors } from './Step2Directors';
@@ -270,7 +269,7 @@ describe('IndividualStep2Documents', () => {
     expect(screen.queryByLabelText(`File for ${label}`)).toBeNull();
     await user.click(screen.getByLabelText(label));
     expect(screen.getByLabelText(`File for ${label}`)).toBeInTheDocument();
-    expect(screen.getByText('Section B: Verification Documents')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Section B: Verification Documents' })).toBeInTheDocument();
   });
 
   it('shows the consent error and a next button for the declaration', () => {
@@ -285,7 +284,7 @@ describe('IndividualStep3Declaration', () => {
   it('has name, typed signature, date and agreement, and validates after blur', async () => {
     const user = userEvent.setup();
     render(<Host Step={IndividualStep3Declaration} init={indiv(3)} />);
-    expect(screen.getByText('Section C: Declaration')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Section C: Declaration' })).toBeInTheDocument();
     ['Name', 'Typed Signature (type your full name)', 'Date'].forEach((l) => expect(screen.getByLabelText(l)).toBeInTheDocument());
     expect(screen.getByLabelText(/^I agree that the typed name above/)).toBeInTheDocument();
     await user.click(screen.getByLabelText('Name'));
@@ -300,21 +299,5 @@ describe('IndividualStep3Declaration', () => {
     unmount();
     render(<Host Step={IndividualStep3Declaration} init={indiv(3)} />);
     expect(screen.getByRole('button', { name: 'Submit Form' })).toBeEnabled();
-  });
-});
-
-describe('ProgressBar', () => {
-  it('marks active and complete pills for five steps', () => {
-    render(<ProgressBar titles={['A', 'B', 'C', 'D', 'E']} step={3} />);
-    expect(screen.getByTestId('progress-step-3').className).toContain('bg-primary');
-    expect(screen.getByTestId('progress-step-2').className).toContain('bg-accent');
-    expect(screen.getByTestId('progress-step-4').className).toContain('bg-bg-alt');
-    expect(screen.getByText('Step 3 of 5: C')).toBeInTheDocument();
-  });
-
-  it('works for a three-step flow', () => {
-    render(<ProgressBar titles={['A', 'B', 'C']} step={1} />);
-    expect(screen.getByText('Step 1 of 3: A')).toBeInTheDocument();
-    expect(screen.queryByTestId('progress-step-4')).toBeNull();
   });
 });

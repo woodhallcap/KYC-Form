@@ -2,8 +2,8 @@ import type { ReactNode } from 'react';
 
 export function inputClass(hasError: boolean): string {
   return (
-    'w-full rounded-md border px-3 py-2.5 font-body text-[15px] ' +
-    (hasError ? 'border-error' : 'border-[#D8CFC8]')
+    'w-full rounded-xl border bg-white px-3.5 py-2.5 font-body text-[15px] transition ' +
+    (hasError ? 'border-error' : 'border-[#d9d0c6] hover:border-primary/50')
   );
 }
 
