@@ -1,23 +1,34 @@
-import { DOCUMENT_LABELS } from '../lib/documents';
-import { DOCUMENT_IDS } from '../lib/validation';
+import { activeForm } from '../lib/reducer';
 import { Button } from './Button';
 import { DocumentRow } from './DocumentRow';
 import { Field } from './Field';
 import type { StepProps } from './stepProps';
 
-export function Step2Documents({ state, dispatch, onNext, onBack }: StepProps) {
+interface DocumentsStepProps extends StepProps {
+  heading: string;
+  intro: string;
+  ids: readonly string[];
+  labels: Record<string, string>;
+  consentText: string;
+  nextLabel: string;
+}
+
+/** The tick-and-attach document checklist plus consent, shared by both flows. */
+export function DocumentsStep({ state, dispatch, onNext, onBack, heading, intro, ids, labels, consentText, nextLabel }: DocumentsStepProps) {
+  const form = activeForm(state);
+  if (!form) return null;
   return (
     <section>
-      <h2>Section B: KYC / CDD Documentation</h2>
-      <p>Tick each document submitted and attach a copy where available.</p>
+      <h2>{heading}</h2>
+      <p>{intro}</p>
 
       <div>
-        {DOCUMENT_IDS.map((id) => (
+        {ids.map((id) => (
           <DocumentRow
             key={id}
             id={id}
-            label={DOCUMENT_LABELS[id]}
-            doc={state.form.docs[id]}
+            label={labels[id]}
+            doc={form.docs[id]}
             onToggle={(value) => dispatch({ type: 'setDocSubmitted', id, value })}
             onFile={(file) => dispatch({ type: 'setDocFile', id, file })}
           />
@@ -31,17 +42,14 @@ export function Step2Documents({ state, dispatch, onNext, onBack }: StepProps) {
               type="checkbox"
               id="consent"
               name="consent"
-              checked={state.form.consent}
+              checked={form.consent}
               className="mt-1"
               onChange={(e) => {
                 dispatch({ type: 'setConsent', value: e.target.checked });
                 dispatch({ type: 'touch', name: 'consent' });
               }}
             />
-            <span>
-              We consent to the use, processing, verification, retention, and disclosure of the information and
-              documents provided for due diligence, compliance, and the furtherance of our business relationship.
-            </span>
+            <span>{consentText}</span>
           </label>
         </Field>
       </div>
@@ -50,7 +58,7 @@ export function Step2Documents({ state, dispatch, onNext, onBack }: StepProps) {
         <Button variant="secondary" onClick={onBack}>
           Back
         </Button>
-        <Button onClick={onNext}>Next: Declaration</Button>
+        <Button onClick={onNext}>{nextLabel}</Button>
       </div>
     </section>
   );

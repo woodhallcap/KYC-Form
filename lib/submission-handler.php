@@ -5,44 +5,47 @@ require_once __DIR__ . '/validator.php';
 require_once __DIR__ . '/pdf-builder.php';
 require_once __DIR__ . '/mailer.php';
 
-const DOCUMENT_LABELS = [
-    'certificate_of_incorporation' => 'Certificate of Incorporation',
-    'cac_status_report' => 'CAC Status Report',
-    'memorandum_articles' => 'Memorandum and Articles of Association',
-    'directors_id' => 'Valid means of identification for each director, signatory, and UBO above five per cent shareholding',
-    'bvn_nin' => 'Bank Verification Number (BVN) and National Identification Number (NIN) for each director, signatory, and Ultimate Beneficial Owner above five per cent shareholding',
-    'utility_bill' => 'Recent residential utility bill or proof of address for the company / director(s)',
-    'corporate_profile' => 'Company corporate profile',
-    'regulatory_licences' => 'Applicable regulatory licences and permits, where the business is engaged in a regulated activity',
-    'bank_statements' => "One year's bank statements from the company's operating account(s)",
-    'audited_financials' => 'Three-year audited financial statements and current-year management accounts',
-    'personal_financial_info' => 'Personal Financial Information (PFI) (where applicable)',
-    'aml_certificate' => 'Anti-Money Laundering (AML) compliance certificate, where the customer is itself a regulated financial institution',
+const CORPORATE_DOCUMENT_LABELS = [
+    'certificate_of_incorporation' => 'CAC Certificate of Incorporation',
+    'cac_forms' => 'CAC Forms CAC2.3 / CAC1.1 - Directors & Shareholders',
+    'memorandum_articles' => 'Memorandum & Articles of Association',
+    'board_resolution' => 'Board Resolution to open account and obtain facility',
+    'company_bank_statement' => 'Company Bank Statement - Last 12 months',
+    'corporate_id_signatories' => 'Corporate ID of Authorized Signatories',
 ];
 
-function parse_documents_input(array $post, array $files): array
+const INDIVIDUAL_DOCUMENT_LABELS = [
+    'valid_means_of_id' => 'Valid Means of ID',
+    'proof_of_address' => 'Proof of Address (less than 3 months): Utility Bill / Bank Statement',
+    'passport_photograph' => 'Passport Photograph',
+    'signature_mandate_card' => 'Signature Mandate Card',
+];
+
+/**
+ * Pull one upload out of PHP's nested $_FILES layout, e.g. the field
+ * directors[0][files][id] lives at $_FILES['directors']['name'][0]['files']['id'].
+ * Returns null when no file was chosen at that path.
+ */
+function extract_upload(array $files, string $top, array $path): ?array
 {
-    $documents = [];
-    foreach (DOCUMENT_IDS as $id) {
-        $submitted = !empty($post['documents'][$id]['submitted']);
-        $fileMeta = null;
-        $uploadedFileName = $files['documents']['name'][$id]['file'] ?? '';
-        if ($uploadedFileName !== '') {
-            $fileMeta = [
-                'name' => $files['documents']['name'][$id]['file'],
-                'size' => $files['documents']['size'][$id]['file'],
-                'tmp_name' => $files['documents']['tmp_name'][$id]['file'],
-                'error' => $files['documents']['error'][$id]['file'],
-            ];
-        }
-        $documents[] = [
-            'id' => $id,
-            'label' => DOCUMENT_LABELS[$id],
-            'submitted' => $submitted,
-            'file' => $fileMeta,
-        ];
+    if (!isset($files[$top]['name'])) {
+        return null;
     }
-    return $documents;
+    $meta = [];
+    foreach (['name', 'size', 'tmp_name', 'error'] as $key) {
+        $node = $files[$top][$key] ?? null;
+        foreach ($path as $segment) {
+            if (!is_array($node) || !array_key_exists($segment, $node)) {
+                return null;
+            }
+            $node = $node[$segment];
+        }
+        if ($node === null || is_array($node)) {
+            return null;
+        }
+        $meta[$key] = $node;
+    }
+    return $meta['name'] === '' ? null : $meta;
 }
 
 function upload_error_message(int $code): string
@@ -58,53 +61,97 @@ function upload_error_message(int $code): string
     }
 }
 
+function parse_documents_input(array $post, array $files, array $ids, array $labels): array
+{
+    $docsPost = is_array($post['documents'] ?? null) ? $post['documents'] : [];
+    $documents = [];
+    foreach ($ids as $id) {
+        $submitted = is_array($docsPost[$id] ?? null) && !empty($docsPost[$id]['submitted']);
+        $documents[] = [
+            'id' => $id,
+            'label' => $labels[$id],
+            'submitted' => $submitted,
+            // Only ticked documents count; a file left on an unticked row is ignored.
+            'file' => $submitted ? extract_upload($files, 'documents', [$id, 'file']) : null,
+        ];
+    }
+    return $documents;
+}
+
+/** Every upload that will be validated and attached: ['key', 'slot', 'file']. */
+function collect_uploads(array $documents, array $files, int $directorCount = 0, bool $withSeal = false): array
+{
+    $uploads = [];
+    foreach ($documents as $doc) {
+        if ($doc['file'] !== null) {
+            $uploads[] = ['key' => $doc['id'], 'slot' => $doc['id'], 'file' => $doc['file']];
+        }
+    }
+    for ($i = 0; $i < $directorCount; $i++) {
+        foreach (DIRECTOR_FILE_IDS as $fileId) {
+            $meta = extract_upload($files, 'directors', [$i, 'files', $fileId]);
+            if ($meta !== null) {
+                $uploads[] = ['key' => "directorFile.$i.$fileId", 'slot' => 'director-' . ($i + 1) . '-' . $fileId, 'file' => $meta];
+            }
+        }
+    }
+    if ($withSeal) {
+        $seal = extract_upload($files, 'sealFile', []);
+        if ($seal !== null) {
+            $uploads[] = ['key' => 'sealFile', 'slot' => 'company-seal', 'file' => $seal];
+        }
+    }
+    return $uploads;
+}
+
+function failure(array $errors, string $message = 'Please correct the highlighted fields.'): array
+{
+    return ['success' => false, 'errors' => $errors, 'message' => $message];
+}
+
 function handle_submission(array $post, array $files, ?callable $sendEmails = null): array
 {
     $sendEmails = $sendEmails ?? 'send_submission_emails';
     $post = sanitize_submission_input($post);
 
-    $step1Result = validate_step1($post);
+    switch ($post['customerType'] ?? null) {
+        case 'corporate':
+            return handle_corporate_submission($post, $files, $sendEmails);
+        case 'individual':
+            return handle_individual_submission($post, $files, $sendEmails);
+        default:
+            return failure(['customerType' => 'Unsupported customer type.']);
+    }
+}
 
-    $documents = parse_documents_input($post, $files);
-    $consent = !empty($post['consent']);
-    $step2Result = validate_step2($documents, $consent);
-
-    $uploadErrors = [];
-    foreach ($documents as $doc) {
-        $errorCode = $doc['file']['error'] ?? UPLOAD_ERR_NO_FILE;
-        if ($errorCode !== UPLOAD_ERR_OK && $errorCode !== UPLOAD_ERR_NO_FILE) {
-            $uploadErrors[$doc['id']] = upload_error_message($errorCode);
+/** PHP-level upload failures + type/size/total checks. Returns the errors found. */
+function collect_upload_errors(array $uploads): array
+{
+    $errors = [];
+    $checkable = [];
+    foreach ($uploads as $upload) {
+        $code = $upload['file']['error'] ?? UPLOAD_ERR_NO_FILE;
+        if ($code !== UPLOAD_ERR_OK) {
+            $errors[$upload['key']] = upload_error_message((int) $code);
+        } else {
+            $checkable[] = ['key' => $upload['key'], 'file' => $upload['file']];
         }
     }
+    return array_merge($errors, validate_uploads($checkable)['errors']);
+}
 
-    $step3Result = validate_step3($post);
-
-    $errors = array_merge($step1Result['errors'], $step2Result['errors'], $uploadErrors, $step3Result['errors']);
-    if (count($errors) > 0) {
-        return ['success' => false, 'errors' => $errors, 'message' => 'Please correct the highlighted fields.'];
+/** Build the PDF, send the emails, always clean up temp files, and shape the result. */
+function deliver_submission(array $data, array $uploads, callable $sendEmails): array
+{
+    $attachments = [];
+    foreach ($uploads as $upload) {
+        $attachments[] = [
+            'tmpPath' => $upload['file']['tmp_name'],
+            'originalName' => $upload['slot'] . ' - ' . sanitize_filename((string) $upload['file']['name']),
+        ];
     }
-
-    $submittedAt = date('Y-m-d H:i:s');
-    $data = [
-        'submittedAt' => $submittedAt,
-        'step1' => $post,
-        'documents' => $documents,
-        'consent' => $consent,
-        'step3' => $post,
-    ];
 
     $pdfBytes = build_submission_pdf($data);
-
-    $attachments = [];
-    foreach ($documents as $doc) {
-        if ($doc['file'] !== null && ($doc['file']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
-            $attachments[] = [
-                'tmpPath' => $doc['file']['tmp_name'],
-                'originalName' => sanitize_filename($doc['file']['name']),
-            ];
-        }
-    }
-
     $emailResult = call_user_func($sendEmails, $data, $pdfBytes, $attachments);
 
     foreach ($attachments as $attachment) {
@@ -114,8 +161,85 @@ function handle_submission(array $post, array $files, ?callable $sendEmails = nu
     }
 
     if (!$emailResult['success']) {
-        return ['success' => false, 'errors' => [], 'message' => 'We could not send your submission. Please try again shortly.'];
+        return failure([], 'We could not send your submission. Please try again shortly.');
+    }
+    return ['success' => true, 'errors' => [], 'message' => 'Submission received.'];
+}
+
+function summarise_documents(array $documents): array
+{
+    return array_map(
+        fn(array $d): array => ['id' => $d['id'], 'label' => $d['label'], 'submitted' => $d['submitted']],
+        $documents
+    );
+}
+
+function handle_corporate_submission(array $post, array $files, callable $sendEmails): array
+{
+    $rows = is_array($post['directors'] ?? null) ? array_values($post['directors']) : [];
+    $documents = parse_documents_input($post, $files, CORPORATE_DOCUMENT_IDS, CORPORATE_DOCUMENT_LABELS);
+    $consent = !empty($post['consent']);
+
+    $uploads = collect_uploads($documents, $files, min(count($rows), MAX_DIRECTORS), true);
+    $errors = array_merge(
+        validate_entity($post)['errors'],
+        validate_directors($post['directors'] ?? null)['errors'],
+        validate_documents_consent($consent)['errors'],
+        validate_funds($post)['errors'],
+        validate_declaration($post)['errors'],
+        collect_upload_errors($uploads)
+    );
+    if (count($errors) > 0) {
+        return failure($errors);
     }
 
-    return ['success' => true, 'errors' => [], 'message' => 'Submission received.'];
+    $directorRows = [];
+    foreach ($rows as $i => $row) {
+        $prefix = "directorFile.$i.";
+        $attached = [];
+        foreach ($uploads as $upload) {
+            if (strpos($upload['key'], $prefix) === 0) {
+                $attached[] = substr($upload['key'], strlen($prefix));
+            }
+        }
+        $row['attachments'] = $attached;
+        $directorRows[] = $row;
+    }
+
+    $data = [
+        'customerType' => 'corporate',
+        'submittedAt' => date('Y-m-d H:i:s'),
+        'fields' => $post,
+        'directors' => $directorRows,
+        'documents' => summarise_documents($documents),
+        'consent' => $consent,
+        'sealAttached' => count(array_filter($uploads, fn(array $u): bool => $u['key'] === 'sealFile')) > 0,
+    ];
+    return deliver_submission($data, $uploads, $sendEmails);
+}
+
+function handle_individual_submission(array $post, array $files, callable $sendEmails): array
+{
+    $documents = parse_documents_input($post, $files, INDIVIDUAL_DOCUMENT_IDS, INDIVIDUAL_DOCUMENT_LABELS);
+    $consent = !empty($post['consent']);
+
+    $uploads = collect_uploads($documents, $files);
+    $errors = array_merge(
+        validate_individual_person($post)['errors'],
+        validate_documents_consent($consent)['errors'],
+        validate_individual_declaration($post)['errors'],
+        collect_upload_errors($uploads)
+    );
+    if (count($errors) > 0) {
+        return failure($errors);
+    }
+
+    $data = [
+        'customerType' => 'individual',
+        'submittedAt' => date('Y-m-d H:i:s'),
+        'fields' => $post,
+        'documents' => summarise_documents($documents),
+        'consent' => $consent,
+    ];
+    return deliver_submission($data, $uploads, $sendEmails);
 }

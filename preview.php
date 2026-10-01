@@ -23,45 +23,70 @@ require_once __DIR__ . '/lib/mailer.php';
 function preview_sample_data(): array
 {
     return [
+        'customerType' => 'corporate',
         'submittedAt' => date('Y-m-d H:i:s'),
-        'step1' => [
+        'fields' => [
             'companyName' => 'Acme Trading Ltd',
             'rcNumber' => 'RC1234567',
             'dateOfIncorporation' => '2015-04-01',
-            'legalStatus' => 'private',
             'registeredAddress' => '12 Marina Road, Lagos Island, Lagos',
             'businessAddress' => '4 Adeola Odeku Street, Victoria Island, Lagos',
             'natureOfBusiness' => 'Import/export trade finance',
             'tin' => '12345678-0001',
             'companyEmail' => 'finance@acmetrading.com',
-            'website' => 'https://acmetrading.com',
             'bankAccountNumber' => '0123456789',
             'bankName' => 'First Bank of Nigeria',
+            'sourceOfFunds' => 'Proceeds from import/export trade',
+            'facilityAmount' => '5,000,000',
+            'signatory1Name' => 'Jane Doe',
+            'signatory1Date' => date('Y-m-d'),
+            'signatory2Name' => 'John Roe',
+            'signatory2Date' => date('Y-m-d'),
+        ],
+        'directors' => [
+            ['name' => 'Jane Doe', 'designation' => 'Managing Director', 'bvn' => '22212345678', 'nin' => '12345678901', 'shareholdingPercent' => '60', 'nationality' => 'Nigerian', 'pep' => 'no', 'residentialAddress' => '1 Banana Island Road, Ikoyi, Lagos', 'attachments' => ['id', 'bvn', 'nin', 'proof_of_address']],
+            ['name' => 'John Roe', 'designation' => 'Director', 'bvn' => '22298765432', 'nin' => '10987654321', 'shareholdingPercent' => '40', 'nationality' => 'Ghanaian', 'pep' => 'yes', 'residentialAddress' => '7 Independence Avenue, Accra', 'attachments' => []],
         ],
         'documents' => [
-            ['label' => 'Certificate of Incorporation', 'submitted' => true],
-            ['label' => 'CAC Status Report', 'submitted' => true],
-            ['label' => 'Memorandum and Articles of Association', 'submitted' => false],
-            ['label' => 'Valid means of identification for each director, signatory, and UBO above five per cent shareholding', 'submitted' => true],
-            ['label' => 'Bank Verification Number (BVN) and National Identification Number (NIN) for each director, signatory, and Ultimate Beneficial Owner above five per cent shareholding', 'submitted' => false],
-            ['label' => 'Recent residential utility bill or proof of address for the company / director(s)', 'submitted' => true],
-            ['label' => 'Company corporate profile', 'submitted' => true],
-            ['label' => 'Applicable regulatory licences and permits, where the business is engaged in a regulated activity', 'submitted' => false],
-            ['label' => "One year's bank statements from the company's operating account(s)", 'submitted' => true],
-            ['label' => 'Three-year audited financial statements and current-year management accounts', 'submitted' => false],
-            ['label' => 'Personal Financial Information (PFI) (where applicable)', 'submitted' => false],
-            ['label' => 'Anti-Money Laundering (AML) compliance certificate, where the customer is itself a regulated financial institution', 'submitted' => false],
+            ['id' => 'certificate_of_incorporation', 'label' => 'CAC Certificate of Incorporation', 'submitted' => true],
+            ['id' => 'cac_forms', 'label' => 'CAC Forms CAC2.3 / CAC1.1 - Directors & Shareholders', 'submitted' => true],
+            ['id' => 'memorandum_articles', 'label' => 'Memorandum & Articles of Association', 'submitted' => false],
+            ['id' => 'board_resolution', 'label' => 'Board Resolution to open account and obtain facility', 'submitted' => true],
+            ['id' => 'company_bank_statement', 'label' => 'Company Bank Statement - Last 12 months', 'submitted' => true],
+            ['id' => 'corporate_id_signatories', 'label' => 'Corporate ID of Authorized Signatories', 'submitted' => false],
         ],
         'consent' => true,
-        'step3' => [
-            'certifyingName' => 'Jane Doe',
-            'designation' => 'Managing Director',
-            'signatureName' => 'Jane Doe',
-        ],
+        'sealAttached' => true,
     ];
 }
 
-$data = preview_sample_data();
+function preview_individual_data(): array
+{
+    return [
+        'customerType' => 'individual',
+        'submittedAt' => date('Y-m-d H:i:s'),
+        'fields' => [
+            'fullName' => 'Jane Doe', 'dateOfBirth' => '1990-01-01', 'placeOfBirth' => 'Lagos', 'gender' => 'F', 'nationality' => 'Nigerian',
+            'countryOfResidence' => 'Nigeria', 'residentialAddress' => '1 Banana Island Road, Ikoyi, Lagos', 'lga' => 'Eti-Osa', 'state' => 'Lagos',
+            'phone' => '08012345678', 'email' => 'jane@example.com', 'meansOfId' => ['nin', 'passport'], 'idNumber' => 'A12345678',
+            'idExpiry' => '2030-06-30', 'bvn' => '22212345678', 'nin' => '12345678901', 'occupation' => 'Engineer',
+            'employerName' => 'Acme Engineering', 'officeAddress' => '4 Adeola Odeku Street, Victoria Island, Lagos',
+            'sourceOfIncome' => 'salary', 'sourceOfIncomeOther' => '', 'sourceOfWealth' => 'Savings and property rental',
+            'purposeOfRelationship' => 'loan', 'purposeOther' => '', 'expectedMonthlyTurnover' => '500,000',
+            'expectedTransactionTypes' => ['transfer', 'cash'],
+            'declarationName' => 'Jane Doe', 'signatureName' => 'Jane Doe', 'signatureDate' => date('Y-m-d'),
+        ],
+        'documents' => [
+            ['id' => 'valid_means_of_id', 'label' => 'Valid Means of ID', 'submitted' => true],
+            ['id' => 'proof_of_address', 'label' => 'Proof of Address (less than 3 months): Utility Bill / Bank Statement', 'submitted' => true],
+            ['id' => 'passport_photograph', 'label' => 'Passport Photograph', 'submitted' => true],
+            ['id' => 'signature_mandate_card', 'label' => 'Signature Mandate Card', 'submitted' => false],
+        ],
+        'consent' => true,
+    ];
+}
+
+$data = (($_GET['type'] ?? '') === 'individual') ? preview_individual_data() : preview_sample_data();
 
 if (($_GET['view'] ?? '') === 'pdf') {
     $pdfBytes = build_submission_pdf($data);
@@ -75,7 +100,7 @@ if (($_GET['view'] ?? '') === 'pdf') {
 // The real emails embed the logo via a PHPMailer CID reference (cid:woodhall-logo),
 // which only resolves inside an email client — for this browser-based preview we
 // swap in a normal relative path so the logo actually renders in the iframe.
-$previewLogoSrc = 'assets/logos/woodhall-capital-logo-reverse-rgb-1.png';
+$previewLogoSrc = 'assets/logos/woodhall-finance-darkbg.png';
 $adminHtml = build_admin_email_html($data, $previewLogoSrc);
 $confirmationHtml = build_confirmation_email_html($data, $previewLogoSrc);
 ?>
