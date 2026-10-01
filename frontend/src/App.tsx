@@ -58,6 +58,10 @@ export default function App() {
   const flow = flowOf(state);
   const lastStep = flow.steps.length;
   const sending = useRef(false);
+  const cardRef = useRef<HTMLElement>(null);
+  // Which screen is showing: submitting/failed attempts don't change it, so they don't scroll.
+  const screenKey = status === 'done' ? 'done' : `${customerType ?? 'none'}:${step}`;
+  const lastScreen = useRef(screenKey);
   const mounted = useRef(false);
   const [prevStep, setPrevStep] = useState(step);
   const [direction, setDirection] = useState<'right' | 'left'>('right');
@@ -65,6 +69,15 @@ export default function App() {
     setPrevStep(step);
     setDirection(step > prevStep ? 'right' : 'left');
   }
+
+  // Bring the top of the form card into view whenever the visitor lands on a different screen,
+  // so they never have to scroll back up after Next/Back, a server-error jump, or the confirmation.
+  useEffect(() => {
+    if (lastScreen.current === screenKey) return;
+    lastScreen.current = screenKey;
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    cardRef.current?.scrollIntoView({ block: 'start', behavior: reduceMotion ? 'auto' : 'smooth' });
+  }, [screenKey]);
 
   useEffect(() => {
     if (!mounted.current) {
@@ -119,9 +132,9 @@ export default function App() {
   return (
     <>
       <div className="mx-auto max-w-[1120px] px-4 py-6 sm:px-6 lg:py-10">
-        <div className="grid gap-6 lg:grid-cols-[360px_minmax(0,1fr)] lg:items-start">
+        <div className="grid gap-6 lg:grid-cols-[360px_minmax(0,1fr)] lg:items-stretch">
           <BrandPanel customerType={customerType} />
-          <main className="rounded-brand bg-white p-5 shadow-card sm:p-9">
+          <main ref={cardRef} className="scroll-mt-4 rounded-brand bg-white p-5 shadow-card sm:p-9">
             {!customerType ? (
               <TypeSelector onSelect={(type) => dispatch({ type: 'selectType', customerType: type })} />
             ) : status === 'done' ? (

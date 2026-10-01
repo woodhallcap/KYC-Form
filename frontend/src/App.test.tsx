@@ -516,3 +516,87 @@ describe('drafts', () => {
     }, { timeout: 2000 });
   });
 });
+
+describe('scrolling to the form card', () => {
+  const scrollIntoView = vi.fn();
+  const originalMatchMedia = window.matchMedia;
+
+  beforeEach(() => {
+    HTMLElement.prototype.scrollIntoView = scrollIntoView;
+    scrollIntoView.mockClear();
+  });
+  afterEach(() => {
+    window.matchMedia = originalMatchMedia;
+  });
+
+  const lastTarget = () => scrollIntoView.mock.contexts[scrollIntoView.mock.contexts.length - 1] as HTMLElement;
+
+  it('does not scroll on first render', () => {
+    render(<App />);
+    expect(scrollIntoView).not.toHaveBeenCalled();
+  });
+
+  it('scrolls to the top of the form card when the customer type is chosen and when it is changed', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await chooseCorporate(user);
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(lastTarget().tagName).toBe('MAIN');
+    expect(scrollIntoView).toHaveBeenLastCalledWith({ block: 'start', behavior: 'smooth' });
+    await user.click(screen.getByRole('button', { name: /Change customer type/ }));
+    expect(scrollIntoView).toHaveBeenCalledTimes(2);
+  });
+
+  it('scrolls once per step change, forwards and back', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await toDirectors(user);
+    scrollIntoView.mockClear();
+    await fillDirector(user);
+    await next(user, 'Next: Documents');
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(lastTarget().tagName).toBe('MAIN');
+    await user.click(screen.getByRole('button', { name: 'Back' }));
+    expect(scrollIntoView).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not scroll when Next is blocked by validation or while typing', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await chooseCorporate(user);
+    scrollIntoView.mockClear();
+    await next(user, 'Next: Directors & UBOs');
+    expect(screen.getByText('Company name is required.')).toBeInTheDocument();
+    setVal('Company Name', 'Acme');
+    await user.tab();
+    expect(scrollIntoView).not.toHaveBeenCalled();
+  });
+
+  it('scrolls when a server error jumps back to an earlier step, and when the confirmation appears', async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal('fetch', json({ success: false, errors: { tin: 'bad' }, message: 'm' }));
+    const { unmount } = render(<App />);
+    await toDeclaration(user);
+    scrollIntoView.mockClear();
+    await submitCorporate(user);
+    await screen.findByText('bad');
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    unmount();
+    localStorage.clear();
+    vi.stubGlobal('fetch', json({ success: true }));
+    render(<App />);
+    await toDeclaration(user);
+    scrollIntoView.mockClear();
+    await submitCorporate(user);
+    await screen.findByText('Thank you');
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+  });
+
+  it('jumps instantly instead of smoothly when the visitor prefers reduced motion', async () => {
+    window.matchMedia = ((query: string) => ({ matches: query.includes('prefers-reduced-motion'), media: query, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia;
+    const user = userEvent.setup();
+    render(<App />);
+    await chooseIndividual(user);
+    expect(scrollIntoView).toHaveBeenLastCalledWith({ block: 'start', behavior: 'auto' });
+  });
+});

@@ -38,10 +38,14 @@ export function BrandPanel({ customerType }: BrandPanelProps) {
   return (
     <aside
       aria-label="About this form"
-      className="relative overflow-hidden rounded-brand bg-primary p-6 text-white sm:p-8 lg:sticky lg:top-6"
+      className="relative rounded-brand bg-primary p-6 text-white sm:p-8"
     >
-      <LeafShape className="pointer-events-none absolute -top-16 -right-16 size-44 -scale-x-100 text-accent opacity-90" />
-      <div className="relative">
+      {/* Clipped in its own layer so the content below can stay sticky (overflow:hidden would break that). */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden rounded-brand">
+        <LeafShape className="absolute -top-16 -right-16 size-44 -scale-x-100 text-accent opacity-90" />
+      </div>
+      {/* The panel stretches to the form card's height; its content stays in view while a long form scrolls. */}
+      <div className="relative lg:sticky lg:top-8">
         <img src={logo} alt="Woodhall Finance" className="h-11 w-auto sm:h-12" />
         <h2 className="mt-8 mb-3 text-white">{intro.title}</h2>
         <p className="mb-0 text-white/80 lg:mb-6">{intro.text}</p>
