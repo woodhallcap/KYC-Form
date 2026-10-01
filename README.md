@@ -127,6 +127,13 @@ Before deploying, edit `config.php`:
 comfortably exceed the app's caps above — without it, some hosts' lower defaults
 would silently reject uploads before the app's own validation ever runs.
 
+## Tab icon
+
+The browser tab icon is the logo's tree: `frontend/public/favicon.svg` (copper, transparent, for modern
+browsers), `favicon.ico` (16/32/48px, older browsers and Safari) and `apple-touch-icon.png` (180px,
+cream tree on brand green, for iPhone/iPad home screens). They are linked from `frontend/index.html`
+and ship at the site root.
+
 ## Link preview (Open Graph)
 
 When the form's link is pasted into WhatsApp, Slack, LinkedIn or iMessage, the preview card uses the
