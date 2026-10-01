@@ -97,13 +97,13 @@ function render_pdf(string $title, string $subject, array $data, array $sections
     $primary = [14, 64, 51];
     $ink = [22, 22, 22];
 
-    $logoPath = __DIR__ . '/../assets/logos/woodhall-capital-logo-full-colour-rgb-1.png';
+    $logoPath = __DIR__ . '/../assets/logos/woodhall-finance.png';
     if (file_exists($logoPath)) {
-        $pdf->Image($logoPath, 18, 10, 24, 0, 'PNG');
+        $pdf->Image($logoPath, 18, 10, 52, 0, 'PNG');
     }
     pdf_watermark($pdf, $logoPath);
 
-    $pdf->SetY(30);
+    $pdf->SetY(32);
     $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
     $pdf->SetFont('helvetica', 'B', 16);
     $pdf->Cell(0, 10, $title, 0, 1, 'C');
@@ -259,7 +259,9 @@ function pdf_watermark(TCPDF $pdf, string $logoPath): void
     $pageHeight = $pdf->getPageHeight();
     $watermarkWidth = 140;
     $x = ($pageWidth - $watermarkWidth) / 2;
-    $y = ($pageHeight - $watermarkWidth) / 2;
+    $size = @getimagesize($logoPath);
+    $watermarkHeight = $size ? $watermarkWidth * $size[1] / $size[0] : $watermarkWidth;
+    $y = ($pageHeight - $watermarkHeight) / 2;
 
     $pdf->StartTransform();
     $pdf->SetAlpha(0.06);

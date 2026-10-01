@@ -65,8 +65,8 @@ test_case('build_confirmation_email_html includes company name and the logo imag
 });
 
 test_case('build_admin_email_html accepts a custom logo source (used by the dev preview page)', function () use ($sampleData) {
-    $html = build_admin_email_html($sampleData, 'assets/logos/woodhall-capital-logo-reverse-rgb-1.png');
-    assert_true(strpos($html, 'assets/logos/woodhall-capital-logo-reverse-rgb-1.png') !== false);
+    $html = build_admin_email_html($sampleData, 'assets/logos/woodhall-finance-darkbg.png');
+    assert_true(strpos($html, 'assets/logos/woodhall-finance-darkbg.png') !== false);
     assert_true(strpos($html, 'cid:woodhall-logo') === false);
 });
 

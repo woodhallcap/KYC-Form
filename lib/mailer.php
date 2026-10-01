@@ -31,7 +31,7 @@ function build_email_shell(string $innerHtml, string $logoSrc): string
     return "<div style=\"font-family:-apple-system,Helvetica,Arial,sans-serif;background:#F4E7E1;padding:{$xl}px 16px;margin:0;\">"
         . "<div style=\"max-width:520px;margin:0 auto;background:#FFFFFF;border-radius:10px;overflow:hidden;\">"
         . "<div style=\"background:#0E4033;padding:{$xl}px {$lg}px;text-align:center;\">"
-        . "<img src=\"{$logoSrcAttr}\" alt=\"Woodhall Capital\" style=\"height:56px;display:block;margin:0 auto;\">"
+        . "<img src=\"{$logoSrcAttr}\" alt=\"Woodhall Finance\" style=\"height:52px;display:block;margin:0 auto;\">"
         . '</div>'
         . "<div style=\"padding:{$xl}px {$lg}px;color:#161616;font-size:15px;line-height:1.6;\">"
         . $innerHtml
@@ -110,7 +110,7 @@ function send_submission_emails(
     $pdfFileName = 'woodhall-kyc-submission.pdf';
     $summary = submission_summary($data);
     $companyName = $summary['name'] !== '' ? $summary['name'] : 'submitter';
-    $logoPath = __DIR__ . '/../assets/logos/woodhall-capital-logo-reverse-rgb-1.png';
+    $logoPath = __DIR__ . '/../assets/logos/woodhall-finance-darkbg.png';
 
     try {
         $admin = $mailerFactory();

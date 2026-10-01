@@ -100,7 +100,7 @@ if (($_GET['view'] ?? '') === 'pdf') {
 // The real emails embed the logo via a PHPMailer CID reference (cid:woodhall-logo),
 // which only resolves inside an email client — for this browser-based preview we
 // swap in a normal relative path so the logo actually renders in the iframe.
-$previewLogoSrc = 'assets/logos/woodhall-capital-logo-reverse-rgb-1.png';
+$previewLogoSrc = 'assets/logos/woodhall-finance-darkbg.png';
 $adminHtml = build_admin_email_html($data, $previewLogoSrc);
 $confirmationHtml = build_confirmation_email_html($data, $previewLogoSrc);
 ?>
