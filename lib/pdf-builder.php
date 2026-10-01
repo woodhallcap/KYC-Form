@@ -94,7 +94,7 @@ function render_pdf(string $title, string $subject, array $data, array $sections
     $pdf->SetAutoPageBreak(true, 18);
     $pdf->AddPage();
 
-    $primary = [14, 64, 51];
+    $primary = [34, 72, 52];
     $ink = [22, 22, 22];
 
     $logoPath = __DIR__ . '/../assets/logos/woodhall-finance.png';

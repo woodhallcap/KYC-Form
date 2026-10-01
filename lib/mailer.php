@@ -30,7 +30,7 @@ function build_email_shell(string $innerHtml, string $logoSrc): string
     $md = EMAIL_SPACE_MD;
     return "<div style=\"font-family:-apple-system,Helvetica,Arial,sans-serif;background:#F4E7E1;padding:{$xl}px 16px;margin:0;\">"
         . "<div style=\"max-width:520px;margin:0 auto;background:#FFFFFF;border-radius:10px;overflow:hidden;\">"
-        . "<div style=\"background:#0E4033;padding:{$xl}px {$lg}px;text-align:center;\">"
+        . "<div style=\"background:#224834;padding:{$xl}px {$lg}px;text-align:center;\">"
         . "<img src=\"{$logoSrcAttr}\" alt=\"Woodhall Finance\" style=\"height:52px;display:block;margin:0 auto;\">"
         . '</div>'
         . "<div style=\"padding:{$xl}px {$lg}px;color:#161616;font-size:15px;line-height:1.6;\">"
@@ -61,7 +61,7 @@ function build_admin_email_html(array $data, string $logoSrc = 'cid:woodhall-log
     $name = htmlspecialchars($summary['name'], ENT_QUOTES);
     $submittedAt = htmlspecialchars($data['submittedAt'] ?? '', ENT_QUOTES);
     $md = EMAIL_SPACE_MD;
-    $inner = "<h2 style=\"color:#0E4033;margin:0 0 {$md}px 0;font-size:20px;\">New {$kind} Submission</h2>"
+    $inner = "<h2 style=\"color:#224834;margin:0 0 {$md}px 0;font-size:20px;\">New {$kind} Submission</h2>"
         . email_paragraph("<strong>{$nameLabel}:</strong> {$name}")
         . email_paragraph("<strong>Submitted:</strong> {$submittedAt}")
         . email_paragraph('The full submission is attached as a print-ready PDF, along with any supporting documents provided.', true);
@@ -74,7 +74,7 @@ function build_confirmation_email_html(array $data, string $logoSrc = 'cid:woodh
     $kind = htmlspecialchars($summary['kind'], ENT_QUOTES);
     $name = htmlspecialchars($summary['name'], ENT_QUOTES);
     $md = EMAIL_SPACE_MD;
-    $inner = "<h2 style=\"color:#0E4033;margin:0 0 {$md}px 0;font-size:20px;\">Thank you for your submission</h2>"
+    $inner = "<h2 style=\"color:#224834;margin:0 0 {$md}px 0;font-size:20px;\">Thank you for your submission</h2>"
         . email_paragraph("We have received the {$kind} submission for <strong>{$name}</strong>.")
         . email_paragraph('A copy of your submission, formatted for printing, is attached for your records.')
         . email_paragraph('&mdash; Woodhall Capital', true);
