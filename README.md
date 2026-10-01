@@ -41,10 +41,10 @@ frontend/                  React app (Vite + TypeScript + Tailwind)
   src/lib/reducer.ts       flow-driven form state, touched/error logic, director rows
   src/lib/autosave.ts      localStorage draft autosave/restore (key woodhall-kyc-draft-v2)
   src/lib/submit.ts        builds the FormData and POSTs to submit.php
-  src/components/          TypeSelector, corporate Step1Entity … Step5Declaration, DirectorRow,
+  src/components/          BrandPanel (side panel), TypeSelector, ProgressBar (stepper), FileTile (uploads),
+                           corporate Step1Entity … Step5Declaration, DirectorRow,
                            IndividualStep1Person … IndividualStep3Declaration, DocumentsStep, fields
   src/dev/prefill.ts       dev-only "Fill test data" data
-  public/fonts/            Vanitas heading font
 assets/logos/              brand logos — bundled into the front end AND read by the
                            PHP PDF/email code (lib/pdf-builder.php, lib/mailer.php)
 scripts/package.sh         builds the front end and assembles the Bluehost deploy zip

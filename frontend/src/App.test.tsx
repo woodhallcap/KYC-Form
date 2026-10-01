@@ -143,13 +143,13 @@ describe('customer type selector', () => {
     const user = userEvent.setup();
     const { unmount } = render(<App />);
     await chooseIndividual(user);
-    expect(screen.getByText('Section A: Customer Information')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Section A: Customer Information' })).toBeInTheDocument();
     expect(screen.getByTestId('progress-step-3')).toBeInTheDocument();
     expect(screen.queryByTestId('progress-step-4')).toBeNull();
     unmount();
     render(<App />);
     await chooseCorporate(user);
-    expect(screen.getByText('Section A: Entity Information')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Section A: Entity Information' })).toBeInTheDocument();
     expect(screen.getByTestId('progress-step-5')).toBeInTheDocument();
   });
 
@@ -175,14 +175,14 @@ describe('corporate navigation and validation', () => {
     await chooseCorporate(user);
     await next(user, 'Next: Directors & UBOs');
     expect(screen.getByText('Company name is required.')).toBeInTheDocument();
-    expect(screen.queryByText(/^Section B/)).toBeNull();
+    expect(screen.queryByRole('heading', { name: /^Section B/ })).toBeNull();
   });
 
   it('advances to Directors after filling the entity', async () => {
     const user = userEvent.setup();
     render(<App />);
     await toDirectors(user);
-    expect(screen.getByText(/^Section B: Directors/)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /^Section B: Directors/ })).toBeInTheDocument();
   });
 
   it('cannot advance from Directors with an empty row, then can once filled', async () => {
@@ -193,7 +193,7 @@ describe('corporate navigation and validation', () => {
     expect(within(screen.getByRole('group', { name: 'Director 1' })).getByText('Name is required.')).toBeInTheDocument();
     await fillDirector(user);
     await next(user, 'Next: Documents');
-    expect(screen.getByText('Section C: Required Documents')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Section C: Required Documents' })).toBeInTheDocument();
   });
 
   it('alerts on a bad file for a ticked document, and lets the user through once it is unticked', async () => {
@@ -206,10 +206,10 @@ describe('corporate navigation and validation', () => {
     await user.click(screen.getByLabelText(/^We consent/));
     await next(user, 'Next: Source of Funds');
     expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('File type not allowed: a.exe'));
-    expect(screen.getByText('Section C: Required Documents')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Section C: Required Documents' })).toBeInTheDocument();
     await user.click(screen.getByLabelText(label));
     await next(user, 'Next: Source of Funds');
-    expect(screen.getByText('Section D: Source of Funds')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Section D: Source of Funds' })).toBeInTheDocument();
   });
 
   it('blocks the Funds step until both fields are filled', async () => {
@@ -248,7 +248,7 @@ describe('corporate submission', () => {
     await toDeclaration(user);
     await submitCorporate(user);
     expect(await screen.findByText('bad')).toBeInTheDocument();
-    expect(screen.getByText('Section A: Entity Information')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Section A: Entity Information' })).toBeInTheDocument();
     expect(alertSpy).toHaveBeenCalledWith('m');
     await next(user, 'Next: Directors & UBOs');
     await next(user, 'Next: Documents');
@@ -263,7 +263,7 @@ describe('corporate submission', () => {
     render(<App />);
     await toDeclaration(user);
     await submitCorporate(user);
-    await waitFor(() => expect(screen.getByText(/^Section B: Directors/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('heading', { name: /^Section B: Directors/ })).toBeInTheDocument());
     expect(within(screen.getByRole('group', { name: 'Director 1' })).getByText('NIN already on file')).toBeInTheDocument();
   });
 
@@ -275,7 +275,7 @@ describe('corporate submission', () => {
     await submitCorporate(user);
     await waitFor(() => expect(alertSpy).toHaveBeenCalledWith('m2'));
     expect(alertSpy).toHaveBeenCalledWith('Total attachments exceed the 20MB limit.');
-    expect(screen.getByText('Section E: Declaration')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Section E: Declaration' })).toBeInTheDocument();
   });
 
   it('shows the server message and stays on the declaration step when there are no field errors', async () => {
@@ -285,7 +285,7 @@ describe('corporate submission', () => {
     await toDeclaration(user);
     await submitCorporate(user);
     await waitFor(() => expect(alertSpy).toHaveBeenCalledWith('Mail failed'));
-    expect(screen.getByText('Section E: Declaration')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Section E: Declaration' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Submit Form' })).toBeEnabled();
   });
 
@@ -332,7 +332,7 @@ describe('individual flow', () => {
     expect(screen.getByText('Select at least one means of ID.')).toBeInTheDocument();
     await fillPerson(user);
     await next(user, 'Next: Documents');
-    expect(screen.getByText('Section B: Verification Documents')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Section B: Verification Documents' })).toBeInTheDocument();
   });
 
   it('requires consent on the documents step', async () => {
@@ -341,7 +341,7 @@ describe('individual flow', () => {
     await toIndividualDocuments(user);
     await next(user, 'Next: Declaration');
     expect(screen.getByText('Consent to processing is required.')).toBeInTheDocument();
-    expect(screen.getByText('Section B: Verification Documents')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Section B: Verification Documents' })).toBeInTheDocument();
   });
 
   it('submits the individual contract, shows confirmation with the email and clears the draft', async () => {
@@ -395,7 +395,7 @@ describe('individual flow', () => {
     await toIndividualDeclaration(user);
     await submitIndividual(user);
     expect(await screen.findByText('Email already registered')).toBeInTheDocument();
-    expect(screen.getByText('Section A: Customer Information')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Section A: Customer Information' })).toBeInTheDocument();
     unmount();
     localStorage.clear();
     alertSpy.mockClear();
@@ -405,7 +405,7 @@ describe('individual flow', () => {
     await submitIndividual(user);
     await waitFor(() => expect(alertSpy).toHaveBeenCalledWith('m2'));
     expect(alertSpy).toHaveBeenCalledWith('Total attachments exceed the 20MB limit.');
-    expect(screen.getByText('Section C: Declaration')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Section C: Declaration' })).toBeInTheDocument();
   });
 
   it('shows a declaration-step server error on that step, and reports network errors', async () => {
@@ -415,7 +415,7 @@ describe('individual flow', () => {
     await toIndividualDeclaration(user);
     await submitIndividual(user);
     expect(await screen.findByText('Date is in the future')).toBeInTheDocument();
-    expect(screen.getByText('Section C: Declaration')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Section C: Declaration' })).toBeInTheDocument();
     unmount();
     localStorage.clear();
     alertSpy.mockClear();
@@ -466,7 +466,7 @@ describe('drafts', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(individualDraft({ person: { fullName: 'Jane Doe', sourceOfIncome: 'other', sourceOfIncomeOther: 'Gift', meansOfId: ['nin'] } })));
     render(<App />);
     expect(screen.getByText('We restored your unsaved draft.')).toBeInTheDocument();
-    expect(screen.getByText('Section A: Customer Information')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Section A: Customer Information' })).toBeInTheDocument();
     expect(screen.getByLabelText('Full Name')).toHaveValue('Jane Doe');
     expect(screen.getByLabelText('Specify source of income')).toHaveValue('Gift');
     expect(within(screen.getByRole('group', { name: 'Means of ID' })).getByLabelText('NIN')).toBeChecked();
@@ -514,5 +514,89 @@ describe('drafts', () => {
       expect(d.customerType).toBe('individual');
       expect(d.person.fullName).toBe('Typed Person');
     }, { timeout: 2000 });
+  });
+});
+
+describe('scrolling to the form card', () => {
+  const scrollIntoView = vi.fn();
+  const originalMatchMedia = window.matchMedia;
+
+  beforeEach(() => {
+    HTMLElement.prototype.scrollIntoView = scrollIntoView;
+    scrollIntoView.mockClear();
+  });
+  afterEach(() => {
+    window.matchMedia = originalMatchMedia;
+  });
+
+  const lastTarget = () => scrollIntoView.mock.contexts[scrollIntoView.mock.contexts.length - 1] as HTMLElement;
+
+  it('does not scroll on first render', () => {
+    render(<App />);
+    expect(scrollIntoView).not.toHaveBeenCalled();
+  });
+
+  it('scrolls to the top of the form card when the customer type is chosen and when it is changed', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await chooseCorporate(user);
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(lastTarget().tagName).toBe('MAIN');
+    expect(scrollIntoView).toHaveBeenLastCalledWith({ block: 'start', behavior: 'smooth' });
+    await user.click(screen.getByRole('button', { name: /Change customer type/ }));
+    expect(scrollIntoView).toHaveBeenCalledTimes(2);
+  });
+
+  it('scrolls once per step change, forwards and back', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await toDirectors(user);
+    scrollIntoView.mockClear();
+    await fillDirector(user);
+    await next(user, 'Next: Documents');
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(lastTarget().tagName).toBe('MAIN');
+    await user.click(screen.getByRole('button', { name: 'Back' }));
+    expect(scrollIntoView).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not scroll when Next is blocked by validation or while typing', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await chooseCorporate(user);
+    scrollIntoView.mockClear();
+    await next(user, 'Next: Directors & UBOs');
+    expect(screen.getByText('Company name is required.')).toBeInTheDocument();
+    setVal('Company Name', 'Acme');
+    await user.tab();
+    expect(scrollIntoView).not.toHaveBeenCalled();
+  });
+
+  it('scrolls when a server error jumps back to an earlier step, and when the confirmation appears', async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal('fetch', json({ success: false, errors: { tin: 'bad' }, message: 'm' }));
+    const { unmount } = render(<App />);
+    await toDeclaration(user);
+    scrollIntoView.mockClear();
+    await submitCorporate(user);
+    await screen.findByText('bad');
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    unmount();
+    localStorage.clear();
+    vi.stubGlobal('fetch', json({ success: true }));
+    render(<App />);
+    await toDeclaration(user);
+    scrollIntoView.mockClear();
+    await submitCorporate(user);
+    await screen.findByText('Thank you');
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+  });
+
+  it('jumps instantly instead of smoothly when the visitor prefers reduced motion', async () => {
+    window.matchMedia = ((query: string) => ({ matches: query.includes('prefers-reduced-motion'), media: query, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia;
+    const user = userEvent.setup();
+    render(<App />);
+    await chooseIndividual(user);
+    expect(scrollIntoView).toHaveBeenLastCalledWith({ block: 'start', behavior: 'auto' });
   });
 });

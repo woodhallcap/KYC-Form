@@ -1,13 +1,14 @@
 import { MAX_DIRECTORS } from '../lib/validation';
 import { Button } from './Button';
 import { DirectorRow } from './DirectorRow';
+import { SectionHeading } from './SectionHeading';
 import type { StepProps } from './stepProps';
 
 export function Step2Directors({ state, dispatch, onNext, onBack }: StepProps) {
   const { directors } = state.corporate;
   return (
     <section>
-      <h2>Section B: Directors, Signatories and UBOs</h2>
+      <SectionHeading text="Section B: Directors, Signatories and UBOs" />
       <p>
         List every director, signatory and ultimate beneficial owner (UBO) holding more than 5% of the company.
         Attach ID, BVN, NIN and proof of address for each person where available.
@@ -35,7 +36,9 @@ export function Step2Directors({ state, dispatch, onNext, onBack }: StepProps) {
         <Button variant="secondary" onClick={onBack}>
           Back
         </Button>
-        <Button onClick={onNext}>Next: Documents</Button>
+        <Button arrow onClick={onNext}>
+          Next: Documents
+        </Button>
       </div>
     </section>
   );

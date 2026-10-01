@@ -1,9 +1,11 @@
 import { useEffect, useReducer, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
+import { BrandPanel } from './components/BrandPanel';
 import { Confirmation } from './components/Confirmation';
 import { DraftBanner } from './components/DraftBanner';
-import { Header } from './components/Header';
+import { Pill } from './components/Pill';
 import { ProgressBar } from './components/ProgressBar';
+import { SiteFooter } from './components/SiteFooter';
 import { IndividualStep1Person } from './components/IndividualStep1Person';
 import { IndividualStep2Documents } from './components/IndividualStep2Documents';
 import { IndividualStep3Declaration } from './components/IndividualStep3Declaration';
@@ -16,6 +18,7 @@ import type { StepProps } from './components/stepProps';
 import { TypeSelector } from './components/TypeSelector';
 import { prefillActions } from './dev/prefill';
 import { clearDraft, hasAnyContent, loadDraft, saveDraft } from './lib/autosave';
+import { CUSTOMER_LABEL } from './lib/copy';
 import { activeForm, fieldStep, flowOf, initialAppState, reducer, stepErrors } from './lib/reducer';
 import type { AppState } from './lib/reducer';
 import type { Flow } from './flows/types';
@@ -55,6 +58,10 @@ export default function App() {
   const flow = flowOf(state);
   const lastStep = flow.steps.length;
   const sending = useRef(false);
+  const cardRef = useRef<HTMLElement>(null);
+  // Which screen is showing: submitting/failed attempts don't change it, so they don't scroll.
+  const screenKey = status === 'done' ? 'done' : `${customerType ?? 'none'}:${step}`;
+  const lastScreen = useRef(screenKey);
   const mounted = useRef(false);
   const [prevStep, setPrevStep] = useState(step);
   const [direction, setDirection] = useState<'right' | 'left'>('right');
@@ -62,6 +69,15 @@ export default function App() {
     setPrevStep(step);
     setDirection(step > prevStep ? 'right' : 'left');
   }
+
+  // Bring the top of the form card into view whenever the visitor lands on a different screen,
+  // so they never have to scroll back up after Next/Back, a server-error jump, or the confirmation.
+  useEffect(() => {
+    if (lastScreen.current === screenKey) return;
+    lastScreen.current = screenKey;
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    cardRef.current?.scrollIntoView({ block: 'start', behavior: reduceMotion ? 'auto' : 'smooth' });
+  }, [screenKey]);
 
   useEffect(() => {
     if (!mounted.current) {
@@ -115,45 +131,51 @@ export default function App() {
 
   return (
     <>
-      <Header />
-      <main className="mx-auto mb-16 max-w-[720px] px-4">
-        <div className="wizard-card-bg relative overflow-hidden rounded-brand bg-white p-5 shadow-card sm:p-8">
-          {!customerType ? (
-            <TypeSelector onSelect={(type) => dispatch({ type: 'selectType', customerType: type })} />
-          ) : status === 'done' ? (
-            <Confirmation email={submitterEmail(state)} />
-          ) : (
-            <>
-              {state.draftRestored && (
-                <DraftBanner
-                  onClear={() => {
-                    dispatch({ type: 'reset' });
-                    clearDraft();
-                  }}
-                />
-              )}
-              {step === 1 && (
-                <button
-                  type="button"
-                  onClick={() => dispatch({ type: 'clearType' })}
-                  className="mb-4 cursor-pointer bg-transparent p-0 text-sm font-semibold text-primary underline"
-                >
-                  ← Change customer type
-                </button>
-              )}
-              <ProgressBar titles={flow.steps.map((st) => st.title)} step={step} />
-              <form noValidate onSubmit={onSubmit}>
-                <div key={step} className={slide}>
-                  {(() => {
-                    const StepComponent = STEP_COMPONENTS[customerType][step - 1];
-                    return <StepComponent {...stepProps} />;
-                  })()}
+      <div className="mx-auto max-w-[1120px] px-4 py-6 sm:px-6 lg:py-10">
+        <div className="grid gap-6 lg:grid-cols-[360px_minmax(0,1fr)] lg:items-stretch">
+          <BrandPanel customerType={customerType} />
+          <main ref={cardRef} className="scroll-mt-4 rounded-brand bg-white p-5 shadow-card sm:p-9">
+            {!customerType ? (
+              <TypeSelector onSelect={(type) => dispatch({ type: 'selectType', customerType: type })} />
+            ) : status === 'done' ? (
+              <Confirmation email={submitterEmail(state)} />
+            ) : (
+              <>
+                {state.draftRestored && (
+                  <DraftBanner
+                    onClear={() => {
+                      dispatch({ type: 'reset' });
+                      clearDraft();
+                    }}
+                  />
+                )}
+                <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+                  <Pill>{CUSTOMER_LABEL[customerType]}</Pill>
+                  {step === 1 && (
+                    <button
+                      type="button"
+                      onClick={() => dispatch({ type: 'clearType' })}
+                      className="cursor-pointer bg-transparent p-0 text-sm font-medium text-primary underline underline-offset-2"
+                    >
+                      Change customer type
+                    </button>
+                  )}
                 </div>
-              </form>
-            </>
-          )}
+                <ProgressBar titles={flow.steps.map((st) => st.title)} step={step} />
+                <form noValidate onSubmit={onSubmit}>
+                  <div key={step} className={slide}>
+                    {(() => {
+                      const StepComponent = STEP_COMPONENTS[customerType][step - 1];
+                      return <StepComponent {...stepProps} />;
+                    })()}
+                  </div>
+                </form>
+              </>
+            )}
+          </main>
         </div>
-      </main>
+        <SiteFooter />
+      </div>
       {import.meta.env.DEV && status !== 'done' && (
         <button
           type="button"

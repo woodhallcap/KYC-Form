@@ -2,6 +2,7 @@ import { activeForm } from '../lib/reducer';
 import { Button } from './Button';
 import { DocumentRow } from './DocumentRow';
 import { Field } from './Field';
+import { SectionHeading } from './SectionHeading';
 import type { StepProps } from './stepProps';
 
 interface DocumentsStepProps extends StepProps {
@@ -19,7 +20,7 @@ export function DocumentsStep({ state, dispatch, onNext, onBack, heading, intro,
   if (!form) return null;
   return (
     <section>
-      <h2>{heading}</h2>
+      <SectionHeading text={heading} />
       <p>{intro}</p>
 
       <div>
@@ -29,6 +30,7 @@ export function DocumentsStep({ state, dispatch, onNext, onBack, heading, intro,
             id={id}
             label={labels[id]}
             doc={form.docs[id]}
+            error={state.errors[id]}
             onToggle={(value) => dispatch({ type: 'setDocSubmitted', id, value })}
             onFile={(file) => dispatch({ type: 'setDocFile', id, file })}
           />
@@ -58,7 +60,9 @@ export function DocumentsStep({ state, dispatch, onNext, onBack, heading, intro,
         <Button variant="secondary" onClick={onBack}>
           Back
         </Button>
-        <Button onClick={onNext}>{nextLabel}</Button>
+        <Button arrow onClick={onNext}>
+          {nextLabel}
+        </Button>
       </div>
     </section>
   );

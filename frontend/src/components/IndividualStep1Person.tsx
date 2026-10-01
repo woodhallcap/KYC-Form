@@ -5,6 +5,8 @@ import { Button } from './Button';
 import { CheckboxGroup } from './CheckboxGroup';
 import { ChoiceGroup } from './ChoiceGroup';
 import { Field, inputClass } from './Field';
+import { FieldGrid } from './FieldGrid';
+import { SectionHeading } from './SectionHeading';
 import { TextField } from './TextField';
 import type { StepProps } from './stepProps';
 
@@ -40,10 +42,12 @@ export function IndividualStep1Person({ state, dispatch, onNext }: StepProps) {
   const common = { state, dispatch, group: 'person' as const };
   return (
     <section>
-      <h2>Section A: Customer Information</h2>
+      <SectionHeading text="Section A: Customer Information" />
       <TextField {...common} name="fullName" label="Full Name" placeholder="e.g. Jane Doe" />
-      <TextField {...common} name="dateOfBirth" label="Date of Birth" type="date" />
-      <TextField {...common} name="placeOfBirth" label="Place of Birth" placeholder="e.g. Lagos" />
+      <FieldGrid>
+        <TextField {...common} name="dateOfBirth" label="Date of Birth" type="date" />
+        <TextField {...common} name="placeOfBirth" label="Place of Birth" placeholder="e.g. Lagos" />
+      </FieldGrid>
       <ChoiceGroup
         state={state}
         dispatch={dispatch}
@@ -51,20 +55,26 @@ export function IndividualStep1Person({ state, dispatch, onNext }: StepProps) {
         label="Gender"
         options={[{ value: 'M', label: 'Male' }, { value: 'F', label: 'Female' }]}
       />
-      <TextField {...common} name="nationality" label="Nationality" placeholder="e.g. Nigerian" />
-      <TextField {...common} name="countryOfResidence" label="Country of Residence" placeholder="e.g. Nigeria" />
+      <FieldGrid>
+        <TextField {...common} name="nationality" label="Nationality" placeholder="e.g. Nigerian" />
+        <TextField {...common} name="countryOfResidence" label="Country of Residence" placeholder="e.g. Nigeria" />
+      </FieldGrid>
       <TextField {...common} name="residentialAddress" label="Residential Address" placeholder="e.g. 12 Marina Road, Lagos Island, Lagos" multiline />
-      <TextField {...common} name="lga" label="LGA" placeholder="e.g. Eti-Osa" />
-      <TextField {...common} name="state" label="State" placeholder="e.g. Lagos" />
-      <TextField {...common} name="phone" label="Phone No" type="tel" placeholder="e.g. 08012345678" />
-      <TextField {...common} name="email" label="Email" type="email" placeholder="e.g. jane@example.com" />
+      <FieldGrid>
+        <TextField {...common} name="lga" label="LGA" placeholder="e.g. Eti-Osa" />
+        <TextField {...common} name="state" label="State" placeholder="e.g. Lagos" />
+        <TextField {...common} name="phone" label="Phone No" type="tel" placeholder="e.g. 08012345678" />
+        <TextField {...common} name="email" label="Email" type="email" placeholder="e.g. jane@example.com" />
+      </FieldGrid>
       <CheckboxGroup state={state} dispatch={dispatch} name="meansOfId" label="Means of ID" options={MEANS_OF_ID_OPTIONS} />
-      <TextField {...common} name="idNumber" label="ID No" />
-      <TextField {...common} name="idExpiry" label="Expiry Date (if any)" type="date" />
-      <TextField {...common} name="bvn" label="BVN" />
-      <TextField {...common} name="nin" label="NIN" />
-      <TextField {...common} name="occupation" label="Occupation" placeholder="e.g. Engineer" />
-      <TextField {...common} name="employerName" label="Employer/Business Name (if any)" />
+      <FieldGrid>
+        <TextField {...common} name="idNumber" label="ID No" />
+        <TextField {...common} name="idExpiry" label="Expiry Date (if any)" type="date" />
+        <TextField {...common} name="bvn" label="BVN" />
+        <TextField {...common} name="nin" label="NIN" />
+        <TextField {...common} name="occupation" label="Occupation" placeholder="e.g. Engineer" />
+        <TextField {...common} name="employerName" label="Employer/Business Name (if any)" />
+      </FieldGrid>
       <TextField {...common} name="officeAddress" label="Office Address (if any)" multiline />
       <ChoiceGroup state={state} dispatch={dispatch} name="sourceOfIncome" label="Source of Income" options={INCOME_OPTIONS} />
       {person.sourceOfIncome === 'other' && (
@@ -86,7 +96,9 @@ export function IndividualStep1Person({ state, dispatch, onNext }: StepProps) {
 
       <div className="mt-7 flex justify-between">
         <span />
-        <Button onClick={onNext}>Next: Documents</Button>
+        <Button arrow onClick={onNext}>
+          Next: Documents
+        </Button>
       </div>
     </section>
   );

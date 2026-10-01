@@ -3,6 +3,8 @@ import { DIRECTOR_FILE_IDS } from '../lib/validation';
 import type { Action, AppState } from '../lib/reducer';
 import type { DirectorField, DirectorFileId } from '../types';
 import { Field, inputClass } from './Field';
+import { FieldGrid } from './FieldGrid';
+import { FileTile } from './FileTile';
 
 interface DirectorRowProps {
   index: number;
@@ -46,7 +48,7 @@ export function DirectorRow({ index, state, dispatch, canRemove }: DirectorRowPr
   };
 
   return (
-    <div role="group" aria-label={`Director ${n}`} className="mb-4 rounded-lg border border-[#E4DAD2] p-4">
+    <div role="group" aria-label={`Director ${n}`} className="mb-4 rounded-2xl border border-[#e4dad2] bg-white p-5">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="!mb-0 text-lg">Person {n}</h3>
         <button
@@ -60,12 +62,14 @@ export function DirectorRow({ index, state, dispatch, canRemove }: DirectorRowPr
         </button>
       </div>
 
-      {text('name', 'Name')}
-      {text('designation', 'Designation')}
-      {text('bvn', 'BVN')}
-      {text('nin', 'NIN')}
-      {text('shareholdingPercent', '% Shareholding', { inputMode: 'decimal' })}
-      {text('nationality', 'Nationality')}
+      <FieldGrid>
+        {text('name', 'Name')}
+        {text('designation', 'Designation')}
+        {text('bvn', 'BVN')}
+        {text('nin', 'NIN')}
+        {text('shareholdingPercent', '% Shareholding', { inputMode: 'decimal' })}
+        {text('nationality', 'Nationality')}
+      </FieldGrid>
 
       <Field error={errorOf('pep')}>
         <span className="mb-1.5 block font-semibold">PEP</span>
@@ -92,18 +96,14 @@ export function DirectorRow({ index, state, dispatch, canRemove }: DirectorRowPr
         <span className="mb-1.5 block font-semibold">Attachments (optional)</span>
         <div className="grid gap-2 sm:grid-cols-2">
           {DIRECTOR_FILE_IDS.map((fileId) => (
-            <div key={fileId} className="text-sm">
-              <span>{FILE_LABELS[fileId]}</span>
-              <input
-                type="file"
-                aria-label={`Director ${n} ${FILE_LABELS[fileId]} file`}
-                accept=".pdf,.jpg,.jpeg,.png,.docx"
-                className="mt-1 block w-full"
-                onChange={(e) =>
-                  dispatch({ type: 'setDirectorFile', index, fileId, file: e.target.files?.[0] ?? null })
-                }
-              />
-            </div>
+            <FileTile
+              key={fileId}
+              caption={FILE_LABELS[fileId]}
+              label={`Director ${n} ${FILE_LABELS[fileId]} file`}
+              file={row.files[fileId]}
+              onChange={(file) => dispatch({ type: 'setDirectorFile', index, fileId, file })}
+              error={state.errors[`directorFile.${index}.${fileId}`]}
+            />
           ))}
         </div>
       </div>
