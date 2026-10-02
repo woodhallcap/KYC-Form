@@ -231,16 +231,21 @@ function sample_individual_post(array $o = []): array
 }
 
 /** Uploads for the given document ids (default: all five). Returns [$files, $tmpPaths]. */
-function individual_files(array $ids = INDIVIDUAL_DOCS): array
+function individual_files(array $ids = INDIVIDUAL_DOCS, int $size = 5): array
 {
     $entries = [];
     $tmps = [];
     foreach ($ids as $id) {
         $tmp = tmp_file();
         $tmps[] = $tmp;
-        $entries[] = files_entry('documents', [$id, 'file'], upload($id . '.pdf', $tmp));
+        $entries[] = files_entry('documents', [$id, 'file'], upload($id . '.pdf', $tmp, $size));
     }
     return [merge_files(...$entries), $tmps];
+}
+
+function int_mb(float $mb): int
+{
+    return (int) ($mb * 1024 * 1024);
 }
 
 function cleanup(array $tmps): void
@@ -344,6 +349,21 @@ test_case('individual: attaches all five documents with slot-prefixed names and 
     foreach ($tmps as $p) {
         assert_true(!file_exists($p), 'temp file should be cleaned up');
     }
+});
+
+test_case('individual: five documents can exceed the 20MB total even though each is under 5MB', function () {
+    [$files, $tmps] = individual_files(INDIVIDUAL_DOCS, int_mb(4.5));
+    $called = false;
+    $r = handle_submission(sample_individual_post(), $files, function () use (&$called) {
+        $called = true;
+        return ['success' => true, 'error' => null];
+    });
+    assert_equal('Total attachments exceed the 20MB limit.', $r['errors']['_total']);
+    assert_true(!$called);
+    cleanup($tmps);
+    [$files, $tmps] = individual_files(INDIVIDUAL_DOCS, int_mb(3.9));
+    assert_equal(true, handle_submission(sample_individual_post(), $files, ok_sender())['success']);
+    cleanup($tmps);
 });
 
 test_case('individual: blocks a document with a disallowed type and a PHP-level upload failure', function () {

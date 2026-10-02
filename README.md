@@ -88,7 +88,7 @@ anything else is rejected with `errors.customerType`.
   are required when the choice is `other`.
 - Multi-choice arrays: `meansOfId[]` (`nin|bvn|passport|drivers_license|voters_card`, at least one)
   and `expectedTransactionTypes[]` (`cash|transfer|cheque`, at least one).
-- Documents: ids `valid_means_of_id, proof_of_address, passport_photograph, signature_mandate_card`.
+- Documents (all five are required, each with a file): ids `valid_means_of_id, utility_bill, bank_statement, passport_photograph, signature_mandate_card`. Items 1 to 8 on the form are all required, except the ID expiry date.
 
 **Both:** `documents[<id>][submitted]=on` plus `documents[<id>][file]`; only ticked documents are
 validated and attached. Uploads: pdf/jpg/jpeg/png/docx, 5MB each, 20MB total across all uploads.

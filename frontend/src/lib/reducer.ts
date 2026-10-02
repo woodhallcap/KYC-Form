@@ -133,8 +133,12 @@ export function reducer(s: AppState, a: Action): AppState {
       return form ? withForm(s, { ...form, consent: a.value }) : s;
     case 'setDocSubmitted':
       return form ? withForm(s, { ...form, docs: { ...form.docs, [a.id]: { ...form.docs[a.id], submitted: a.value } } }) : s;
-    case 'setDocFile':
-      return form ? withForm(s, { ...form, docs: { ...form.docs, [a.id]: { ...form.docs[a.id], file: a.file } } }) : s;
+    case 'setDocFile': {
+      if (!form) return s;
+      // An individual's documents have no tick-box: attaching the file is what provides the document.
+      const submitted = form.customerType === 'individual' ? a.file !== null : form.docs[a.id].submitted;
+      return withForm(s, { ...form, docs: { ...form.docs, [a.id]: { submitted, file: a.file } } });
+    }
     case 'addDirector':
       if (s.customerType !== 'corporate' || s.corporate.directors.length >= MAX_DIRECTORS) return s;
       return withForm(s, { ...s.corporate, directors: [...s.corporate.directors, emptyDirector()] });

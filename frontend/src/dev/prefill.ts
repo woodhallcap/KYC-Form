@@ -1,6 +1,7 @@
 import { DIRECTOR_FIELDS } from '../types';
 import type { CustomerType, DirectorField } from '../types';
 import type { Action, FieldGroup } from '../lib/reducer';
+import { INDIVIDUAL_DOCUMENT_IDS } from '../lib/validation';
 
 const entity: Record<string, string> = {
   companyName: 'Acme Trading Ltd',
@@ -87,8 +88,11 @@ function individualActions(): Action[] {
     { type: 'toggleChoice', name: 'meansOfId', value: 'nin' },
     { type: 'toggleChoice', name: 'meansOfId', value: 'passport' },
     { type: 'toggleChoice', name: 'expectedTransactionTypes', value: 'transfer' },
-    { type: 'setDocSubmitted', id: 'valid_means_of_id', value: true },
-    { type: 'setDocSubmitted', id: 'proof_of_address', value: true },
+    ...INDIVIDUAL_DOCUMENT_IDS.map((id): Action => ({
+      type: 'setDocFile',
+      id,
+      file: new File(['dev test file'], `${id}.pdf`, { type: 'application/pdf' }),
+    })),
     { type: 'setConsent', value: true },
     ...fields('declaration', individualDeclaration),
     { type: 'setField', group: 'declaration', name: 'signatureAgree', value: true },

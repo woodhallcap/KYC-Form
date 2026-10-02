@@ -81,7 +81,7 @@ function serializeIndividual(form: IndividualForm): IndividualDraft {
     customerType: 'individual',
     person: { ...form.person, meansOfId: [...form.person.meansOfId], expectedTransactionTypes: [...form.person.expectedTransactionTypes] },
     declaration: { ...form.declaration },
-    documents: documentsOf(form.docs),
+    documents: {}, // files cannot be saved, so a document is never restored as already provided
     consent: form.consent,
   };
 }
@@ -125,10 +125,10 @@ const anyText = (o: unknown) => isObj(o) && Object.values(o).some(hasText);
 
 export function hasAnyContent(d: Draft | null): boolean {
   if (!d) return false;
-  const common = (isObj(d.documents) && Object.values(d.documents).some((v) => v === true)) || d.consent === true;
   if (d.customerType === 'individual') {
-    return common || anyText(d.person) || anyText(d.declaration);
+    return d.consent === true || anyText(d.person) || anyText(d.declaration);
   }
+  const common = (isObj(d.documents) && Object.values(d.documents).some((v) => v === true)) || d.consent === true;
   const directorHasContent = (row: unknown) =>
     isObj(row) && DIRECTOR_FIELDS.some((f) => typeof row[f] === 'string' && (row[f] as string).trim() !== '');
   return (
@@ -183,5 +183,5 @@ export function applyIndividualDraft(form: IndividualForm, d: IndividualDraft): 
   person.expectedTransactionTypes = pickOptions(src.expectedTransactionTypes, TRANSACTION_TYPE_OPTIONS);
   const declaration = pickStrings(form.declaration, d.declaration);
   declaration.signatureAgree = isObj(d.declaration) && d.declaration.signatureAgree === true;
-  return { ...form, person, declaration, docs: applyDocuments(form, d.documents), consent: d.consent === true };
+  return { ...form, person, declaration, consent: d.consent === true };
 }

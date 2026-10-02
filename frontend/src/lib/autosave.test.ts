@@ -101,7 +101,8 @@ describe('autosave: individual drafts', () => {
     expect(r.person.sourceOfIncome).toBe('other');
     expect(r.person.sourceOfIncomeOther).toBe('Gift');
     expect(r.person.purposeOfRelationship).toBe('lease');
-    expect(r.docs.valid_means_of_id.submitted).toBe(true);
+    // files cannot be saved, so a restored draft never claims a document is provided
+    expect(r.docs.valid_means_of_id.submitted).toBe(false);
     expect(r.docs.valid_means_of_id.file).toBeNull();
     expect(r.consent).toBe(true);
     expect(r.declaration.signatureAgree).toBe(true);
@@ -146,5 +147,14 @@ describe('autosave: individual drafts', () => {
     const c = emptyIndividual(); c.consent = true;
     const d = emptyIndividual(); d.person.gender = 'M';
     [a, b, c, d].forEach((f) => expect(hasAnyContent(serialize(f))).toBe(true));
+  });
+
+  it('does not save or restore documents for an individual, and old drafts that did are ignored for them', () => {
+    const f = emptyIndividual();
+    f.docs.utility_bill = { submitted: true, file: new File(['x'], 'bill.pdf') };
+    expect(serialize(f)).toMatchObject({ customerType: 'individual', documents: {} });
+    const legacy = { v: 2, customerType: 'individual', person: {}, declaration: {}, documents: { utility_bill: true }, consent: false } as unknown as IndividualDraft;
+    expect(applyIndividualDraft(emptyIndividual(), legacy).docs.utility_bill.submitted).toBe(false);
+    expect(hasAnyContent(legacy)).toBe(false);
   });
 });

@@ -50,7 +50,12 @@ function buildIndividualFormData(form: IndividualForm): FormData {
   Object.entries(declaration).forEach(([k, v]) => fd.append(k, v));
   if (signatureAgree) fd.append('signatureAgree', 'on');
   if (form.consent) fd.append('consent', 'on');
-  appendDocuments(fd, form, INDIVIDUAL_DOCUMENT_IDS);
+  INDIVIDUAL_DOCUMENT_IDS.forEach((id) => {
+    const file = form.docs[id].file;
+    if (!file) return;
+    fd.append(`documents[${id}][submitted]`, 'on');
+    fd.append(`documents[${id}][file]`, file);
+  });
   return fd;
 }
 

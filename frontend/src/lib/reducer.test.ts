@@ -5,7 +5,7 @@ import { serialize } from './autosave';
 import { DIRECTOR_FIELDS } from '../types';
 import type { DirectorField } from '../types';
 import { FLOWS, corporateFlow } from '../flows/corporate';
-import { validEntity, validPerson } from '../test-utils';
+import { INDIVIDUAL_DOC_IDS, validEntity, validPerson } from '../test-utils';
 
 const run = (s: AppState, ...actions: Action[]) => actions.reduce(reducer, s);
 const corp = () => run(initialAppState(), { type: 'selectType', customerType: 'corporate' });
@@ -193,8 +193,30 @@ describe('reducer: individual flow', () => {
     s = run(s, { type: 'next' });
     expect(s.step).toBe(2);
     expect(s.errors.consent).toBeTruthy();
+    INDIVIDUAL_DOC_IDS.forEach((id) => expect(s.errors[id], id).toBe('This document is required.'));
     s = run(s, { type: 'setConsent', value: true }, { type: 'next' });
+    expect(s.step).toBe(2);
+    s = run(s, ...INDIVIDUAL_DOC_IDS.map((id): Action => ({ type: 'setDocFile', id, file: new File(['x'], id + '.pdf') })), { type: 'next' });
+    expect(s.errors).toEqual({});
     expect(s.step).toBe(3);
+  });
+
+  it('attaching a file marks an individual document as provided, and removing it un-provides it', () => {
+    const file = new File(['x'], 'bill.pdf');
+    let s = run(indiv(), { type: 'setDocFile', id: 'utility_bill', file });
+    expect(s.individual.docs.utility_bill).toEqual({ submitted: true, file });
+    s = run(s, { type: 'setDocFile', id: 'utility_bill', file: null });
+    expect(s.individual.docs.utility_bill).toEqual({ submitted: false, file: null });
+  });
+
+  it('the Next button on the documents step stays blocked until the last document is attached', () => {
+    let s = atStep(indiv(), 2);
+    s = run(s, { type: 'setConsent', value: true }, ...INDIVIDUAL_DOC_IDS.slice(0, 4).map((id): Action => ({ type: 'setDocFile', id, file: new File(['x'], id + '.pdf') })), { type: 'next' });
+    expect(s.step).toBe(2);
+    expect(Object.keys(s.errors)).toEqual([INDIVIDUAL_DOC_IDS[4]]);
+    s = run(s, { type: 'setDocFile', id: INDIVIDUAL_DOC_IDS[4], file: new File(['x'], 'last.pdf') });
+    expect(s.errors).toEqual({});
+    expect(run(s, { type: 'next' }).step).toBe(3);
   });
 
   it('toggleChoice adds, removes, and is ignored while corporate is active', () => {
@@ -223,12 +245,14 @@ describe('reducer: individual flow', () => {
   it('serverErrors jump to the earliest owning step, and leave unmatched keys alone', () => {
     expect(run(atStep(indiv(), 3), { type: 'serverErrors', errors: { meansOfId: 'x' } }).step).toBe(1);
     expect(run(atStep(indiv(), 3), { type: 'serverErrors', errors: { signatureDate: 'x', consent: 'y' } }).step).toBe(2);
-    expect(run(atStep(indiv(), 3), { type: 'serverErrors', errors: { _total: 'x', valid_means_of_id: 'y', customerType: 'z' } }).step).toBe(3);
+    expect(run(atStep(indiv(), 3), { type: 'serverErrors', errors: { _total: 'x', customerType: 'z' } }).step).toBe(3);
+    expect(run(atStep(indiv(), 3), { type: 'serverErrors', errors: { utility_bill: 'This document is required.' } }).step).toBe(2);
   });
 
   it('fieldStep maps individual keys', () => {
     expect([fieldStep(FLOWS.individual, 'email'), fieldStep(FLOWS.individual, 'consent'), fieldStep(FLOWS.individual, 'signatureDate')]).toEqual([1, 2, 3]);
     expect(fieldStep(FLOWS.individual, '_total')).toBeNull();
+    expect(fieldStep(FLOWS.individual, 'bank_statement')).toBe(2);
   });
 });
 

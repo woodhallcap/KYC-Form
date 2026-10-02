@@ -205,7 +205,7 @@ describe('IndividualStep1Person', () => {
   it('has every field, with duplicate labels reachable within their groups', () => {
     render(<Host Step={IndividualStep1Person} init={indiv()} />);
     ['Full Name', 'Date of Birth', 'Place of Birth', 'Nationality', 'Country of Residence', 'Residential Address', 'LGA', 'State', 'Phone No', 'Email',
-      'ID No', 'Expiry Date (if any)', 'Occupation', 'Employer/Business Name (if any)', 'Office Address (if any)', 'Source of Wealth',
+      'ID No', 'Expiry Date (if any)', 'Occupation', 'Employer/Business Name', 'Office Address', 'Source of Wealth',
       'Expected Monthly Turnover (₦)'].forEach((l) => expect(screen.getByLabelText(l), l).toBeInTheDocument());
     expect(screen.getByRole('textbox', { name: 'BVN' })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'NIN' })).toBeInTheDocument();
@@ -247,6 +247,18 @@ describe('IndividualStep1Person', () => {
     expect(screen.getByLabelText('Specify purpose')).toBeInTheDocument();
   });
 
+  it('requires employer and office address (only the expiry date is optional)', async () => {
+    const user = userEvent.setup();
+    render(<Host Step={IndividualStep1Person} init={indiv()} />);
+    expect(screen.getByLabelText('Expiry Date (if any)')).toBeInTheDocument();
+    await user.click(screen.getByLabelText('Employer/Business Name'));
+    await user.tab();
+    await user.click(screen.getByLabelText('Office Address'));
+    await user.tab();
+    expect(screen.getByText('Employer or business name is required.')).toBeInTheDocument();
+    expect(screen.getByText('Office address is required.')).toBeInTheDocument();
+  });
+
   it('shows the specify error after blur, and group errors inside their group', async () => {
     const user = userEvent.setup();
     const init = { ...indiv(), errors: { meansOfId: 'Select at least one means of ID.' } };
@@ -260,16 +272,43 @@ describe('IndividualStep1Person', () => {
 });
 
 describe('IndividualStep2Documents', () => {
-  it('renders the 4 documents and shows the file input only once ticked', async () => {
+  it('shows all five documents with a file input each, and no tick-boxes apart from consent', () => {
+    render(<Host Step={IndividualStep2Documents} init={indiv(2)} />);
+    expect(Object.keys(INDIVIDUAL_DOCUMENT_LABELS)).toHaveLength(5);
+    Object.values(INDIVIDUAL_DOCUMENT_LABELS).forEach((l) =>
+      expect(screen.getByLabelText(`File for ${l}`)).toHaveAttribute('type', 'file'));
+    expect(screen.getAllByRole('checkbox')).toHaveLength(1);
+    expect(screen.getByRole('heading', { name: 'Section B: Verification Documents' })).toBeInTheDocument();
+  });
+
+  it('asks for the utility bill and the bank statement as two separate documents', () => {
+    render(<Host Step={IndividualStep2Documents} init={indiv(2)} />);
+    expect(screen.getByText('Utility Bill (less than 3 months)')).toBeInTheDocument();
+    expect(screen.getByText('Bank Statement (less than 3 months)')).toBeInTheDocument();
+    expect(screen.queryByText(/Proof of Address/i)).toBeNull();
+  });
+
+  it('says every document is needed before continuing', () => {
+    render(<Host Step={IndividualStep2Documents} init={indiv(2)} />);
+    expect(screen.getByText(/Attach every document below to continue/)).toBeInTheDocument();
+  });
+
+  it('shows a missing-document error inline under just that document', () => {
+    const init = { ...indiv(2), errors: { utility_bill: 'This document is required.' } };
+    render(<Host Step={IndividualStep2Documents} init={init} />);
+    const alerts = screen.getAllByRole('alert');
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]).toHaveTextContent('This document is required.');
+    expect(screen.getByTestId('doc-utility_bill')).toContainElement(alerts[0]);
+  });
+
+  it('shows the chosen file with its name and lets the visitor remove it again', async () => {
     const user = userEvent.setup();
     render(<Host Step={IndividualStep2Documents} init={indiv(2)} />);
-    expect(Object.keys(INDIVIDUAL_DOCUMENT_LABELS)).toHaveLength(4);
-    Object.values(INDIVIDUAL_DOCUMENT_LABELS).forEach((l) => expect(screen.getByLabelText(l)).toBeInTheDocument());
-    const label = INDIVIDUAL_DOCUMENT_LABELS.passport_photograph;
-    expect(screen.queryByLabelText(`File for ${label}`)).toBeNull();
-    await user.click(screen.getByLabelText(label));
-    expect(screen.getByLabelText(`File for ${label}`)).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Section B: Verification Documents' })).toBeInTheDocument();
+    await user.upload(screen.getByLabelText('File for Passport Photograph'), new File(['x'], 'me.jpg'));
+    expect(screen.getByText('me.jpg')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Remove File for Passport Photograph' }));
+    expect(screen.queryByText('me.jpg')).toBeNull();
   });
 
   it('shows the consent error and a next button for the declaration', () => {

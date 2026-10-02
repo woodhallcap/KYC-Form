@@ -9,7 +9,8 @@ export const DOCUMENT_LABELS: Record<string, string> = {
 
 export const INDIVIDUAL_DOCUMENT_LABELS: Record<string, string> = {
   valid_means_of_id: 'Valid Means of ID',
-  proof_of_address: 'Proof of Address (less than 3 months): Utility Bill / Bank Statement',
+  utility_bill: 'Utility Bill (less than 3 months)',
+  bank_statement: 'Bank Statement (less than 3 months)',
   passport_photograph: 'Passport Photograph',
   signature_mandate_card: 'Signature Mandate Card',
 };

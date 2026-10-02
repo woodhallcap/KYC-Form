@@ -87,6 +87,8 @@ const PERSON: Record<string, string> = {
   Email: 'jane@example.com',
   'ID No': 'A123',
   Occupation: 'Engineer',
+  'Employer/Business Name': 'Acme Engineering',
+  'Office Address': '4 Adeola Odeku Street, Victoria Island',
   'Source of Wealth': 'Savings',
   'Expected Monthly Turnover (₦)': '500,000',
 };
@@ -103,6 +105,20 @@ async function fillPerson(user: User) {
   await user.click(within(screen.getByRole('group', { name: 'Expected Transaction Type' })).getByLabelText('Transfer'));
 }
 
+const INDIVIDUAL_DOC_LABELS = [
+  'Valid Means of ID',
+  'Utility Bill (less than 3 months)',
+  'Bank Statement (less than 3 months)',
+  'Passport Photograph',
+  'Signature Mandate Card',
+];
+
+async function attachDocuments(user: User, labels: string[] = INDIVIDUAL_DOC_LABELS) {
+  for (const label of labels) {
+    await user.upload(screen.getByLabelText(`File for ${label}`), new File(['x'], 'doc.pdf'));
+  }
+}
+
 async function toIndividualDocuments(user: User) {
   await chooseIndividual(user);
   await fillPerson(user);
@@ -110,6 +126,7 @@ async function toIndividualDocuments(user: User) {
 }
 async function toIndividualDeclaration(user: User) {
   await toIndividualDocuments(user);
+  await attachDocuments(user);
   await user.click(screen.getByLabelText(/^I consent/));
   await next(user, 'Next: Declaration');
 }
@@ -330,15 +347,36 @@ describe('individual flow', () => {
     await next(user, 'Next: Documents');
     expect(screen.getByText('Full name is required.')).toBeInTheDocument();
     expect(screen.getByText('Select at least one means of ID.')).toBeInTheDocument();
+    expect(screen.getByText('Employer or business name is required.')).toBeInTheDocument();
+    expect(screen.getByText('Office address is required.')).toBeInTheDocument();
     await fillPerson(user);
     await next(user, 'Next: Documents');
     expect(screen.getByRole('heading', { name: 'Section B: Verification Documents' })).toBeInTheDocument();
   });
 
-  it('requires consent on the documents step', async () => {
+  it('does not let the customer past Section B until every document is attached', async () => {
     const user = userEvent.setup();
     render(<App />);
     await toIndividualDocuments(user);
+    await user.click(screen.getByLabelText(/^I consent/));
+    await next(user, 'Next: Declaration');
+    expect(screen.getAllByText('This document is required.')).toHaveLength(5);
+    expect(screen.getByRole('heading', { name: 'Section B: Verification Documents' })).toBeInTheDocument();
+    await attachDocuments(user, INDIVIDUAL_DOC_LABELS.slice(0, 4));
+    await next(user, 'Next: Declaration');
+    expect(screen.getAllByText('This document is required.')).toHaveLength(1);
+    expect(screen.getByRole('heading', { name: 'Section B: Verification Documents' })).toBeInTheDocument();
+    await attachDocuments(user, INDIVIDUAL_DOC_LABELS.slice(4));
+    expect(screen.queryByText('This document is required.')).toBeNull();
+    await next(user, 'Next: Declaration');
+    expect(screen.getByRole('heading', { name: 'Section C: Declaration' })).toBeInTheDocument();
+  });
+
+  it('requires consent on the documents step, even with every document attached', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await toIndividualDocuments(user);
+    await attachDocuments(user);
     await next(user, 'Next: Declaration');
     expect(screen.getByText('Consent to processing is required.')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Section B: Verification Documents' })).toBeInTheDocument();
@@ -365,27 +403,22 @@ describe('individual flow', () => {
     expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
   });
 
-  it('sends a ticked document and omits an unticked one', async () => {
-    const user = userEvent.setup({ applyAccept: false });
+  it('sends every document with its file, and marks each as submitted', async () => {
+    const user = userEvent.setup();
     const fetchMock = json({ success: true });
     vi.stubGlobal('fetch', fetchMock);
     render(<App />);
-    await toIndividualDocuments(user);
-    const id = 'Valid Means of ID';
-    await user.click(screen.getByLabelText(id));
-    await user.upload(screen.getByLabelText(`File for ${id}`), new File(['x'], 'id.pdf'));
-    const photo = 'Passport Photograph';
-    await user.click(screen.getByLabelText(photo));
-    await user.upload(screen.getByLabelText(`File for ${photo}`), new File(['x'], 'p.jpg'));
-    await user.click(screen.getByLabelText(photo));
-    await user.click(screen.getByLabelText(/^I consent/));
-    await next(user, 'Next: Declaration');
+    await toIndividualDeclaration(user);
     await submitIndividual(user);
     await screen.findByText('Thank you');
     const body = fetchMock.mock.calls[0][1].body as FormData;
-    expect((body.get('documents[valid_means_of_id][file]') as File).name).toBe('id.pdf');
-    expect(body.has('documents[passport_photograph][submitted]')).toBe(false);
-    expect(body.has('documents[passport_photograph][file]')).toBe(false);
+    ['valid_means_of_id', 'utility_bill', 'bank_statement', 'passport_photograph', 'signature_mandate_card'].forEach((id) => {
+      expect(body.get(`documents[${id}][submitted]`), id).toBe('on');
+      expect((body.get(`documents[${id}][file]`) as File).name, id).toBe('doc.pdf');
+    });
+    expect(body.has('documents[proof_of_address][file]')).toBe(false);
+    expect(body.get('employerName')).toBe('Acme Engineering');
+    expect(body.get('officeAddress')).toBe('4 Adeola Odeku Street, Victoria Island');
   });
 
   it('jumps to step 1 for an email error, and stays put with an alert for a total-size error', async () => {

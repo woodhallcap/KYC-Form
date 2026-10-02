@@ -159,7 +159,7 @@ export function validateDeclaration(d: Partial<CorporateDeclaration>, seal: File
   return errors;
 }
 
-export const INDIVIDUAL_DOCUMENT_IDS: readonly string[] = ['valid_means_of_id', 'proof_of_address', 'passport_photograph', 'signature_mandate_card'];
+export const INDIVIDUAL_DOCUMENT_IDS: readonly string[] = ['valid_means_of_id', 'utility_bill', 'bank_statement', 'passport_photograph', 'signature_mandate_card'];
 
 export const MEANS_OF_ID_OPTIONS: { value: MeansOfId; label: string }[] = [
   { value: 'nin', label: 'NIN' },
@@ -206,6 +206,8 @@ export function validateIndividualPerson(p: Partial<IndividualPerson>): Errors {
     ['bvn', 'BVN is required.'],
     ['nin', 'NIN is required.'],
     ['occupation', 'Occupation is required.'],
+    ['employerName', 'Employer or business name is required.'],
+    ['officeAddress', 'Office address is required.'],
     ['sourceOfWealth', 'Source of wealth is required.'],
     ['expectedMonthlyTurnover', 'Expected monthly turnover is required.'],
   ];
@@ -230,12 +232,16 @@ export function validateIndividualPerson(p: Partial<IndividualPerson>): Errors {
   return errors;
 }
 
+/** Every document must have a file attached; attaching the file is what provides it. */
 export function validateIndividualDocuments(form: IndividualForm): Errors {
-  const uploads = INDIVIDUAL_DOCUMENT_IDS.flatMap((id) => {
-    const doc = form.docs[id];
-    return doc && doc.submitted && doc.file ? [{ key: id, file: doc.file }] : [];
+  const missing: Errors = {};
+  const provided: { key: string; file: File }[] = [];
+  INDIVIDUAL_DOCUMENT_IDS.forEach((id) => {
+    const file = form.docs[id]?.file;
+    if (file) provided.push({ key: id, file });
+    else missing[id] = 'This document is required.';
   });
-  return { ...uploadErrors(uploads), ...consentError(form.consent) };
+  return { ...missing, ...uploadErrors(provided), ...consentError(form.consent) };
 }
 
 export function validateIndividualDeclaration(d: Partial<IndividualDeclaration>): Errors {
