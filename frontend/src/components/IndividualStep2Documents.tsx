@@ -13,7 +13,6 @@ export function IndividualStep2Documents(props: StepProps) {
       labels={INDIVIDUAL_DOCUMENT_LABELS}
       consentText="I consent to the use, processing, verification, retention, and disclosure of the information and documents provided for due diligence, compliance, and the furtherance of our business relationship."
       nextLabel="Next: Declaration"
-      required
     />
   );
 }

@@ -122,15 +122,33 @@ describe('Step2Directors', () => {
 });
 
 describe('Step3Documents (corporate)', () => {
-  it('renders the 6 documents and shows the file input only once ticked', async () => {
-    const user = userEvent.setup();
-    render(<Host Step={Step3Documents} />);
+  it('shows all six documents with a file input each, and no tick-boxes apart from consent', () => {
+    render(<Host Step={Step3Documents} init={corp(3)} />);
     expect(Object.keys(DOCUMENT_LABELS)).toHaveLength(6);
-    Object.values(DOCUMENT_LABELS).forEach((label) => expect(screen.getByLabelText(label)).toBeInTheDocument());
-    const label = DOCUMENT_LABELS.certificate_of_incorporation;
-    expect(screen.queryByLabelText(`File for ${label}`)).toBeNull();
-    await user.click(screen.getByLabelText(label));
-    expect(screen.getByLabelText(`File for ${label}`)).toBeInTheDocument();
+    Object.values(DOCUMENT_LABELS).forEach((label) =>
+      expect(screen.getByLabelText(`File for ${label}`)).toHaveAttribute('type', 'file'));
+    expect(screen.getAllByRole('checkbox')).toHaveLength(1);
+    expect(screen.getByRole('heading', { name: 'Section C: Required Documents' })).toBeInTheDocument();
+  });
+
+  it('says every document is needed before continuing', () => {
+    render(<Host Step={Step3Documents} init={corp(3)} />);
+    expect(screen.getByText(/Attach every document below to continue/)).toBeInTheDocument();
+  });
+
+  it('shows a missing-document error inline under just that document', () => {
+    const init = { ...corp(3), errors: { board_resolution: 'This document is required.' } };
+    render(<Host Step={Step3Documents} init={init} />);
+    const alerts = screen.getAllByRole('alert');
+    expect(alerts).toHaveLength(1);
+    expect(screen.getByTestId('doc-board_resolution')).toContainElement(alerts[0]);
+  });
+
+  it('shows a chosen file and flags a bad file type under its own document', async () => {
+    const user = userEvent.setup({ applyAccept: false });
+    render(<Host Step={Step3Documents} init={corp(3)} />);
+    await user.upload(screen.getByLabelText(`File for ${DOCUMENT_LABELS.cac_forms}`), new File(['x'], 'forms.exe'));
+    expect(within(screen.getByTestId('doc-cac_forms')).getByRole('alert')).toHaveTextContent('File type not allowed: forms.exe');
   });
 
   it('shows the consent error from state', () => {

@@ -1,7 +1,7 @@
 import { DIRECTOR_FIELDS } from '../types';
 import type { CustomerType } from '../types';
 import {
-  validateDeclaration, validateDirectors, validateDocuments, validateEntity, validateFunds,
+  DOCUMENT_IDS, validateDeclaration, validateDirectors, validateDocuments, validateEntity, validateFunds,
 } from '../lib/validation';
 import type { Flow } from './types';
 import { individualFlow } from './individual';
@@ -23,7 +23,7 @@ export const corporateFlow: Flow = {
       prefix: 'directors.',
       extraTouch: (f) => asCorporate(f).directors.flatMap((_, i) => DIRECTOR_FIELDS.map((n) => `directors.${i}.${n}`)),
     }),
-    step('documents', 'Documents', ['consent'], (f) => validateDocuments(asCorporate(f))),
+    step('documents', 'Documents', ['consent', ...DOCUMENT_IDS], (f) => validateDocuments(asCorporate(f))),
     step('funds', 'Source of Funds', FUNDS_FIELDS, (f) => validateFunds(asCorporate(f).funds)),
     step('declaration', 'Declaration', DECLARATION_FIELDS, (f) => { const c = asCorporate(f); return validateDeclaration(c.declaration, c.seal); }),
   ],

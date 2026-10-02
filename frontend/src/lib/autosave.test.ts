@@ -16,7 +16,7 @@ describe('autosave v2', () => {
     s.directors[0].pep = 'yes';
     s.directors[0].files.id = new File(['x'], 'secret.pdf');
     s.directors.push({ ...emptyDirector(), name: 'John' });
-    s.docs.cac_forms.submitted = true;
+    s.docs.cac_forms = { submitted: true, file: new File(['x'], 'forms.pdf') };
     s.consent = true;
     s.declaration.signatureAgree = true;
     s.seal = new File(['x'], 'seal.png');
@@ -28,7 +28,9 @@ describe('autosave v2', () => {
     expect(r.funds.sourceOfFunds).toBe('Sales');
     expect(r.directors.map((d) => d.name)).toEqual(['Jane', 'John']);
     expect(r.directors[0].pep).toBe('yes');
-    expect(r.docs.cac_forms.submitted).toBe(true);
+    // files cannot be saved, so a restored draft never claims a document is provided
+    expect(r.docs.cac_forms.submitted).toBe(false);
+    expect(localStorage.getItem(STORAGE_KEY)).not.toContain('forms.pdf');
     expect(r.consent).toBe(true);
     expect(r.declaration.signatureAgree).toBe(true);
     expect(r.directors[0].files.id).toBeNull();
@@ -155,6 +157,17 @@ describe('autosave: individual drafts', () => {
     expect(serialize(f)).toMatchObject({ customerType: 'individual', documents: {} });
     const legacy = { v: 2, customerType: 'individual', person: {}, declaration: {}, documents: { utility_bill: true }, consent: false } as unknown as IndividualDraft;
     expect(applyIndividualDraft(emptyIndividual(), legacy).docs.utility_bill.submitted).toBe(false);
+    expect(hasAnyContent(legacy)).toBe(false);
+  });
+});
+
+describe('autosave: corporate documents', () => {
+  it('does not save or restore documents, and old drafts that did are ignored for them', () => {
+    const s = emptyState();
+    s.docs.cac_forms = { submitted: true, file: new File(['x'], 'forms.pdf') };
+    expect(serialize(s)).toMatchObject({ customerType: 'corporate', documents: {} });
+    const legacy = { v: 2, customerType: 'corporate', entity: {}, funds: {}, declaration: {}, directors: [{ name: '' }], documents: { cac_forms: true }, consent: false } as unknown as CorporateDraft;
+    expect(applyDraft(emptyState(), legacy).docs.cac_forms.submitted).toBe(false);
     expect(hasAnyContent(legacy)).toBe(false);
   });
 });

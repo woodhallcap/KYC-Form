@@ -5,7 +5,7 @@ import { serialize } from './autosave';
 import { DIRECTOR_FIELDS } from '../types';
 import type { DirectorField } from '../types';
 import { FLOWS, corporateFlow } from '../flows/corporate';
-import { INDIVIDUAL_DOC_IDS, validEntity, validPerson } from '../test-utils';
+import { CORPORATE_DOC_IDS, INDIVIDUAL_DOC_IDS, validEntity, validPerson } from '../test-utils';
 
 const run = (s: AppState, ...actions: Action[]) => actions.reduce(reducer, s);
 const corp = () => run(initialAppState(), { type: 'selectType', customerType: 'corporate' });
@@ -155,14 +155,27 @@ describe('reducer: corporate directors', () => {
 });
 
 describe('reducer: corporate documents and seal', () => {
-  it('a ticked document with a bad file blocks; unticking lets the user through', () => {
-    let s = run(atStep(corp(), 3), { type: 'setDocSubmitted', id: 'certificate_of_incorporation', value: true },
-      { type: 'setDocFile', id: 'certificate_of_incorporation', file: new File(['x'], 'a.exe') },
-      { type: 'setConsent', value: true }, { type: 'next' });
+  it('blocks the documents step until every document is attached, then lets the user through', () => {
+    let s = run(atStep(corp(), 3), { type: 'setConsent', value: true }, { type: 'next' });
     expect(s.step).toBe(3);
-    expect(s.errors.certificate_of_incorporation).toBe('File type not allowed: a.exe');
-    s = run(s, { type: 'setDocSubmitted', id: 'certificate_of_incorporation', value: false }, { type: 'next' });
+    CORPORATE_DOC_IDS.forEach((id) => expect(s.errors[id], id).toBe('This document is required.'));
+    s = run(s, ...CORPORATE_DOC_IDS.slice(0, 5).map((id): Action => ({ type: 'setDocFile', id, file: new File(['x'], id + '.pdf') })), { type: 'next' });
+    expect(s.step).toBe(3);
+    expect(Object.keys(s.errors)).toEqual([CORPORATE_DOC_IDS[5]]);
+    s = run(s, { type: 'setDocFile', id: CORPORATE_DOC_IDS[5], file: new File(['x'], 'last.pdf') }, { type: 'next' });
+    expect(s.errors).toEqual({});
     expect(s.step).toBe(4);
+  });
+
+  it('a bad file type blocks, and attaching a file marks a corporate document as provided', () => {
+    const bad = new File(['x'], 'a.exe');
+    let s = run(atStep(corp(), 3), { type: 'setDocFile', id: 'cac_forms', file: bad });
+    expect(s.corporate.docs.cac_forms).toEqual({ submitted: true, file: bad });
+    s = run(s, ...CORPORATE_DOC_IDS.filter((id) => id !== 'cac_forms').map((id): Action => ({ type: 'setDocFile', id, file: new File(['x'], id + '.pdf') })), { type: 'setConsent', value: true }, { type: 'next' });
+    expect(s.step).toBe(3);
+    expect(s.errors.cac_forms).toBe('File type not allowed: a.exe');
+    s = run(s, { type: 'setDocFile', id: 'cac_forms', file: null });
+    expect(s.corporate.docs.cac_forms).toEqual({ submitted: false, file: null });
   });
 
   it('a bad seal blocks the declaration step', () => {
@@ -236,7 +249,7 @@ describe('reducer: individual flow', () => {
   });
 
   it('consent and documents write to the individual form only', () => {
-    const s = run(indiv(), { type: 'setConsent', value: true }, { type: 'setDocSubmitted', id: 'valid_means_of_id', value: true });
+    const s = run(indiv(), { type: 'setConsent', value: true }, { type: 'setDocFile', id: 'valid_means_of_id', file: new File(['x'], 'id.pdf') });
     expect(s.individual.consent).toBe(true);
     expect(s.individual.docs.valid_means_of_id.submitted).toBe(true);
     expect(s.corporate.consent).toBe(false);
@@ -287,6 +300,7 @@ describe('reducer: drafts, status and corporate server errors', () => {
     expect(run(atStep(corp(), 5), { type: 'serverErrors', errors: { consent: 'x', tin: 'y' } }).step).toBe(1);
     expect(run(atStep(corp(), 5), { type: 'serverErrors', errors: { tin: 'bad' } }).errors.tin).toBe('bad');
     expect(run(atStep(corp(), 5), { type: 'serverErrors', errors: { _total: 'a', 'directorFile.0.id': 'b', sealFile: 'c', customerType: 'd' } }).step).toBe(5);
+    expect(run(atStep(corp(), 5), { type: 'serverErrors', errors: { board_resolution: 'This document is required.' } }).step).toBe(3);
   });
 
   it('submitting and done update status', () => {

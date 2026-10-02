@@ -51,14 +51,6 @@ function pickOption<T extends string>(value: unknown, options: { value: T }[]): 
   return typeof value === 'string' && options.some((o) => o.value === value) ? (value as T) : '';
 }
 
-function documentsOf(docs: Record<string, { submitted: boolean }>): Record<string, boolean> {
-  const documents: Record<string, boolean> = {};
-  Object.keys(docs).forEach((id) => {
-    documents[id] = docs[id].submitted;
-  });
-  return documents;
-}
-
 function serializeCorporate(form: CorporateForm): CorporateDraft {
   return {
     v: 2,
@@ -70,7 +62,7 @@ function serializeCorporate(form: CorporateForm): CorporateDraft {
       const { files: _files, ...values } = d;
       return values;
     }),
-    documents: documentsOf(form.docs),
+    documents: {}, // files cannot be saved, so a document is never restored as already provided
     consent: form.consent,
   };
 }
@@ -128,26 +120,15 @@ export function hasAnyContent(d: Draft | null): boolean {
   if (d.customerType === 'individual') {
     return d.consent === true || anyText(d.person) || anyText(d.declaration);
   }
-  const common = (isObj(d.documents) && Object.values(d.documents).some((v) => v === true)) || d.consent === true;
   const directorHasContent = (row: unknown) =>
     isObj(row) && DIRECTOR_FIELDS.some((f) => typeof row[f] === 'string' && (row[f] as string).trim() !== '');
   return (
-    common ||
+    d.consent === true ||
     anyText(d.entity) ||
     anyText(d.funds) ||
     anyText(d.declaration) ||
     (Array.isArray(d.directors) && d.directors.some(directorHasContent))
   );
-}
-
-function applyDocuments<T extends { docs: Record<string, { submitted: boolean; file: File | null }> }>(form: T, documents: unknown): T['docs'] {
-  const docs = { ...form.docs };
-  if (isObj(documents)) {
-    Object.keys(documents).forEach((id) => {
-      if (docs[id] && documents[id] === true) docs[id] = { ...docs[id], submitted: true };
-    });
-  }
-  return docs;
 }
 
 export function applyDraft(form: CorporateForm, d: CorporateDraft): CorporateForm {
@@ -167,7 +148,6 @@ export function applyDraft(form: CorporateForm, d: CorporateDraft): CorporateFor
     entity: pickStrings(form.entity, d.entity),
     funds: pickStrings(form.funds, d.funds),
     declaration,
-    docs: applyDocuments(form, d.documents),
     directors: directors.length > 0 ? directors : form.directors,
     consent: d.consent === true,
   };

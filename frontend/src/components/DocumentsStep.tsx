@@ -1,6 +1,5 @@
 import { activeForm } from '../lib/reducer';
 import { Button } from './Button';
-import { DocumentRow } from './DocumentRow';
 import { Field } from './Field';
 import { RequiredDocumentRow } from './RequiredDocumentRow';
 import { SectionHeading } from './SectionHeading';
@@ -13,12 +12,10 @@ interface DocumentsStepProps extends StepProps {
   labels: Record<string, string>;
   consentText: string;
   nextLabel: string;
-  /** Every document must have a file attached (no tick-boxes). */
-  required?: boolean;
 }
 
-/** The tick-and-attach document checklist plus consent, shared by both flows. */
-export function DocumentsStep({ state, dispatch, onNext, onBack, heading, intro, ids, labels, consentText, nextLabel, required = false }: DocumentsStepProps) {
+/** The required-document list (a file for every document) plus consent, shared by both flows. */
+export function DocumentsStep({ state, dispatch, onNext, onBack, heading, intro, ids, labels, consentText, nextLabel }: DocumentsStepProps) {
   const form = activeForm(state);
   if (!form) return null;
   return (
@@ -27,28 +24,16 @@ export function DocumentsStep({ state, dispatch, onNext, onBack, heading, intro,
       <p>{intro}</p>
 
       <div>
-        {ids.map((id) =>
-          required ? (
-            <RequiredDocumentRow
-              key={id}
-              id={id}
-              label={labels[id]}
-              doc={form.docs[id]}
-              error={state.errors[id]}
-              onFile={(file) => dispatch({ type: 'setDocFile', id, file })}
-            />
-          ) : (
-            <DocumentRow
-              key={id}
-              id={id}
-              label={labels[id]}
-              doc={form.docs[id]}
-              error={state.errors[id]}
-              onToggle={(value) => dispatch({ type: 'setDocSubmitted', id, value })}
-              onFile={(file) => dispatch({ type: 'setDocFile', id, file })}
-            />
-          ),
-        )}
+        {ids.map((id) => (
+          <RequiredDocumentRow
+            key={id}
+            id={id}
+            label={labels[id]}
+            doc={form.docs[id]}
+            error={state.errors[id]}
+            onFile={(file) => dispatch({ type: 'setDocFile', id, file })}
+          />
+        ))}
       </div>
 
       <div className="mt-5">

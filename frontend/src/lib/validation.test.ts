@@ -4,7 +4,7 @@ import {
   validateIndividualDeclaration, validateIndividualDocuments, validateIndividualPerson,
 } from './validation';
 import { INDIVIDUAL_DOCUMENT_IDS } from './validation';
-import { bigFile, dir, makeForm, makeIndividual, validEntity, validPerson, withDocuments } from '../test-utils';
+import { CORPORATE_DOC_IDS, bigFile, dir, makeForm, makeIndividual, validEntity, validPerson, withCorporateDocuments, withDocuments } from '../test-utils';
 
 describe('validateFileMeta', () => {
   it('rejects disallowed extensions', () => {
@@ -54,30 +54,49 @@ describe('validateDirectors', () => {
   });
 });
 
-describe('validateDocuments', () => {
-  it('requires consent', () => {
-    expect(validateDocuments(makeForm()).consent).toBe('Consent to processing is required.');
+describe('validateDocuments (corporate)', () => {
+  it('asks for every document, and for consent, when nothing has been attached', () => {
+    const e = validateDocuments(makeForm());
+    CORPORATE_DOC_IDS.forEach((id) => expect(e[id], id).toBe('This document is required.'));
+    expect(e.consent).toBe('Consent to processing is required.');
   });
 
-  it('ignores an unticked document even with a bad file', () => {
-    const f = makeForm({ consent: true });
-    f.docs.cac_forms = { submitted: false, file: bigFile('x.exe', 9) };
+  it('passes once all six documents are attached and consent is given', () => {
+    expect(validateDocuments(withCorporateDocuments(makeForm({ consent: true })))).toEqual({});
+  });
+
+  it('names only the documents that are still missing', () => {
+    const f = withCorporateDocuments(makeForm({ consent: true }), ['certificate_of_incorporation', 'cac_forms', 'board_resolution']);
+    expect(Object.keys(validateDocuments(f)).sort()).toEqual(['company_bank_statement', 'corporate_id_signatories', 'memorandum_articles']);
+  });
+
+  it('counts a document as provided when its file is attached, whatever the ticked flag says', () => {
+    const f = withCorporateDocuments(makeForm({ consent: true }));
+    f.docs.cac_forms = { submitted: false, file: new File(['x'], 'forms.pdf') };
     expect(validateDocuments(f)).toEqual({});
+    f.docs.cac_forms = { submitted: true, file: null };
+    expect(validateDocuments(f).cac_forms).toBe('This document is required.');
   });
 
-  it('blocks a ticked document with a bad file, keyed by document id', () => {
-    const f = makeForm({ consent: true });
+  it('reports a bad file type or size on the document itself, not as missing', () => {
+    const f = withCorporateDocuments(makeForm({ consent: true }));
     f.docs.cac_forms = { submitted: true, file: new File(['x'], 'a.exe') };
-    expect(validateDocuments(f).cac_forms).toBe('File type not allowed: a.exe');
+    f.docs.board_resolution = { submitted: true, file: bigFile('b.pdf', 5.01) };
+    const e = validateDocuments(f);
+    expect(e.cac_forms).toBe('File type not allowed: a.exe');
+    expect(e.board_resolution).toBe('File exceeds 5MB limit: b.pdf');
   });
 
   it('totals ALL uploads (documents, directors, seal) against 20MB', () => {
     const g = makeForm({ consent: true });
-    g.docs.certificate_of_incorporation = { submitted: true, file: bigFile('a.pdf', 4.5) };
-    g.directors[0].files.id = bigFile('b.pdf', 4.5);
-    g.directors[0].files.nin = bigFile('c.pdf', 4.5);
-    g.directors[0].files.bvn = bigFile('d.pdf', 4.5);
-    g.seal = bigFile('e.png', 4.5);
+    CORPORATE_DOC_IDS.forEach((id) => {
+      g.docs[id] = { submitted: true, file: bigFile(id + '.pdf', 2) };
+    });
+    g.directors[0].files.id = bigFile('b.pdf', 2.5);
+    g.directors[0].files.nin = bigFile('c.pdf', 2.5);
+    g.directors[0].files.bvn = bigFile('d.pdf', 2.5);
+    expect(validateDocuments(g)._total).toBeUndefined();
+    g.seal = bigFile('e.png', 2.5);
     expect(validateDocuments(g)._total).toBe('Total attachments exceed the 20MB limit.');
   });
 });

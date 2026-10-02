@@ -22,8 +22,9 @@ describe('dev "Fill test data" button', () => {
     });
   });
 
-  it('attaches a file to every individual document, because the form now requires them', () => {
-    const files = prefillActions('individual').filter((a) => a.type === 'setDocFile' && a.file instanceof File);
-    expect(files).toHaveLength(5);
+  it('attaches a file to every document, because both forms now require them', () => {
+    const files = (type: 'individual' | 'corporate') => prefillActions(type).filter((a) => a.type === 'setDocFile' && a.file instanceof File);
+    expect(files('individual')).toHaveLength(5);
+    expect(files('corporate')).toHaveLength(6);
   });
 });

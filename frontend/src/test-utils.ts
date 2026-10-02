@@ -6,7 +6,7 @@ export const validEntity: CorporateEntity = {
   bankAccountNumber: '01', bankName: 'First Bank',
 };
 
-const DOC_IDS = ['certificate_of_incorporation', 'cac_forms', 'memorandum_articles', 'board_resolution', 'company_bank_statement', 'corporate_id_signatories'];
+export const CORPORATE_DOC_IDS = ['certificate_of_incorporation', 'cac_forms', 'memorandum_articles', 'board_resolution', 'company_bank_statement', 'corporate_id_signatories'];
 
 /** A valid director row (pep answered, no files). */
 export function dir(o: Partial<Director> = {}): Director {
@@ -19,7 +19,7 @@ export function dir(o: Partial<Director> = {}): Director {
 /** A complete but EMPTY form (one blank-valued director row that is otherwise valid). */
 export function makeForm(o: Partial<CorporateForm> = {}): CorporateForm {
   const docs: CorporateForm['docs'] = {};
-  DOC_IDS.forEach((id) => { docs[id] = { submitted: false, file: null }; });
+  CORPORATE_DOC_IDS.forEach((id) => { docs[id] = { submitted: false, file: null }; });
   return {
     customerType: 'corporate',
     entity: { companyName: '', rcNumber: '', dateOfIncorporation: '', registeredAddress: '', businessAddress: '', natureOfBusiness: '', tin: '', companyEmail: '', bankAccountNumber: '', bankName: '' },
@@ -66,6 +66,15 @@ export function makeIndividual(o: Partial<IndividualForm> = {}): IndividualForm 
 
 /** Attach a small file to every (or just the listed) individual document, as the visitor would. */
 export function withDocuments(form: IndividualForm, ids: readonly string[] = INDIVIDUAL_DOC_IDS): IndividualForm {
+  const docs = { ...form.docs };
+  ids.forEach((id) => {
+    docs[id] = { submitted: true, file: new File(['x'], `${id}.pdf`) };
+  });
+  return { ...form, docs };
+}
+
+/** Attach a small file to every (or just the listed) corporate document. */
+export function withCorporateDocuments(form: CorporateForm, ids: readonly string[] = CORPORATE_DOC_IDS): CorporateForm {
   const docs = { ...form.docs };
   ids.forEach((id) => {
     docs[id] = { submitted: true, file: new File(['x'], `${id}.pdf`) };

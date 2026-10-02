@@ -52,8 +52,24 @@ async function toDocuments(user: User) {
   await fillDirector(user);
   await next(user, 'Next: Documents');
 }
+const CORPORATE_DOC_LABELS = [
+  'CAC Certificate of Incorporation',
+  'CAC Forms CAC2.3 / CAC1.1 - Directors & Shareholders',
+  'Memorandum & Articles of Association',
+  'Board Resolution to open account and obtain facility',
+  'Company Bank Statement - Last 12 months',
+  'Corporate ID of Authorized Signatories',
+];
+
+async function attachCorporateDocuments(user: User, labels: string[] = CORPORATE_DOC_LABELS) {
+  for (const label of labels) {
+    await user.upload(screen.getByLabelText(`File for ${label}`), new File(['x'], 'doc.pdf'));
+  }
+}
+
 async function toFunds(user: User) {
   await toDocuments(user);
+  await attachCorporateDocuments(user);
   await user.click(screen.getByLabelText(/^We consent/));
   await next(user, 'Next: Source of Funds');
 }
@@ -213,18 +229,36 @@ describe('corporate navigation and validation', () => {
     expect(screen.getByRole('heading', { name: 'Section C: Required Documents' })).toBeInTheDocument();
   });
 
-  it('alerts on a bad file for a ticked document, and lets the user through once it is unticked', async () => {
+  it('does not let the customer past Section C until every document is attached', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await toDocuments(user);
+    await user.click(screen.getByLabelText(/^We consent/));
+    await next(user, 'Next: Source of Funds');
+    expect(screen.getAllByText('This document is required.')).toHaveLength(6);
+    expect(screen.getByRole('heading', { name: 'Section C: Required Documents' })).toBeInTheDocument();
+    await attachCorporateDocuments(user, CORPORATE_DOC_LABELS.slice(0, 5));
+    await next(user, 'Next: Source of Funds');
+    expect(screen.getAllByText('This document is required.')).toHaveLength(1);
+    expect(screen.getByRole('heading', { name: 'Section C: Required Documents' })).toBeInTheDocument();
+    await attachCorporateDocuments(user, CORPORATE_DOC_LABELS.slice(5));
+    expect(screen.queryByText('This document is required.')).toBeNull();
+    await next(user, 'Next: Source of Funds');
+    expect(screen.getByRole('heading', { name: 'Section D: Source of Funds' })).toBeInTheDocument();
+  });
+
+  it('flags a bad file inline under its document, blocks, and lets the user through once it is replaced', async () => {
     const user = userEvent.setup({ applyAccept: false });
     render(<App />);
     await toDocuments(user);
     const label = 'CAC Forms CAC2.3 / CAC1.1 - Directors & Shareholders';
-    await user.click(screen.getByLabelText(label));
+    await attachCorporateDocuments(user, CORPORATE_DOC_LABELS.filter((l) => l !== label));
     await user.upload(screen.getByLabelText(`File for ${label}`), new File(['x'], 'a.exe'));
     await user.click(screen.getByLabelText(/^We consent/));
     await next(user, 'Next: Source of Funds');
-    expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('File type not allowed: a.exe'));
+    expect(screen.getByText('File type not allowed: a.exe')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Section C: Required Documents' })).toBeInTheDocument();
-    await user.click(screen.getByLabelText(label));
+    await user.upload(screen.getByLabelText(`File for ${label}`), new File(['x'], 'forms.pdf'));
     await next(user, 'Next: Source of Funds');
     expect(screen.getByRole('heading', { name: 'Section D: Source of Funds' })).toBeInTheDocument();
   });

@@ -11,6 +11,7 @@ describe('buildFormData', () => {
     s.directors[0].files.nin = new File(['x'], 'n.pdf');
     s.docs.cac_forms = { submitted: true, file: new File(['x'], 'c.pdf') };
     s.docs.board_resolution = { submitted: false, file: new File(['x'], 'b.pdf') };
+    s.docs.memorandum_articles = { submitted: true, file: null };
     s.consent = true;
     s.declaration.signatureAgree = true;
     s.declaration.signatory1Name = 'Jane';
@@ -25,8 +26,11 @@ describe('buildFormData', () => {
     expect(fd.has('directors[0][files][id]')).toBe(false);
     expect(fd.get('documents[cac_forms][submitted]')).toBe('on');
     expect((fd.get('documents[cac_forms][file]') as File).name).toBe('c.pdf');
-    expect(fd.has('documents[board_resolution][submitted]')).toBe(false);
-    expect(fd.has('documents[board_resolution][file]')).toBe(false);
+    // attaching a file is what provides a document, whatever the flag says; no file, nothing sent
+    expect(fd.get('documents[board_resolution][submitted]')).toBe('on');
+    expect((fd.get('documents[board_resolution][file]') as File).name).toBe('b.pdf');
+    expect(fd.has('documents[memorandum_articles][submitted]')).toBe(false);
+    expect(fd.has('documents[memorandum_articles][file]')).toBe(false);
     expect(fd.get('consent')).toBe('on');
     expect(fd.get('signatureAgree')).toBe('on');
     expect(fd.get('signatory1Name')).toBe('Jane');

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { corporateFlow } from './corporate';
-import { dir, makeForm } from '../test-utils';
+import { CORPORATE_DOC_IDS, dir, makeForm } from '../test-utils';
 
 describe('corporateFlow', () => {
   it('has five steps in order', () => {
@@ -10,7 +10,8 @@ describe('corporateFlow', () => {
   it('ownership maps keys to the right step, and leaves upload keys unmatched', () => {
     const own = (k: string) => corporateFlow.steps.findIndex((s) => s.owns(k)) + 1;
     expect([own('companyName'), own('directors'), own('directors.3.name'), own('consent'), own('sourceOfFunds'), own('signatureAgree')]).toEqual([1, 2, 2, 3, 4, 5]);
-    ['directorFile.0.id', 'sealFile', '_total', 'certificate_of_incorporation', 'customerType'].forEach((k) => expect(own(k)).toBe(0));
+    ['directorFile.0.id', 'sealFile', '_total', 'customerType'].forEach((k) => expect(own(k)).toBe(0));
+    ['certificate_of_incorporation', 'cac_forms', 'corporate_id_signatories'].forEach((k) => expect(own(k), k).toBe(3));
   });
 
   it('directors touchKeys cover every row and field', () => {
@@ -28,5 +29,16 @@ describe('corporateFlow', () => {
     expect(corporateFlow.steps[2].validate(f).consent).toBeTruthy();
     expect(corporateFlow.steps[3].validate(f).sourceOfFunds).toBeTruthy();
     expect(corporateFlow.steps[4].validate(f).signatory1Name).toBeTruthy();
+  });
+});
+
+describe('corporate documents step', () => {
+  it('touches the consent box and every document, so a missing one shows its error after Next', () => {
+    expect(corporateFlow.steps[2].touchKeys(makeForm()).sort()).toEqual(['consent', ...CORPORATE_DOC_IDS].sort());
+  });
+
+  it('validates every document as required', () => {
+    const e = corporateFlow.steps[2].validate(makeForm());
+    CORPORATE_DOC_IDS.forEach((id) => expect(e[id], id).toBe('This document is required.'));
   });
 });

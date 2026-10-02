@@ -73,8 +73,8 @@ anything else is rejected with `errors.customerType`.
 - Directors: `directors[i][name|designation|bvn|nin|shareholdingPercent|nationality|pep|residentialAddress]`
   (`pep` = `yes`/`no`, `shareholdingPercent` 0–100) and optional files
   `directors[i][files][id|bvn|nin|proof_of_address]`.
-- Documents: ids `certificate_of_incorporation, cac_forms, memorandum_articles, board_resolution,
-  company_bank_statement, corporate_id_signatories`. Optional `sealFile`.
+- Documents (all six are required, each with a file): ids `certificate_of_incorporation, cac_forms,
+  memorandum_articles, board_resolution, company_bank_statement, corporate_id_signatories`. Optional `sealFile`.
 
 **Individual**
 
@@ -90,8 +90,8 @@ anything else is rejected with `errors.customerType`.
   and `expectedTransactionTypes[]` (`cash|transfer|cheque`, at least one).
 - Documents (all five are required, each with a file): ids `valid_means_of_id, utility_bill, bank_statement, passport_photograph, signature_mandate_card`. Items 1 to 8 on the form are all required, except the ID expiry date.
 
-**Both:** `documents[<id>][submitted]=on` plus `documents[<id>][file]`; only ticked documents are
-validated and attached. Uploads: pdf/jpg/jpeg/png/docx, 5MB each, 20MB total across all uploads.
+**Both:** every document is sent as `documents[<id>][submitted]=on` plus `documents[<id>][file]`, and a
+document without its file is rejected as missing (`This document is required.`, keyed by the document id). Uploads: pdf/jpg/jpeg/png/docx, 5MB each, 20MB total across all uploads.
 Response: `{success, errors, message}`. Field errors are keyed by field name (`directors.<i>.<field>`
 for director rows); upload problems are keyed by document id, `directorFile.<i>.<id>`, `sealFile`
 or `_total` and shown to the user as an alert. The confirmation copy is emailed to `companyEmail`
