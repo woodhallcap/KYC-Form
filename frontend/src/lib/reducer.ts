@@ -28,7 +28,6 @@ export type Action =
   | { type: 'setField'; group: FieldGroup; name: string; value: string | boolean }
   | { type: 'toggleChoice'; name: ChoiceName; value: string }
   | { type: 'setConsent'; value: boolean }
-  | { type: 'setDocSubmitted'; id: string; value: boolean }
   | { type: 'setDocFile'; id: string; file: File | null }
   | { type: 'addDirector' }
   | { type: 'removeDirector'; index: number }
@@ -131,10 +130,11 @@ export function reducer(s: AppState, a: Action): AppState {
     }
     case 'setConsent':
       return form ? withForm(s, { ...form, consent: a.value }) : s;
-    case 'setDocSubmitted':
-      return form ? withForm(s, { ...form, docs: { ...form.docs, [a.id]: { ...form.docs[a.id], submitted: a.value } } }) : s;
-    case 'setDocFile':
-      return form ? withForm(s, { ...form, docs: { ...form.docs, [a.id]: { ...form.docs[a.id], file: a.file } } }) : s;
+    case 'setDocFile': {
+      if (!form) return s;
+      // Documents have no tick-box: attaching the file is what provides the document.
+      return withForm(s, { ...form, docs: { ...form.docs, [a.id]: { submitted: a.file !== null, file: a.file } } });
+    }
     case 'addDirector':
       if (s.customerType !== 'corporate' || s.corporate.directors.length >= MAX_DIRECTORS) return s;
       return withForm(s, { ...s.corporate, directors: [...s.corporate.directors, emptyDirector()] });

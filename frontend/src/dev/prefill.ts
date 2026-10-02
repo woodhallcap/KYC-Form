@@ -1,6 +1,7 @@
 import { DIRECTOR_FIELDS } from '../types';
 import type { CustomerType, DirectorField } from '../types';
 import type { Action, FieldGroup } from '../lib/reducer';
+import { DOCUMENT_IDS, INDIVIDUAL_DOCUMENT_IDS } from '../lib/validation';
 
 const entity: Record<string, string> = {
   companyName: 'Acme Trading Ltd',
@@ -37,12 +38,19 @@ const declaration: Record<string, string> = {
 const fields = (group: FieldGroup, values: Record<string, string>): Action[] =>
   Object.entries(values).map(([name, value]): Action => ({ type: 'setField', group, name, value }));
 
+/** Every document is required, so the dev shortcut attaches a tiny placeholder file to each. */
+const devDocuments = (ids: readonly string[]): Action[] =>
+  ids.map((id): Action => ({
+    type: 'setDocFile',
+    id,
+    file: new File(['dev test file'], `${id}.pdf`, { type: 'application/pdf' }),
+  }));
+
 function corporateActions(): Action[] {
   return [
     ...fields('entity', entity),
     ...DIRECTOR_FIELDS.map((name): Action => ({ type: 'setDirectorField', index: 0, name, value: director[name] })),
-    { type: 'setDocSubmitted', id: 'certificate_of_incorporation', value: true },
-    { type: 'setDocSubmitted', id: 'cac_forms', value: true },
+    ...devDocuments(DOCUMENT_IDS),
     { type: 'setConsent', value: true },
     ...fields('funds', funds),
     ...fields('declaration', declaration),
@@ -87,8 +95,7 @@ function individualActions(): Action[] {
     { type: 'toggleChoice', name: 'meansOfId', value: 'nin' },
     { type: 'toggleChoice', name: 'meansOfId', value: 'passport' },
     { type: 'toggleChoice', name: 'expectedTransactionTypes', value: 'transfer' },
-    { type: 'setDocSubmitted', id: 'valid_means_of_id', value: true },
-    { type: 'setDocSubmitted', id: 'proof_of_address', value: true },
+    ...devDocuments(INDIVIDUAL_DOCUMENT_IDS),
     { type: 'setConsent', value: true },
     ...fields('declaration', individualDeclaration),
     { type: 'setField', group: 'declaration', name: 'signatureAgree', value: true },

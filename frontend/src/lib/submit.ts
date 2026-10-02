@@ -29,12 +29,13 @@ function buildCorporateFormData(state: CorporateForm): FormData {
   return fd;
 }
 
+/** A document is sent when its file is attached: that is what provides it. */
 function appendDocuments(fd: FormData, form: CorporateForm | IndividualForm, ids: readonly string[]): void {
   ids.forEach((id) => {
-    const doc = form.docs[id];
-    if (!doc.submitted) return;
+    const file = form.docs[id]?.file;
+    if (!file) return;
     fd.append(`documents[${id}][submitted]`, 'on');
-    if (doc.file) fd.append(`documents[${id}][file]`, doc.file);
+    fd.append(`documents[${id}][file]`, file);
   });
 }
 

@@ -1,5 +1,5 @@
 import type {
-  CorporateDeclaration, CorporateEntity, CorporateForm, CorporateFunds, Director, DirectorFileId, Errors,
+  CorporateDeclaration, CorporateEntity, CorporateForm, CorporateFunds, Director, DirectorFileId, DocState, Errors,
   IncomeSource, IndividualDeclaration, IndividualForm, IndividualPerson, MeansOfId, Purpose, TransactionType,
 } from '../types';
 
@@ -57,12 +57,12 @@ function directorFileErrors(rows: Director[]): Errors {
   return errors;
 }
 
-/** Every file that will be sent: ticked documents, directors' files, the seal. */
+/** Every file that will be sent: the documents, directors' files and the seal. */
 export function collectUploads(form: CorporateForm): { key: string; file: File }[] {
   const uploads: { key: string; file: File }[] = [];
   DOCUMENT_IDS.forEach((id) => {
-    const doc = form.docs[id];
-    if (doc && doc.submitted && doc.file) uploads.push({ key: id, file: doc.file });
+    const file = form.docs[id]?.file;
+    if (file) uploads.push({ key: id, file });
   });
   form.directors.forEach((row, i) => {
     DIRECTOR_FILE_IDS.forEach((fid) => {
@@ -72,6 +72,15 @@ export function collectUploads(form: CorporateForm): { key: string; file: File }
   });
   if (form.seal) uploads.push({ key: 'sealFile', file: form.seal });
   return uploads;
+}
+
+/** A document is provided when a file is attached; anything else is missing. */
+function missingDocuments(docs: Record<string, DocState>, ids: readonly string[]): Errors {
+  const missing: Errors = {};
+  ids.forEach((id) => {
+    if (!docs[id]?.file) missing[id] = 'This document is required.';
+  });
+  return missing;
 }
 
 export function validateEntity(d: Partial<CorporateEntity>): Errors {
@@ -135,7 +144,7 @@ function uploadErrors(uploads: { key: string; file: File }[]): Errors {
 const consentError = (consent: boolean): Errors => (consent ? {} : { consent: 'Consent to processing is required.' });
 
 export function validateDocuments(form: CorporateForm): Errors {
-  return { ...uploadErrors(collectUploads(form)), ...consentError(form.consent) };
+  return { ...missingDocuments(form.docs, DOCUMENT_IDS), ...uploadErrors(collectUploads(form)), ...consentError(form.consent) };
 }
 
 export function validateFunds(d: Partial<CorporateFunds>): Errors {
@@ -159,7 +168,7 @@ export function validateDeclaration(d: Partial<CorporateDeclaration>, seal: File
   return errors;
 }
 
-export const INDIVIDUAL_DOCUMENT_IDS: readonly string[] = ['valid_means_of_id', 'proof_of_address', 'passport_photograph', 'signature_mandate_card'];
+export const INDIVIDUAL_DOCUMENT_IDS: readonly string[] = ['valid_means_of_id', 'utility_bill', 'bank_statement', 'passport_photograph', 'signature_mandate_card'];
 
 export const MEANS_OF_ID_OPTIONS: { value: MeansOfId; label: string }[] = [
   { value: 'nin', label: 'NIN' },
@@ -206,6 +215,8 @@ export function validateIndividualPerson(p: Partial<IndividualPerson>): Errors {
     ['bvn', 'BVN is required.'],
     ['nin', 'NIN is required.'],
     ['occupation', 'Occupation is required.'],
+    ['employerName', 'Employer or business name is required.'],
+    ['officeAddress', 'Office address is required.'],
     ['sourceOfWealth', 'Source of wealth is required.'],
     ['expectedMonthlyTurnover', 'Expected monthly turnover is required.'],
   ];
@@ -230,12 +241,14 @@ export function validateIndividualPerson(p: Partial<IndividualPerson>): Errors {
   return errors;
 }
 
+/** Every document must have a file attached; attaching the file is what provides it. */
 export function validateIndividualDocuments(form: IndividualForm): Errors {
-  const uploads = INDIVIDUAL_DOCUMENT_IDS.flatMap((id) => {
-    const doc = form.docs[id];
-    return doc && doc.submitted && doc.file ? [{ key: id, file: doc.file }] : [];
+  const provided: { key: string; file: File }[] = [];
+  INDIVIDUAL_DOCUMENT_IDS.forEach((id) => {
+    const file = form.docs[id]?.file;
+    if (file) provided.push({ key: id, file });
   });
-  return { ...uploadErrors(uploads), ...consentError(form.consent) };
+  return { ...missingDocuments(form.docs, INDIVIDUAL_DOCUMENT_IDS), ...uploadErrors(provided), ...consentError(form.consent) };
 }
 
 export function validateIndividualDeclaration(d: Partial<IndividualDeclaration>): Errors {

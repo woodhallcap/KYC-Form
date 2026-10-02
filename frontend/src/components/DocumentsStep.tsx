@@ -1,7 +1,7 @@
 import { activeForm } from '../lib/reducer';
 import { Button } from './Button';
-import { DocumentRow } from './DocumentRow';
 import { Field } from './Field';
+import { RequiredDocumentRow } from './RequiredDocumentRow';
 import { SectionHeading } from './SectionHeading';
 import type { StepProps } from './stepProps';
 
@@ -14,7 +14,7 @@ interface DocumentsStepProps extends StepProps {
   nextLabel: string;
 }
 
-/** The tick-and-attach document checklist plus consent, shared by both flows. */
+/** The required-document list (a file for every document) plus consent, shared by both flows. */
 export function DocumentsStep({ state, dispatch, onNext, onBack, heading, intro, ids, labels, consentText, nextLabel }: DocumentsStepProps) {
   const form = activeForm(state);
   if (!form) return null;
@@ -25,13 +25,12 @@ export function DocumentsStep({ state, dispatch, onNext, onBack, heading, intro,
 
       <div>
         {ids.map((id) => (
-          <DocumentRow
+          <RequiredDocumentRow
             key={id}
             id={id}
             label={labels[id]}
             doc={form.docs[id]}
             error={state.errors[id]}
-            onToggle={(value) => dispatch({ type: 'setDocSubmitted', id, value })}
             onFile={(file) => dispatch({ type: 'setDocFile', id, file })}
           />
         ))}

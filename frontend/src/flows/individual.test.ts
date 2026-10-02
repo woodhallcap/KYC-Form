@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { individualFlow } from './individual';
 import { asCorporate, asIndividual } from './narrow';
 import { FLOWS } from './corporate';
-import { makeForm, makeIndividual } from '../test-utils';
+import { INDIVIDUAL_DOC_IDS, makeForm, makeIndividual } from '../test-utils';
 
 const PERSON_KEYS = [
   'fullName', 'dateOfBirth', 'placeOfBirth', 'gender', 'nationality', 'countryOfResidence', 'residentialAddress', 'lga', 'state', 'phone', 'email',
@@ -20,7 +20,8 @@ describe('individualFlow', () => {
     const own = (k: string) => individualFlow.steps.findIndex((s) => s.owns(k)) + 1;
     PERSON_KEYS.forEach((k) => expect(own(k), k).toBe(1));
     expect([own('consent'), own('signatureAgree'), own('declarationName'), own('signatureDate')]).toEqual([2, 3, 3, 3]);
-    ['_total', 'valid_means_of_id', 'customerType'].forEach((k) => expect(own(k)).toBe(0));
+    ['_total', 'customerType'].forEach((k) => expect(own(k)).toBe(0));
+    INDIVIDUAL_DOC_IDS.forEach((id) => expect(own(id), id).toBe(2));
   });
 
   it('each step validates its own slice', () => {
@@ -41,5 +42,16 @@ describe('narrowing helpers', () => {
     expect(asCorporate(makeForm()).customerType).toBe('corporate');
     expect(() => asCorporate(makeIndividual())).toThrow();
     expect(() => asIndividual(makeForm())).toThrow();
+  });
+});
+
+describe('individual documents step', () => {
+  it('touches the consent box and every document, so a missing one shows its error after Next', () => {
+    expect(individualFlow.steps[1].touchKeys(makeIndividual()).sort()).toEqual(['consent', ...INDIVIDUAL_DOC_IDS].sort());
+  });
+
+  it('validates every document as required', () => {
+    const e = individualFlow.steps[1].validate(makeIndividual());
+    INDIVIDUAL_DOC_IDS.forEach((id) => expect(e[id], id).toBe('This document is required.'));
   });
 });
