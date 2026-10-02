@@ -16,7 +16,8 @@ const CORPORATE_DOCUMENT_LABELS = [
 
 const INDIVIDUAL_DOCUMENT_LABELS = [
     'valid_means_of_id' => 'Valid Means of ID',
-    'proof_of_address' => 'Proof of Address (less than 3 months): Utility Bill / Bank Statement',
+    'utility_bill' => 'Utility Bill (less than 3 months)',
+    'bank_statement' => 'Bank Statement (less than 3 months)',
     'passport_photograph' => 'Passport Photograph',
     'signature_mandate_card' => 'Signature Mandate Card',
 ];
@@ -226,6 +227,7 @@ function handle_individual_submission(array $post, array $files, callable $sendE
     $uploads = collect_uploads($documents, $files);
     $errors = array_merge(
         validate_individual_person($post)['errors'],
+        validate_required_documents($documents)['errors'],
         validate_documents_consent($consent)['errors'],
         validate_individual_declaration($post)['errors'],
         collect_upload_errors($uploads)

@@ -209,96 +209,170 @@ test_case('surfaces email failures without exposing internals', function () {
     assert_true(strpos($r['message'], 'SMTP') === false);
 });
 
+const INDIVIDUAL_DOCS = ['valid_means_of_id', 'utility_bill', 'bank_statement', 'passport_photograph', 'signature_mandate_card'];
+
 function sample_individual_post(array $o = []): array
 {
+    $documents = [];
+    foreach (INDIVIDUAL_DOCS as $id) {
+        $documents[$id] = ['submitted' => 'on'];
+    }
     return array_replace([
         'customerType' => 'individual',
         'fullName' => 'Jane Doe', 'dateOfBirth' => '1990-01-01', 'placeOfBirth' => 'Lagos', 'gender' => 'F', 'nationality' => 'Nigerian',
         'countryOfResidence' => 'Nigeria', 'residentialAddress' => '1 Rd', 'lga' => 'Ikeja', 'state' => 'Lagos', 'phone' => '08000000000',
         'email' => 'jane@example.com', 'meansOfId' => ['nin', 'passport'], 'idNumber' => 'A123', 'bvn' => '222', 'nin' => '333',
-        'occupation' => 'Engineer', 'sourceOfIncome' => 'salary', 'sourceOfWealth' => 'Savings', 'purposeOfRelationship' => 'loan',
+        'occupation' => 'Engineer', 'employerName' => 'Acme Engineering', 'officeAddress' => '4 Adeola Odeku Street, Victoria Island',
+        'sourceOfIncome' => 'salary', 'sourceOfWealth' => 'Savings', 'purposeOfRelationship' => 'loan',
         'expectedMonthlyTurnover' => '500,000', 'expectedTransactionTypes' => ['transfer'],
-        'documents' => ['valid_means_of_id' => ['submitted' => 'on']], 'consent' => 'on',
+        'documents' => $documents, 'consent' => 'on',
         'declarationName' => 'Jane Doe', 'signatureName' => 'Jane Doe', 'signatureDate' => '2026-09-15', 'signatureAgree' => 'on',
     ], $o);
 }
 
-test_case('individual: empty submission returns field errors', function () {
+/** Uploads for the given document ids (default: all five). Returns [$files, $tmpPaths]. */
+function individual_files(array $ids = INDIVIDUAL_DOCS): array
+{
+    $entries = [];
+    $tmps = [];
+    foreach ($ids as $id) {
+        $tmp = tmp_file();
+        $tmps[] = $tmp;
+        $entries[] = files_entry('documents', [$id, 'file'], upload($id . '.pdf', $tmp));
+    }
+    return [merge_files(...$entries), $tmps];
+}
+
+function cleanup(array $tmps): void
+{
+    foreach ($tmps as $p) {
+        @unlink($p);
+    }
+}
+
+test_case('individual: empty submission returns field errors, including every required document', function () {
     $r = handle_submission(['customerType' => 'individual'], []);
-    foreach (['fullName', 'email', 'meansOfId', 'consent', 'declarationName'] as $k) {
+    foreach (['fullName', 'email', 'meansOfId', 'employerName', 'officeAddress', 'consent', 'declarationName'] as $k) {
         assert_true(isset($r['errors'][$k]), $k);
+    }
+    foreach (INDIVIDUAL_DOCS as $id) {
+        assert_equal('This document is required.', $r['errors'][$id], $id);
     }
 });
 
-test_case('individual: succeeds and hands the sender the individual data shape', function () {
+test_case('individual: succeeds with all five documents and hands the sender the individual data shape', function () {
+    [$files, $tmps] = individual_files();
     $d = null;
-    $r = handle_submission(sample_individual_post(), [], ok_sender($d));
+    $r = handle_submission(sample_individual_post(), $files, ok_sender($d));
     assert_equal(true, $r['success']);
     assert_equal('individual', $d['customerType']);
     assert_equal('Jane Doe', $d['fields']['fullName']);
     assert_equal(['nin', 'passport'], $d['fields']['meansOfId']);
-    assert_equal(4, count($d['documents']));
-    assert_equal(true, $d['documents'][0]['submitted']);
+    assert_equal(5, count($d['documents']));
+    foreach ($d['documents'] as $doc) {
+        assert_equal(true, $doc['submitted'], $doc['id']);
+    }
     assert_equal(true, $d['consent']);
+    cleanup($tmps);
+});
+
+test_case('individual: a missing document blocks the submission and is named by id', function () {
+    foreach (INDIVIDUAL_DOCS as $missing) {
+        [$files, $tmps] = individual_files(array_values(array_diff(INDIVIDUAL_DOCS, [$missing])));
+        $called = false;
+        $r = handle_submission(sample_individual_post(), $files, function () use (&$called) {
+            $called = true;
+            return ['success' => true, 'error' => null];
+        });
+        assert_equal(false, $r['success'], $missing);
+        assert_equal(['' . $missing], array_keys(array_intersect_key($r['errors'], array_flip(INDIVIDUAL_DOCS))), $missing);
+        assert_equal('This document is required.', $r['errors'][$missing]);
+        assert_true(!$called, 'must not send without every document');
+        cleanup($tmps);
+    }
+});
+
+test_case('individual: a ticked document without a file, or a file whose box was not ticked, counts as missing', function () {
+    [$files, $tmps] = individual_files(['valid_means_of_id', 'bank_statement', 'passport_photograph', 'signature_mandate_card']);
+    $r = handle_submission(sample_individual_post(), $files, ok_sender());
+    assert_equal('This document is required.', $r['errors']['utility_bill']);
+    cleanup($tmps);
+    [$files, $tmps] = individual_files();
+    $post = sample_individual_post();
+    unset($post['documents']['passport_photograph']);
+    $r = handle_submission($post, $files, ok_sender());
+    assert_equal('This document is required.', $r['errors']['passport_photograph']);
+    cleanup($tmps);
 });
 
 test_case('individual: hostile array shapes are rejected, not fatal', function () {
     foreach ([['meansOfId' => 'nin'], ['meansOfId' => [['nin']]], ['expectedTransactionTypes' => [['cash']]]] as $o) {
-        $r = handle_submission(sample_individual_post($o), [], ok_sender());
+        [$files, $tmps] = individual_files();
+        $r = handle_submission(sample_individual_post($o), $files, ok_sender());
         assert_equal(false, $r['success'], json_encode($o));
+        cleanup($tmps);
     }
 });
 
-test_case('individual: a non-array documents value is treated as nothing ticked, not a fatal', function () {
-    $d = null;
-    $r = handle_submission(sample_individual_post(['documents' => 'x']), [], ok_sender($d));
-    assert_equal(true, $r['success']);
-    assert_equal(false, $d['documents'][0]['submitted']);
+test_case('individual: a non-array documents value means no documents were provided, and does not fatal', function () {
+    $r = handle_submission(sample_individual_post(['documents' => 'x']), [], ok_sender());
+    assert_equal(false, $r['success']);
+    foreach (INDIVIDUAL_DOCS as $id) {
+        assert_equal('This document is required.', $r['errors'][$id], $id);
+    }
 });
 
 test_case('individual: strips header injection from text fields', function () {
+    [$files, $tmps] = individual_files();
     $d = null;
-    handle_submission(sample_individual_post(['fullName' => "Jane\r\nBcc: a@evil.com"]), [], ok_sender($d));
+    handle_submission(sample_individual_post(['fullName' => "Jane\r\nBcc: a@evil.com"]), $files, ok_sender($d));
     assert_equal('JaneBcc: a@evil.com', $d['fields']['fullName']);
+    cleanup($tmps);
 });
 
-test_case('individual: attaches a ticked document with a slot-prefixed name; ignores an unticked bad file', function () {
-    $a = tmp_file();
-    $b = tmp_file();
+test_case('individual: attaches all five documents with slot-prefixed names and deletes the temp files', function () {
+    [$files, $tmps] = individual_files();
     $att = null;
-    $files = merge_files(
-        files_entry('documents', ['valid_means_of_id', 'file'], upload('id.pdf', $a)),
-        files_entry('documents', ['passport_photograph', 'file'], upload('x.exe', $b))
-    );
     $r = handle_submission(sample_individual_post(), $files, ok_sender($d, $att));
     assert_equal(true, $r['success']);
-    assert_equal(['valid_means_of_id - id.pdf'], array_column($att, 'originalName'));
-    assert_true(!file_exists($a));
-    @unlink($b);
+    $names = array_column($att, 'originalName');
+    sort($names);
+    assert_equal([
+        'bank_statement - bank_statement.pdf', 'passport_photograph - passport_photograph.pdf', 'signature_mandate_card - signature_mandate_card.pdf',
+        'utility_bill - utility_bill.pdf', 'valid_means_of_id - valid_means_of_id.pdf',
+    ], $names);
+    foreach ($tmps as $p) {
+        assert_true(!file_exists($p), 'temp file should be cleaned up');
+    }
 });
 
-test_case('individual: blocks a ticked document with a disallowed type and a PHP-level upload failure', function () {
-    $tmp = tmp_file();
-    $called = false;
-    $post = sample_individual_post(['documents' => ['valid_means_of_id' => ['submitted' => 'on'], 'proof_of_address' => ['submitted' => 'on']]]);
+test_case('individual: blocks a document with a disallowed type and a PHP-level upload failure', function () {
+    [$files, $tmps] = individual_files(['valid_means_of_id', 'bank_statement', 'signature_mandate_card']);
+    $bad = tmp_file();
     $files = merge_files(
-        files_entry('documents', ['valid_means_of_id', 'file'], upload('virus.exe', $tmp)),
-        files_entry('documents', ['proof_of_address', 'file'], upload('big.pdf', '', 0, UPLOAD_ERR_INI_SIZE))
+        $files,
+        files_entry('documents', ['utility_bill', 'file'], upload('virus.exe', $bad)),
+        files_entry('documents', ['passport_photograph', 'file'], upload('big.pdf', '', 0, UPLOAD_ERR_INI_SIZE))
     );
-    $r = handle_submission($post, $files, function () use (&$called) {
+    $called = false;
+    $r = handle_submission(sample_individual_post(), $files, function () use (&$called) {
         $called = true;
         return ['success' => true, 'error' => null];
     });
-    assert_equal('File type not allowed: virus.exe', $r['errors']['valid_means_of_id']);
-    assert_true(isset($r['errors']['proof_of_address']));
+    assert_equal('File type not allowed: virus.exe', $r['errors']['utility_bill']);
+    assert_true(isset($r['errors']['passport_photograph']));
+    assert_true(!isset($r['errors']['valid_means_of_id']));
     assert_true(!$called);
-    @unlink($tmp);
+    cleanup($tmps);
+    @unlink($bad);
 });
 
 test_case('individual: email failures do not expose internals', function () {
-    $r = handle_submission(sample_individual_post(), [], fn() => ['success' => false, 'error' => 'SMTP down']);
+    [$files, $tmps] = individual_files();
+    $r = handle_submission(sample_individual_post(), $files, fn() => ['success' => false, 'error' => 'SMTP down']);
     assert_equal(false, $r['success']);
     assert_true(strpos($r['message'], 'SMTP') === false);
+    cleanup($tmps);
 });
 
 test_case('a corporate post still works alongside the individual path', function () {

@@ -78,9 +78,10 @@ function preview_individual_data(): array
         ],
         'documents' => [
             ['id' => 'valid_means_of_id', 'label' => 'Valid Means of ID', 'submitted' => true],
-            ['id' => 'proof_of_address', 'label' => 'Proof of Address (less than 3 months): Utility Bill / Bank Statement', 'submitted' => true],
+            ['id' => 'utility_bill', 'label' => 'Utility Bill (less than 3 months)', 'submitted' => true],
+            ['id' => 'bank_statement', 'label' => 'Bank Statement (less than 3 months)', 'submitted' => true],
             ['id' => 'passport_photograph', 'label' => 'Passport Photograph', 'submitted' => true],
-            ['id' => 'signature_mandate_card', 'label' => 'Signature Mandate Card', 'submitted' => false],
+            ['id' => 'signature_mandate_card', 'label' => 'Signature Mandate Card', 'submitted' => true],
         ],
         'consent' => true,
     ];

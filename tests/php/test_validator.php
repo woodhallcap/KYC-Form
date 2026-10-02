@@ -152,7 +152,7 @@ function valid_person(array $o = []): array
     return array_replace([
         'fullName' => 'Jane Doe', 'dateOfBirth' => '1990-01-01', 'placeOfBirth' => 'Lagos', 'gender' => 'F', 'nationality' => 'Nigerian',
         'countryOfResidence' => 'Nigeria', 'residentialAddress' => '1 Rd', 'lga' => 'Ikeja', 'state' => 'Lagos', 'phone' => '08000000000', 'email' => 'jane@example.com',
-        'meansOfId' => ['nin', 'passport'], 'idNumber' => 'A123', 'bvn' => '222', 'nin' => '333', 'occupation' => 'Engineer',
+        'meansOfId' => ['nin', 'passport'], 'idNumber' => 'A123', 'bvn' => '222', 'nin' => '333', 'occupation' => 'Engineer', 'employerName' => 'Acme Engineering', 'officeAddress' => '4 Adeola Odeku Street, Victoria Island',
         'sourceOfIncome' => 'salary', 'sourceOfWealth' => 'Savings', 'purposeOfRelationship' => 'loan',
         'expectedMonthlyTurnover' => '500,000', 'expectedTransactionTypes' => ['transfer'],
     ], $o);
@@ -160,10 +160,10 @@ function valid_person(array $o = []): array
 
 test_case('validate_individual_person flags every required field when empty, but not the optional ones', function () {
     $r = validate_individual_person([]);
-    foreach (['fullName', 'dateOfBirth', 'placeOfBirth', 'gender', 'nationality', 'countryOfResidence', 'residentialAddress', 'lga', 'state', 'phone', 'email', 'meansOfId', 'idNumber', 'bvn', 'nin', 'occupation', 'sourceOfIncome', 'sourceOfWealth', 'purposeOfRelationship', 'expectedMonthlyTurnover', 'expectedTransactionTypes'] as $k) {
+    foreach (['fullName', 'dateOfBirth', 'placeOfBirth', 'gender', 'nationality', 'countryOfResidence', 'residentialAddress', 'lga', 'state', 'phone', 'email', 'meansOfId', 'idNumber', 'bvn', 'nin', 'occupation', 'employerName', 'officeAddress', 'sourceOfIncome', 'sourceOfWealth', 'purposeOfRelationship', 'expectedMonthlyTurnover', 'expectedTransactionTypes'] as $k) {
         assert_true(isset($r['errors'][$k]), $k);
     }
-    foreach (['idExpiry', 'employerName', 'officeAddress', 'sourceOfIncomeOther', 'purposeOther'] as $k) {
+    foreach (['idExpiry', 'sourceOfIncomeOther', 'purposeOther'] as $k) {
         assert_true(!isset($r['errors'][$k]), $k);
     }
 });
@@ -208,6 +208,33 @@ test_case('sanitize_submission_input cleans individual fields and array fields',
     assert_equal('2 Rd', $r['officeAddress']);
     assert_equal(['nin', 'bvn'], $r['meansOfId']);
     assert_equal('cash', $r['expectedTransactionTypes']);
+});
+
+test_case('validate_individual_person requires employer and office address, and only the expiry date stays optional in items 1-8', function () {
+    $r = validate_individual_person(valid_person(['employerName' => '', 'officeAddress' => '   ']));
+    assert_equal('Employer or business name is required.', $r['errors']['employerName']);
+    assert_equal('Office address is required.', $r['errors']['officeAddress']);
+    assert_equal(true, validate_individual_person(valid_person(['idExpiry' => '']))['valid']);
+    assert_equal(true, validate_individual_person(valid_person(['idExpiry' => '2030-06-30']))['valid']);
+});
+
+test_case('validate_required_documents asks for every document and only counts a ticked one with a file', function () {
+    $docs = [
+        ['id' => 'a', 'submitted' => true, 'file' => ['name' => 'a.pdf', 'size' => 1]],
+        ['id' => 'b', 'submitted' => false, 'file' => null],
+        ['id' => 'c', 'submitted' => true, 'file' => null],
+        ['id' => 'd', 'submitted' => false, 'file' => ['name' => 'd.pdf', 'size' => 1]],
+    ];
+    $r = validate_required_documents($docs);
+    assert_equal(false, $r['valid']);
+    assert_equal(['b', 'c', 'd'], array_keys($r['errors']));
+    assert_equal('This document is required.', $r['errors']['b']);
+    assert_equal(true, validate_required_documents([$docs[0]])['valid']);
+    assert_equal(true, validate_required_documents([])['valid']);
+});
+
+test_case('the individual document list is the five uploads, with utility bill and bank statement separate', function () {
+    assert_equal(['valid_means_of_id', 'utility_bill', 'bank_statement', 'passport_photograph', 'signature_mandate_card'], INDIVIDUAL_DOCUMENT_IDS);
 });
 
 test_summary();
