@@ -185,6 +185,7 @@ function handle_corporate_submission(array $post, array $files, callable $sendEm
     $errors = array_merge(
         validate_entity($post)['errors'],
         validate_directors($post['directors'] ?? null)['errors'],
+        validate_required_documents($documents)['errors'],
         validate_documents_consent($consent)['errors'],
         validate_funds($post)['errors'],
         validate_declaration($post)['errors'],
