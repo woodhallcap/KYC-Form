@@ -16,10 +16,10 @@ describe('autosave v2', () => {
     s.directors[0].pep = 'yes';
     s.directors[0].files.id = new File(['x'], 'secret.pdf');
     s.directors.push({ ...emptyDirector(), name: 'John' });
-    s.docs.cac_forms.submitted = true;
+    s.docs.cac_forms = new File(['x'], 'c.pdf');
     s.consent = true;
     s.declaration.signatureAgree = true;
-    s.seal = new File(['x'], 'seal.png');
+    s.images.sealFile = new File(['x'], 'seal.png');
     saveDraft(s);
     expect(localStorage.getItem(STORAGE_KEY)).not.toContain('secret.pdf');
     expect(localStorage.getItem(STORAGE_KEY)).not.toContain('seal.png');
@@ -28,11 +28,11 @@ describe('autosave v2', () => {
     expect(r.funds.sourceOfFunds).toBe('Sales');
     expect(r.directors.map((d) => d.name)).toEqual(['Jane', 'John']);
     expect(r.directors[0].pep).toBe('yes');
-    expect(r.docs.cac_forms.submitted).toBe(true);
+    expect(Object.values(r.docs).every((f) => f === null)).toBe(true);
     expect(r.consent).toBe(true);
     expect(r.declaration.signatureAgree).toBe(true);
     expect(r.directors[0].files.id).toBeNull();
-    expect(r.seal).toBeNull();
+    expect(r.images.sealFile).toBeNull();
   });
 
   it('ignores v1, corrupt and non-object drafts', () => {
@@ -44,6 +44,13 @@ describe('autosave v2', () => {
     expect(loadDraft()).toBeNull();
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ v: 1, entity: {} }));
     expect(loadDraft()).toBeNull();
+  });
+
+  it('restores an older draft that still carries a documents key, ignoring it', () => {
+    const old = { v: 2, customerType: 'corporate', entity: { companyName: 'Acme' }, documents: { cac_forms: true }, consent: true } as unknown as CorporateDraft;
+    const r = applyDraft(emptyState(), old);
+    expect(r.entity.companyName).toBe('Acme');
+    expect(Object.values(r.docs).every((f) => f === null)).toBe(true);
   });
 
   it('applyDraft tolerates malformed pieces and caps rows at 25', () => {
@@ -80,12 +87,11 @@ describe('autosave: individual drafts', () => {
     const f = emptyIndividual();
     f.person.fullName = 'Jane Doe';
     f.person.meansOfId = ['nin', 'voters_card'];
-    f.person.expectedTransactionTypes = ['cash'];
     f.person.gender = 'F';
     f.person.sourceOfIncome = 'other';
     f.person.sourceOfIncomeOther = 'Gift';
     f.person.purposeOfRelationship = 'lease';
-    f.docs.valid_means_of_id = { submitted: true, file: new File(['x'], 'secret.pdf') };
+    f.docs.valid_means_of_id = new File(['x'], 'secret.pdf');
     f.consent = true;
     f.declaration.signatureAgree = true;
     f.declaration.declarationName = 'Jane Doe';
@@ -96,13 +102,11 @@ describe('autosave: individual drafts', () => {
     const r = applyIndividualDraft(emptyIndividual(), d as IndividualDraft);
     expect(r.person.fullName).toBe('Jane Doe');
     expect(r.person.meansOfId).toEqual(['nin', 'voters_card']);
-    expect(r.person.expectedTransactionTypes).toEqual(['cash']);
     expect(r.person.gender).toBe('F');
     expect(r.person.sourceOfIncome).toBe('other');
     expect(r.person.sourceOfIncomeOther).toBe('Gift');
     expect(r.person.purposeOfRelationship).toBe('lease');
-    expect(r.docs.valid_means_of_id.submitted).toBe(true);
-    expect(r.docs.valid_means_of_id.file).toBeNull();
+    expect(r.docs.valid_means_of_id).toBeNull();
     expect(r.consent).toBe(true);
     expect(r.declaration.signatureAgree).toBe(true);
     expect(r.declaration.declarationName).toBe('Jane Doe');
@@ -125,18 +129,32 @@ describe('autosave: individual drafts', () => {
   it('applyIndividualDraft tolerates malformed input and drops unknown option values', () => {
     const bad = {
       v: 2, customerType: 'individual',
-      person: { fullName: 5, meansOfId: 'nin', expectedTransactionTypes: ['cash', 'bogus', 7], gender: 'X', sourceOfIncome: 'lottery', purposeOfRelationship: 'gift', email: 'a@b.co' },
+      person: { fullName: 5, meansOfId: 'nin', gender: 'X', sourceOfIncome: 'lottery', purposeOfRelationship: 'gift', email: 'a@b.co' },
       declaration: [], documents: 'no', consent: 'yes',
     } as unknown as IndividualDraft;
     const r = applyIndividualDraft(emptyIndividual(), bad);
     expect(r.person.fullName).toBe('');
     expect(r.person.meansOfId).toEqual([]);
-    expect(r.person.expectedTransactionTypes).toEqual(['cash']);
     expect(r.person.gender).toBe('');
     expect(r.person.sourceOfIncome).toBe('');
     expect(r.person.purposeOfRelationship).toBe('');
     expect(r.person.email).toBe('a@b.co');
     expect(r.consent).toBe(false);
+  });
+
+  it('restores a legacy draft: drops BVN from means of ID and ignores removed keys', () => {
+    const legacy = {
+      v: 2, customerType: 'individual',
+      person: { fullName: 'A', meansOfId: ['bvn', 'nin'], expectedTransactionTypes: ['cash'], expectedMonthlyTurnover: '5' },
+      declaration: { signatureName: 'A' }, documents: { proof_of_address: true }, consent: true,
+    } as unknown as IndividualDraft;
+    const r = applyIndividualDraft(emptyIndividual(), legacy);
+    expect(r.person.meansOfId).toEqual(['nin']);
+    expect(r.person.fullName).toBe('A');
+    expect(r.person).not.toHaveProperty('expectedTransactionTypes');
+    expect(r.person).not.toHaveProperty('expectedMonthlyTurnover');
+    expect(r.declaration).not.toHaveProperty('signatureName');
+    expect(r).not.toHaveProperty('documents');
   });
 
   it('hasAnyContent is false for an empty individual draft and true for any text, array or checkbox', () => {

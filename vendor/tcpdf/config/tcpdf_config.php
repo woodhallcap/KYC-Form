@@ -223,7 +223,8 @@ define('K_ALLOWED_TCPDF_TAGS', '');
 /**
  * If true and PHP version is greater than 5, then the Error() method throw new exception instead of terminating the execution.
  */
-define('K_TCPDF_THROW_EXCEPTION_ERROR', false);
+// Woodhall: throw instead of die() so a bad image can't kill the JSON response.
+define('K_TCPDF_THROW_EXCEPTION_ERROR', true);
 
 /**
  * Default timezone for datetime functions

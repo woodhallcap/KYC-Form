@@ -17,8 +17,23 @@ if (!in_array($remoteAddr, ['127.0.0.1', '::1'], true)) {
     exit;
 }
 
+require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/lib/pdf-builder.php';
 require_once __DIR__ . '/lib/mailer.php';
+require_once __DIR__ . '/lib/validator.php';
+
+// Stand-in for an uploaded signature / seal image.
+const PREVIEW_SIGNATURE = __DIR__ . '/assets/logos/woodhall-finance.png';
+
+/** Document summary in the shape the handler produces; ids in $notProvided are shown as not attached. */
+function preview_documents(array $specs, array $notProvided): array
+{
+    $documents = [];
+    foreach ($specs as $id => $spec) {
+        $documents[] = ['id' => $id, 'label' => $spec['label'], 'attached' => !in_array($id, $notProvided, true)];
+    }
+    return $documents;
+}
 
 function preview_sample_data(): array
 {
@@ -47,16 +62,13 @@ function preview_sample_data(): array
             ['name' => 'Jane Doe', 'designation' => 'Managing Director', 'bvn' => '22212345678', 'nin' => '12345678901', 'shareholdingPercent' => '60', 'nationality' => 'Nigerian', 'pep' => 'no', 'residentialAddress' => '1 Banana Island Road, Ikoyi, Lagos', 'attachments' => ['id', 'bvn', 'nin', 'proof_of_address']],
             ['name' => 'John Roe', 'designation' => 'Director', 'bvn' => '22298765432', 'nin' => '10987654321', 'shareholdingPercent' => '40', 'nationality' => 'Ghanaian', 'pep' => 'yes', 'residentialAddress' => '7 Independence Avenue, Accra', 'attachments' => []],
         ],
-        'documents' => [
-            ['id' => 'certificate_of_incorporation', 'label' => 'CAC Certificate of Incorporation', 'submitted' => true],
-            ['id' => 'cac_forms', 'label' => 'CAC Forms CAC2.3 / CAC1.1 - Directors & Shareholders', 'submitted' => true],
-            ['id' => 'memorandum_articles', 'label' => 'Memorandum & Articles of Association', 'submitted' => false],
-            ['id' => 'board_resolution', 'label' => 'Board Resolution to open account and obtain facility', 'submitted' => true],
-            ['id' => 'company_bank_statement', 'label' => 'Company Bank Statement - Last 12 months', 'submitted' => true],
-            ['id' => 'corporate_id_signatories', 'label' => 'Corporate ID of Authorized Signatories', 'submitted' => false],
-        ],
+        'documents' => preview_documents(CORPORATE_DOCUMENTS, ['corporate_id_signatories']),
         'consent' => true,
-        'sealAttached' => true,
+        'images' => [
+            'signatory1SignatureFile' => PREVIEW_SIGNATURE,
+            'signatory2SignatureFile' => PREVIEW_SIGNATURE,
+            'sealFile' => PREVIEW_SIGNATURE,
+        ],
     ];
 }
 
@@ -70,19 +82,14 @@ function preview_individual_data(): array
             'countryOfResidence' => 'Nigeria', 'residentialAddress' => '1 Banana Island Road, Ikoyi, Lagos', 'lga' => 'Eti-Osa', 'state' => 'Lagos',
             'phone' => '08012345678', 'email' => 'jane@example.com', 'meansOfId' => ['nin', 'passport'], 'idNumber' => 'A12345678',
             'idExpiry' => '2030-06-30', 'bvn' => '22212345678', 'nin' => '12345678901', 'occupation' => 'Engineer',
-            'employerName' => 'Acme Engineering', 'officeAddress' => '4 Adeola Odeku Street, Victoria Island, Lagos',
+            'employerName' => 'Acme Engineering', 'officialEmail' => 'jane@acmeengineering.com', 'officeAddress' => '4 Adeola Odeku Street, Victoria Island, Lagos',
             'sourceOfIncome' => 'salary', 'sourceOfIncomeOther' => '', 'sourceOfWealth' => 'Savings and property rental',
-            'purposeOfRelationship' => 'loan', 'purposeOther' => '', 'expectedMonthlyTurnover' => '500,000',
-            'expectedTransactionTypes' => ['transfer', 'cash'],
-            'declarationName' => 'Jane Doe', 'signatureName' => 'Jane Doe', 'signatureDate' => date('Y-m-d'),
+            'purposeOfRelationship' => 'loan', 'purposeOther' => '',
+            'declarationName' => 'Jane Doe', 'signatureDate' => date('Y-m-d'),
         ],
-        'documents' => [
-            ['id' => 'valid_means_of_id', 'label' => 'Valid Means of ID', 'submitted' => true],
-            ['id' => 'proof_of_address', 'label' => 'Proof of Address (less than 3 months): Utility Bill / Bank Statement', 'submitted' => true],
-            ['id' => 'passport_photograph', 'label' => 'Passport Photograph', 'submitted' => true],
-            ['id' => 'signature_mandate_card', 'label' => 'Signature Mandate Card', 'submitted' => false],
-        ],
+        'documents' => preview_documents(INDIVIDUAL_DOCUMENTS, ['work_id', 'signature_mandate_card']),
         'consent' => true,
+        'images' => ['signatureFile' => PREVIEW_SIGNATURE],
     ];
 }
 

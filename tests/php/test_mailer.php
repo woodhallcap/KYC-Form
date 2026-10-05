@@ -49,6 +49,11 @@ $sampleData = [
     'customerType' => 'corporate',
     'submittedAt' => '2026-09-15 14:00:00',
     'fields' => ['companyName' => 'Acme Trading Ltd', 'companyEmail' => 'info@acme.com'],
+    'documents' => [
+        ['id' => 'certificate_of_incorporation', 'label' => 'CAC Certificate of Incorporation', 'attached' => true],
+        ['id' => 'cac_status_report', 'label' => 'CAC Status Report', 'attached' => true],
+        ['id' => 'corporate_id_signatories', 'label' => 'Corporate ID of Authorized Signatories', 'attached' => false],
+    ],
 ];
 
 test_case('build_admin_email_html includes company name and the logo image', function () use ($sampleData) {
@@ -82,7 +87,7 @@ test_case('send_submission_emails sends to admin and submitter on success', func
 
     assert_equal(true, $result['success']);
     assert_equal(2, count($fakes));
-    assert_equal([RECIPIENT_EMAIL], $fakes[0]->sentTo);
+    assert_equal(RECIPIENT_EMAILS, $fakes[0]->sentTo);
     assert_equal(['info@acme.com'], $fakes[1]->sentTo);
     assert_true(in_array('woodhall-kyc-submission.pdf', $fakes[0]->attachments, true));
     assert_true(in_array('woodhall-logo', $fakes[0]->embeddedImages, true), 'Admin email should embed the logo');
@@ -150,6 +155,52 @@ test_case('emails and their subjects say Woodhall Finance, never Woodhall Capita
     assert_true(strpos($admin, 'Woodhall Finance') !== false);
     assert_true(strpos($confirmation, 'Woodhall Finance') !== false);
     assert_true(strpos($admin . $confirmation, 'Woodhall Capital') === false);
+});
+
+test_case('admin email goes to every configured recipient and lists only attached documents', function () use ($sampleData) {
+    $fakes = [];
+    $factory = function () use (&$fakes) {
+        return $fakes[] = new FakePHPMailer();
+    };
+    send_submission_emails($sampleData, '%PDF', [], $factory);
+    assert_equal(RECIPIENT_EMAILS, $fakes[0]->sentTo);
+    $html = build_admin_email_html($sampleData);
+    assert_true(strpos($html, 'Documents attached:') !== false);
+    assert_true(strpos($html, 'CAC Status Report') !== false);
+    assert_true(strpos($html, 'Corporate ID of Authorized Signatories') === false);
+});
+
+test_case('corporate admin email names the signatures and required seal and gives the company email', function () use ($sampleData) {
+    $html = build_admin_email_html($sampleData);
+    assert_true(strpos($html, "The signatories' handwritten signatures and the company seal are attached and also shown in the PDF.") !== false);
+    assert_true(strpos($html, '(if any)') === false);
+    assert_true(strpos($html, '<strong>Email:</strong> info@acme.com') !== false);
+    assert_true(strpos($html, 'Phone:') === false);
+});
+
+test_case('individual admin email names the customer signature and gives escaped email and phone', function () {
+    $d = ['customerType' => 'individual', 'submittedAt' => 'x',
+        'fields' => ['fullName' => 'Jane Doe', 'email' => 'jane<x>@example.com', 'phone' => '0800 & 1']];
+    $html = build_admin_email_html($d);
+    assert_true(strpos($html, "The customer's handwritten signature is attached and also shown in the PDF.") !== false);
+    assert_true(strpos($html, 'seal') === false);
+    assert_true(strpos($html, '<strong>Email:</strong> jane&lt;x&gt;@example.com') !== false);
+    assert_true(strpos($html, '<strong>Phone:</strong> 0800 &amp; 1') !== false);
+});
+
+test_case('emails say Woodhall Finance, never Woodhall Capital', function () use ($sampleData) {
+    $all = build_admin_email_html($sampleData) . build_confirmation_email_html($sampleData);
+    assert_true(strpos($all, 'Woodhall Capital') === false);
+    assert_true(strpos($all, 'Woodhall Finance') !== false);
+});
+
+test_case('confirmation explains what happens next and gives a contact address', function () use ($sampleData) {
+    $html = build_confirmation_email_html($sampleData);
+    assert_true(strpos($html, 'What happens next') !== false);
+    assert_true(strpos($html, 'info@woodhallfinanceltd.com') !== false);
+});
+
+test_case('confirmation subject names Woodhall Finance', function () use ($sampleData) {
     $fakes = [];
     $factory = function () use (&$fakes) {
         return $fakes[] = new FakePHPMailer();

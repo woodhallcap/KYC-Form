@@ -9,7 +9,7 @@ interface BrandPanelProps {
 
 const INTRO: Record<'none' | CustomerType, { title: string; text: string }> = {
   none: {
-    title: 'Customer due diligence',
+    title: 'Customer Due Diligence',
     text: "A few minutes now lets us verify and onboard you properly. Choose the customer type to see what you'll need. Your progress saves as you go.",
   },
   individual: {

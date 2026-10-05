@@ -99,7 +99,9 @@ export default function App() {
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     if (!form || sending.current || status !== 'idle') return;
-    if (Object.keys(stepErrors(form, flow, lastStep)).length > 0) {
+    const errors = stepErrors(form, flow, lastStep);
+    if (Object.keys(errors).length > 0) {
+      alertUnmatched(flow, errors);
       dispatch({ type: 'next' });
       return;
     }

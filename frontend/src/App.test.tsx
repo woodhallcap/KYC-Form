@@ -3,6 +3,9 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event';
 import App from './App';
 import { STORAGE_KEY } from './lib/autosave';
+import { CORPORATE_DOCUMENTS, INDIVIDUAL_DOCUMENTS } from './lib/documents';
+import type { DocumentSpec } from './lib/documents';
+import { bigFile } from './test-utils';
 
 type User = ReturnType<typeof userEvent.setup>;
 
@@ -15,7 +18,7 @@ const chooseIndividual = (user: User) => user.click(screen.getByRole('button', {
 
 const ENTITY: Record<string, string> = {
   'Company Name': 'Acme Ltd',
-  'RC Number': 'RC1',
+  'Business Registration Number (BN / RC)': 'RC1',
   'Date of Incorporation': '2020-01-01',
   'Registered Address': '1 Main St',
   'Nature of Business': 'Trading',
@@ -52,8 +55,12 @@ async function toDocuments(user: User) {
   await fillDirector(user);
   await next(user, 'Next: Documents');
 }
+async function attachAll(user: User, specs: readonly DocumentSpec[]) {
+  for (const d of specs.filter((s) => s.required)) await user.upload(screen.getByLabelText(d.label), new File(['x'], `${d.id}.pdf`));
+}
 async function toFunds(user: User) {
   await toDocuments(user);
+  await attachAll(user, CORPORATE_DOCUMENTS);
   await user.click(screen.getByLabelText(/^We consent/));
   await next(user, 'Next: Source of Funds');
 }
@@ -63,12 +70,19 @@ async function toDeclaration(user: User) {
   setVal('Facility Amount Requested (₦)', '5,000,000');
   await next(user, 'Next: Declaration');
 }
+const png = (name: string) => new File(['x'], name, { type: 'image/png' });
+async function uploadCorporateImages(user: User) {
+  await user.upload(screen.getByLabelText('Authorized Signatory 1 — Handwritten Signature'), png('sig1.png'));
+  await user.upload(screen.getByLabelText('Authorized Signatory 2 — Handwritten Signature'), png('sig2.png'));
+  await user.upload(screen.getByLabelText('Company Seal or Stamp'), png('seal.png'));
+}
 async function submitCorporate(user: User) {
   setVal('Authorized Signatory 1 — Name', 'Jane Doe');
   setVal('Authorized Signatory 1 — Date', '2026-09-15');
   setVal('Authorized Signatory 2 — Name', 'John Roe');
   setVal('Authorized Signatory 2 — Date', '2026-09-15');
-  await user.click(screen.getByLabelText(/^I agree that the typed names/));
+  await uploadCorporateImages(user);
+  await user.click(screen.getByLabelText(/^We confirm the attached images/));
   await user.click(screen.getByRole('button', { name: 'Submit Form' }));
 }
 
@@ -85,10 +99,12 @@ const PERSON: Record<string, string> = {
   State: 'Lagos',
   'Phone No': '08000000000',
   Email: 'jane@example.com',
-  'ID No': 'A123',
+  'ID No (optional)': 'A123',
   Occupation: 'Engineer',
   'Source of Wealth': 'Savings',
-  'Expected Monthly Turnover (₦)': '500,000',
+  'Office Address': '4 Adeola Odeku St',
+  'Employer/Business Name': 'Acme Engineering',
+  'Official Email': 'jane@acme-eng.com',
 };
 
 async function fillPerson(user: User) {
@@ -99,8 +115,7 @@ async function fillPerson(user: User) {
   await user.click(within(screen.getByRole('group', { name: 'Means of ID' })).getByLabelText('NIN'));
   await user.click(within(screen.getByRole('group', { name: 'Means of ID' })).getByLabelText("Int'l Passport"));
   await user.click(within(screen.getByRole('radiogroup', { name: 'Source of Income' })).getByLabelText('Salary'));
-  await user.click(within(screen.getByRole('radiogroup', { name: 'Purpose of Relationship' })).getByLabelText('Loan'));
-  await user.click(within(screen.getByRole('group', { name: 'Expected Transaction Type' })).getByLabelText('Transfer'));
+  await user.click(within(screen.getByRole('radiogroup', { name: 'Purpose of Relationship with Woodhall Finance' })).getByLabelText('Loan'));
 }
 
 async function toIndividualDocuments(user: User) {
@@ -110,14 +125,15 @@ async function toIndividualDocuments(user: User) {
 }
 async function toIndividualDeclaration(user: User) {
   await toIndividualDocuments(user);
+  await attachAll(user, INDIVIDUAL_DOCUMENTS);
   await user.click(screen.getByLabelText(/^I consent/));
   await next(user, 'Next: Declaration');
 }
 async function submitIndividual(user: User) {
-  setVal('Name', 'Jane Doe');
-  setVal('Typed Signature (type your full name)', 'Jane Doe');
+  setVal('Full Name', 'Jane Doe');
   setVal('Date', '2026-09-15');
-  await user.click(screen.getByLabelText(/^I agree that the typed name above/));
+  await user.upload(screen.getByLabelText('Handwritten Signature'), png('sig.png'));
+  await user.click(screen.getByLabelText(/^I confirm the attached image/));
   await user.click(screen.getByRole('button', { name: 'Submit Form' }));
 }
 
@@ -196,18 +212,19 @@ describe('corporate navigation and validation', () => {
     expect(screen.getByRole('heading', { name: 'Section C: Required Documents' })).toBeInTheDocument();
   });
 
-  it('alerts on a bad file for a ticked document, and lets the user through once it is unticked', async () => {
+  it('blocks Next on a bad document file, and lets the user through once it is replaced', async () => {
     const user = userEvent.setup({ applyAccept: false });
     render(<App />);
     await toDocuments(user);
+    await attachAll(user, CORPORATE_DOCUMENTS);
     const label = 'CAC Forms CAC2.3 / CAC1.1 - Directors & Shareholders';
-    await user.click(screen.getByLabelText(label));
-    await user.upload(screen.getByLabelText(`File for ${label}`), new File(['x'], 'a.exe'));
+    await user.upload(screen.getByLabelText(label), new File(['x'], 'a.exe'));
     await user.click(screen.getByLabelText(/^We consent/));
     await next(user, 'Next: Source of Funds');
-    expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('File type not allowed: a.exe'));
+    expect(screen.getAllByText('File type not allowed: a.exe').length).toBeGreaterThan(0);
     expect(screen.getByRole('heading', { name: 'Section C: Required Documents' })).toBeInTheDocument();
-    await user.click(screen.getByLabelText(label));
+    await user.click(screen.getByRole('button', { name: `Remove ${label}` }));
+    await user.upload(screen.getByLabelText(label), new File(['x'], 'ok.pdf'));
     await next(user, 'Next: Source of Funds');
     expect(screen.getByRole('heading', { name: 'Section D: Source of Funds' })).toBeInTheDocument();
   });
@@ -238,7 +255,27 @@ describe('corporate submission', () => {
     expect(body.get('customerType')).toBe('corporate');
     expect(body.get('directors[0][name]')).toBe('Jane');
     expect(body.get('companyEmail')).toBe('info@acme.com');
+    expect((body.get('sealFile') as File).name).toBe('seal.png');
+    expect((body.get('signatory2SignatureFile') as File).name).toBe('sig2.png');
     expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+  });
+
+  it('blocks submit and shows an inline error when the seal is missing', async () => {
+    const user = userEvent.setup();
+    const fetchMock = json({ success: true });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<App />);
+    await toDeclaration(user);
+    setVal('Authorized Signatory 1 — Name', 'Jane Doe');
+    setVal('Authorized Signatory 1 — Date', '2026-09-15');
+    setVal('Authorized Signatory 2 — Name', 'John Roe');
+    setVal('Authorized Signatory 2 — Date', '2026-09-15');
+    await user.upload(screen.getByLabelText('Authorized Signatory 1 — Handwritten Signature'), png('sig1.png'));
+    await user.upload(screen.getByLabelText('Authorized Signatory 2 — Handwritten Signature'), png('sig2.png'));
+    await user.click(screen.getByLabelText(/^We confirm the attached images/));
+    await user.click(screen.getByRole('button', { name: 'Submit Form' }));
+    expect(await screen.findByText('Company seal or stamp is required.')).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('jumps to the earliest step with a server error and keeps submit usable afterwards', async () => {
@@ -358,34 +395,34 @@ describe('individual flow', () => {
     expect(body.get('customerType')).toBe('individual');
     expect(body.get('email')).toBe('jane@example.com');
     expect(body.getAll('meansOfId[]')).toEqual(['nin', 'passport']);
-    expect(body.getAll('expectedTransactionTypes[]')).toEqual(['transfer']);
+    expect(body.get('officialEmail')).toBe('jane@acme-eng.com');
     expect(body.get('declarationName')).toBe('Jane Doe');
     expect(body.get('consent')).toBe('on');
     expect(body.has('companyName')).toBe(false);
     expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
   });
 
-  it('sends a ticked document and omits an unticked one', async () => {
-    const user = userEvent.setup({ applyAccept: false });
+  it('blocks Next on the documents step until required files are attached', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await toIndividualDocuments(user);
+    await user.click(screen.getByLabelText(/^I consent/));
+    await next(user, 'Next: Declaration');
+    expect(screen.getByRole('heading', { name: 'Section B: Verification Documents' })).toBeInTheDocument();
+    expect(screen.getByText('Valid Means of ID is required.')).toBeInTheDocument();
+  });
+
+  it('sends attached documents and omits optional ones left empty', async () => {
+    const user = userEvent.setup();
     const fetchMock = json({ success: true });
     vi.stubGlobal('fetch', fetchMock);
     render(<App />);
-    await toIndividualDocuments(user);
-    const id = 'Valid Means of ID';
-    await user.click(screen.getByLabelText(id));
-    await user.upload(screen.getByLabelText(`File for ${id}`), new File(['x'], 'id.pdf'));
-    const photo = 'Passport Photograph';
-    await user.click(screen.getByLabelText(photo));
-    await user.upload(screen.getByLabelText(`File for ${photo}`), new File(['x'], 'p.jpg'));
-    await user.click(screen.getByLabelText(photo));
-    await user.click(screen.getByLabelText(/^I consent/));
-    await next(user, 'Next: Declaration');
+    await toIndividualDeclaration(user);
     await submitIndividual(user);
     await screen.findByText('Thank you');
     const body = fetchMock.mock.calls[0][1].body as FormData;
-    expect((body.get('documents[valid_means_of_id][file]') as File).name).toBe('id.pdf');
-    expect(body.has('documents[passport_photograph][submitted]')).toBe(false);
-    expect(body.has('documents[passport_photograph][file]')).toBe(false);
+    expect((body.get('documents[valid_means_of_id]') as File).name).toBe('valid_means_of_id.pdf');
+    expect(body.get('documents[work_id]')).toBeNull();
   });
 
   it('jumps to step 1 for an email error, and stays put with an alert for a total-size error', async () => {
@@ -425,6 +462,25 @@ describe('individual flow', () => {
     await submitIndividual(user);
     await waitFor(() => expect(alertSpy).toHaveBeenCalledWith('Network error. Please try again.'));
     expect(screen.getByRole('button', { name: 'Submit Form' })).toBeEnabled();
+  });
+
+  it('blocks Submit and shows the total-size error when attachments exceed 20MB', async () => {
+    const user = userEvent.setup();
+    const fetchMock = json({ success: true });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<App />);
+    await toIndividualDocuments(user);
+    for (const d of INDIVIDUAL_DOCUMENTS.filter((s) => s.required)) {
+      await user.upload(screen.getByLabelText(d.label), bigFile(`${d.id}.pdf`, 4.5));
+    }
+    await user.click(screen.getByLabelText(/^I consent/));
+    await next(user, 'Next: Declaration');
+    await submitIndividual(user);
+    const message = 'Total attachments exceed the 20MB limit.';
+    expect(screen.getByRole('alert')).toHaveTextContent(message);
+    expect(alertSpy).toHaveBeenCalledWith(message);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.getByRole('heading', { name: 'Section C: Declaration' })).toBeInTheDocument();
   });
 
   it('sends only one request when submit is triggered twice', async () => {

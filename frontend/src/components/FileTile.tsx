@@ -1,6 +1,6 @@
 import { useId, useRef } from 'react';
 import { formatFileSize } from '../lib/format';
-import { validateFileMeta } from '../lib/validation';
+import { validateFileMeta, validateImageMeta } from '../lib/validation';
 import { FileIcon, UploadIcon, XIcon } from './icons';
 
 interface FileTileProps {
@@ -12,15 +12,18 @@ interface FileTileProps {
   onChange: (file: File | null) => void;
   /** An error from elsewhere (for example the server); a problem with the file itself takes precedence. */
   error?: string;
+  /** Signature and seal images: JPG or PNG only. */
+  imageOnly?: boolean;
 }
 
 const ACCEPT = '.pdf,.jpg,.jpeg,.png,.docx';
+const IMAGE_ACCEPT = '.jpg,.jpeg,.png,image/jpeg,image/png';
 
 /** Tap-to-add upload: shows the chosen file with its size, a remove button, and file problems inline. */
-export function FileTile({ label, caption, file, onChange, error }: FileTileProps) {
+export function FileTile({ label, caption, file, onChange, error, imageOnly }: FileTileProps) {
   const id = useId();
   const input = useRef<HTMLInputElement>(null);
-  const message = (file ? validateFileMeta(file).error : null) ?? error ?? null;
+  const message = (file ? (imageOnly ? validateImageMeta(file) : validateFileMeta(file)).error : null) ?? error ?? null;
 
   return (
     <div>
@@ -52,7 +55,7 @@ export function FileTile({ label, caption, file, onChange, error }: FileTileProp
           <UploadIcon className="size-5 shrink-0" />
           <span>
             <span className="block text-sm font-medium">Add a file</span>
-            <span className="block text-xs text-ink/60">PDF, JPG, PNG or DOCX, up to 5MB</span>
+            <span className="block text-xs text-ink/60">{imageOnly ? 'JPG or PNG photo or scan, up to 5MB' : 'PDF, JPG, PNG or DOCX, up to 5MB'}</span>
           </span>
         </label>
       )}
@@ -61,7 +64,7 @@ export function FileTile({ label, caption, file, onChange, error }: FileTileProp
         id={id}
         type="file"
         aria-label={label}
-        accept={ACCEPT}
+        accept={imageOnly ? IMAGE_ACCEPT : ACCEPT}
         className="sr-only"
         onChange={(e) => onChange(e.target.files?.[0] ?? null)}
       />

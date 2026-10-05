@@ -1,7 +1,7 @@
 import { DIRECTOR_FIELDS } from '../types';
 import type { CorporateForm, CustomerType, Director, FormState, IndividualForm, IndividualPerson } from '../types';
 import { emptyDirector } from './initial-state';
-import { INCOME_OPTIONS, MAX_DIRECTORS, MEANS_OF_ID_OPTIONS, PURPOSE_OPTIONS, TRANSACTION_TYPE_OPTIONS } from './validation';
+import { INCOME_OPTIONS, MAX_DIRECTORS, MEANS_OF_ID_OPTIONS, PURPOSE_OPTIONS } from './validation';
 
 export const STORAGE_KEY = 'woodhall-kyc-draft-v2';
 
@@ -12,7 +12,6 @@ export interface CorporateDraft {
   funds: Record<string, string>;
   declaration: Record<string, string | boolean>;
   directors: Record<string, string>[];
-  documents: Record<string, boolean>;
   consent: boolean;
 }
 
@@ -21,7 +20,6 @@ export interface IndividualDraft {
   customerType: 'individual';
   person: Record<string, string | string[]>;
   declaration: Record<string, string | boolean>;
-  documents: Record<string, boolean>;
   consent: boolean;
 }
 
@@ -51,14 +49,6 @@ function pickOption<T extends string>(value: unknown, options: { value: T }[]): 
   return typeof value === 'string' && options.some((o) => o.value === value) ? (value as T) : '';
 }
 
-function documentsOf(docs: Record<string, { submitted: boolean }>): Record<string, boolean> {
-  const documents: Record<string, boolean> = {};
-  Object.keys(docs).forEach((id) => {
-    documents[id] = docs[id].submitted;
-  });
-  return documents;
-}
-
 function serializeCorporate(form: CorporateForm): CorporateDraft {
   return {
     v: 2,
@@ -70,7 +60,6 @@ function serializeCorporate(form: CorporateForm): CorporateDraft {
       const { files: _files, ...values } = d;
       return values;
     }),
-    documents: documentsOf(form.docs),
     consent: form.consent,
   };
 }
@@ -79,9 +68,8 @@ function serializeIndividual(form: IndividualForm): IndividualDraft {
   return {
     v: 2,
     customerType: 'individual',
-    person: { ...form.person, meansOfId: [...form.person.meansOfId], expectedTransactionTypes: [...form.person.expectedTransactionTypes] },
+    person: { ...form.person, meansOfId: [...form.person.meansOfId] },
     declaration: { ...form.declaration },
-    documents: documentsOf(form.docs),
     consent: form.consent,
   };
 }
@@ -125,7 +113,7 @@ const anyText = (o: unknown) => isObj(o) && Object.values(o).some(hasText);
 
 export function hasAnyContent(d: Draft | null): boolean {
   if (!d) return false;
-  const common = (isObj(d.documents) && Object.values(d.documents).some((v) => v === true)) || d.consent === true;
+  const common = d.consent === true;
   if (d.customerType === 'individual') {
     return common || anyText(d.person) || anyText(d.declaration);
   }
@@ -138,16 +126,6 @@ export function hasAnyContent(d: Draft | null): boolean {
     anyText(d.declaration) ||
     (Array.isArray(d.directors) && d.directors.some(directorHasContent))
   );
-}
-
-function applyDocuments<T extends { docs: Record<string, { submitted: boolean; file: File | null }> }>(form: T, documents: unknown): T['docs'] {
-  const docs = { ...form.docs };
-  if (isObj(documents)) {
-    Object.keys(documents).forEach((id) => {
-      if (docs[id] && documents[id] === true) docs[id] = { ...docs[id], submitted: true };
-    });
-  }
-  return docs;
 }
 
 export function applyDraft(form: CorporateForm, d: CorporateDraft): CorporateForm {
@@ -167,7 +145,6 @@ export function applyDraft(form: CorporateForm, d: CorporateDraft): CorporateFor
     entity: pickStrings(form.entity, d.entity),
     funds: pickStrings(form.funds, d.funds),
     declaration,
-    docs: applyDocuments(form, d.documents),
     directors: directors.length > 0 ? directors : form.directors,
     consent: d.consent === true,
   };
@@ -180,8 +157,7 @@ export function applyIndividualDraft(form: IndividualForm, d: IndividualDraft): 
   person.sourceOfIncome = pickOption(src.sourceOfIncome, INCOME_OPTIONS);
   person.purposeOfRelationship = pickOption(src.purposeOfRelationship, PURPOSE_OPTIONS);
   person.meansOfId = pickOptions(src.meansOfId, MEANS_OF_ID_OPTIONS);
-  person.expectedTransactionTypes = pickOptions(src.expectedTransactionTypes, TRANSACTION_TYPE_OPTIONS);
   const declaration = pickStrings(form.declaration, d.declaration);
   declaration.signatureAgree = isObj(d.declaration) && d.declaration.signatureAgree === true;
-  return { ...form, person, declaration, docs: applyDocuments(form, d.documents), consent: d.consent === true };
+  return { ...form, person, declaration, consent: d.consent === true };
 }

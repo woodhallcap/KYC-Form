@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
-  validateDeclaration, validateDirectors, validateDocuments, validateEntity, validateFileMeta, validateFunds,
-  validateIndividualDeclaration, validateIndividualDocuments, validateIndividualPerson,
+  DOCUMENT_IDS, validateDeclaration, validateDirectors, validateDocuments, validateEntity, validateFileMeta, validateFunds,
+  MEANS_OF_ID_OPTIONS, validateImageMeta, validateIndividualDeclaration, validateIndividualDocuments, validateIndividualPerson,
 } from './validation';
+import { CORPORATE_DOCUMENTS, INDIVIDUAL_DOCUMENTS } from './documents';
 import { bigFile, dir, makeForm, makeIndividual, validEntity, validPerson } from '../test-utils';
 
 describe('validateFileMeta', () => {
@@ -22,6 +23,7 @@ describe('validateEntity', () => {
     const e = validateEntity({});
     ['companyName', 'rcNumber', 'dateOfIncorporation', 'registeredAddress', 'natureOfBusiness', 'tin', 'companyEmail', 'bankAccountNumber', 'bankName']
       .forEach((k) => expect(e[k]).toBeTruthy());
+    expect(e.rcNumber).toBe('Business registration number is required.');
     expect(e.businessAddress).toBeUndefined();
     expect(validateEntity(validEntity)).toEqual({});
     expect(validateEntity({ ...validEntity, companyEmail: 'nope' }).companyEmail).toBe('Enter a valid email address.');
@@ -53,31 +55,25 @@ describe('validateDirectors', () => {
   });
 });
 
-describe('validateDocuments', () => {
-  it('requires consent', () => {
-    expect(validateDocuments(makeForm()).consent).toBe('Consent to processing is required.');
-  });
+const pdf = (name = 'a.pdf') => new File(['x'], name);
+const allDocs = (specs: readonly { id: string }[]) => Object.fromEntries(specs.map((d) => [d.id, pdf()]));
 
-  it('ignores an unticked document even with a bad file', () => {
-    const f = makeForm({ consent: true });
-    f.docs.cac_forms = { submitted: false, file: bigFile('x.exe', 9) };
-    expect(validateDocuments(f)).toEqual({});
+describe('validateDocuments (corporate)', () => {
+  it('requires every required document and consent, keyed by document id', () => {
+    const errors = validateDocuments(makeForm());
+    CORPORATE_DOCUMENTS.filter((d) => d.required).forEach((d) => expect(errors[d.id]).toBe(`${d.label} is required.`));
+    expect(errors.corporate_id_signatories).toBeUndefined();
+    expect(errors.consent).toBeTruthy();
   });
-
-  it('blocks a ticked document with a bad file, keyed by document id', () => {
-    const f = makeForm({ consent: true });
-    f.docs.cac_forms = { submitted: true, file: new File(['x'], 'a.exe') };
-    expect(validateDocuments(f).cac_forms).toBe('File type not allowed: a.exe');
+  it('passes with every required file and consent, and checks the type of an optional file', () => {
+    const docs = allDocs(CORPORATE_DOCUMENTS.filter((d) => d.required));
+    expect(validateDocuments(makeForm({ docs, consent: true }))).toEqual({});
+    const bad = validateDocuments(makeForm({ docs: { ...docs, corporate_id_signatories: pdf('x.exe') }, consent: true }));
+    expect(bad.corporate_id_signatories).toBe('File type not allowed: x.exe');
   });
-
-  it('totals ALL uploads (documents, directors, seal) against 20MB', () => {
-    const g = makeForm({ consent: true });
-    g.docs.certificate_of_incorporation = { submitted: true, file: bigFile('a.pdf', 4.5) };
-    g.directors[0].files.id = bigFile('b.pdf', 4.5);
-    g.directors[0].files.nin = bigFile('c.pdf', 4.5);
-    g.directors[0].files.bvn = bigFile('d.pdf', 4.5);
-    g.seal = bigFile('e.png', 4.5);
-    expect(validateDocuments(g)._total).toBe('Total attachments exceed the 20MB limit.');
+  it('rejects an oversized file', () => {
+    const docs = { ...allDocs(CORPORATE_DOCUMENTS.filter((d) => d.required)), cac_forms: bigFile('big.pdf', 5.01) };
+    expect(validateDocuments(makeForm({ docs, consent: true })).cac_forms).toBe('File exceeds 5MB limit: big.pdf');
   });
 });
 
@@ -87,22 +83,58 @@ describe('validateFunds and validateDeclaration', () => {
     expect(validateFunds({ sourceOfFunds: 'Sales', facilityAmount: '5,000,000' })).toEqual({});
   });
 
-  it('requires both signatories, dates and agreement, and checks the seal', () => {
-    const e = validateDeclaration({}, null);
+  it('requires both signatories, dates and agreement', () => {
+    const e = validateDeclaration(makeForm());
     ['signatory1Name', 'signatory1Date', 'signatory2Name', 'signatory2Date', 'signatureAgree'].forEach((k) => expect(e[k]).toBeTruthy());
-    const ok = { signatory1Name: 'A', signatory1Date: '2026-01-01', signatory2Name: 'B', signatory2Date: '2026-01-01', signatureAgree: true };
-    expect(validateDeclaration(ok, null)).toEqual({});
-    expect(validateDeclaration(ok, new File(['x'], 's.exe')).sealFile).toBe('File type not allowed: s.exe');
+  });
+
+  it('requires both signature images and the seal', () => {
+    const e = validateDeclaration(makeForm());
+    expect(e.signatory1SignatureFile).toBe('Authorized signatory 1 signature is required.');
+    expect(e.signatory2SignatureFile).toBe('Authorized signatory 2 signature is required.');
+    expect(e.sealFile).toBe('Company seal or stamp is required.');
+  });
+
+  it('passes when everything is filled and the images are valid, and flags a non-image', () => {
+    const png = (n: string) => new File(['x'], n);
+    const images = { signatory1SignatureFile: png('a.png'), signatory2SignatureFile: png('b.jpg'), sealFile: png('s.png') };
+    const declaration = { signatory1Name: 'A', signatory1Date: '2026-01-01', signatory2Name: 'B', signatory2Date: '2026-01-01', signatureAgree: true };
+    expect(validateDeclaration(makeForm({ images, declaration }))).toEqual({});
+    expect(validateDeclaration(makeForm({ images: { ...images, sealFile: png('s.pdf') }, declaration })).sealFile).toBe('Upload a JPG or PNG image.');
+  });
+
+  it('reports _total when all uploads exceed 20MB', () => {
+    const docs = Object.fromEntries(DOCUMENT_IDS.map((id) => [id, bigFile(`${id}.pdf`, 4.9)]));
+    expect(validateDeclaration(makeForm({ docs }))._total).toBe('Total attachments exceed the 20MB limit.');
+  });
+});
+
+describe('validateImageMeta', () => {
+  it('accepts jpg/jpeg/png only and keeps the 5MB cap', () => {
+    expect(validateImageMeta(new File(['x'], 'sig.PNG')).valid).toBe(true);
+    expect(validateImageMeta(new File(['x'], 'sig.heic')).error).toBe('Upload a JPG or PNG image.');
+    expect(validateImageMeta(new File(['x'], 'sig.pdf')).error).toBe('Upload a JPG or PNG image.');
+    expect(validateImageMeta(bigFile('sig.jpg', 5.1)).error).toBe('File exceeds 5MB limit: sig.jpg');
   });
 });
 
 describe('validateIndividualPerson', () => {
-  it('flags every required field, but not the optional ones', () => {
-    const e = validateIndividualPerson({});
+  it('requires everything except ID number and expiry', () => {
+    const e = validateIndividualPerson(makeIndividual().person);
     ['fullName', 'dateOfBirth', 'placeOfBirth', 'gender', 'nationality', 'countryOfResidence', 'residentialAddress', 'lga', 'state', 'phone', 'email',
-      'meansOfId', 'idNumber', 'bvn', 'nin', 'occupation', 'sourceOfIncome', 'sourceOfWealth', 'purposeOfRelationship', 'expectedMonthlyTurnover',
-      'expectedTransactionTypes'].forEach((k) => expect(e[k], k).toBeTruthy());
-    ['idExpiry', 'employerName', 'officeAddress', 'sourceOfIncomeOther', 'purposeOther'].forEach((k) => expect(e[k], k).toBeUndefined());
+      'employerName', 'officeAddress', 'officialEmail', 'bvn', 'nin', 'meansOfId', 'occupation', 'sourceOfIncome', 'sourceOfWealth',
+      'purposeOfRelationship'].forEach((k) => expect(e[k], k).toBeTruthy());
+    ['idNumber', 'idExpiry', 'sourceOfIncomeOther', 'purposeOther', 'expectedMonthlyTurnover', 'expectedTransactionTypes'].forEach((k) => expect(e[k], k).toBeUndefined());
+  });
+
+  it('checks the official email format', () => {
+    expect(validateIndividualPerson({ ...validPerson, officialEmail: 'nope' }).officialEmail).toBe('Enter a valid email address.');
+    expect(validateIndividualPerson({ ...validPerson, officialEmail: '' }).officialEmail).toBe('Official email is required.');
+    expect(validateIndividualPerson(validPerson)).toEqual({});
+  });
+
+  it('no longer offers BVN as a means of ID', () => {
+    expect(MEANS_OF_ID_OPTIONS.map((o) => o.value)).toEqual(['nin', 'passport', 'drivers_license', 'voters_card']);
   });
 
   it('passes a complete person and checks the email', () => {
@@ -117,42 +149,44 @@ describe('validateIndividualPerson', () => {
     expect(validateIndividualPerson({ ...validPerson, sourceOfIncome: 'salary', sourceOfIncomeOther: '' }).sourceOfIncomeOther).toBeUndefined();
   });
 
-  it('requires a gender and at least one means of ID and transaction type', () => {
+  it('requires a gender and at least one means of ID', () => {
     expect(validateIndividualPerson({ ...validPerson, gender: '' }).gender).toBe('Select a gender.');
     expect(validateIndividualPerson({ ...validPerson, meansOfId: [] }).meansOfId).toBe('Select at least one means of ID.');
-    expect(validateIndividualPerson({ ...validPerson, expectedTransactionTypes: [] }).expectedTransactionTypes).toBe('Select at least one transaction type.');
   });
 });
 
 describe('validateIndividualDocuments', () => {
-  it('requires consent and ignores an unticked document with a bad file', () => {
-    expect(validateIndividualDocuments(makeIndividual()).consent).toBe('Consent to processing is required.');
-    const f = makeIndividual({ consent: true });
-    f.docs.passport_photograph = { submitted: false, file: bigFile('x.exe', 9) };
-    expect(validateIndividualDocuments(f)).toEqual({});
+  it('requires the five required documents but not work ID, employment letter or mandate card', () => {
+    const errors = validateIndividualDocuments(makeIndividual());
+    expect(Object.keys(errors).filter((k) => k !== 'consent').sort()).toEqual(
+      ['bank_statement_12_months', 'passport_photograph', 'proof_of_address_statement', 'proof_of_address_utility', 'valid_means_of_id'],
+    );
+    expect(errors.consent).toBeTruthy();
   });
-
-  it('blocks a ticked document with a bad file', () => {
-    const f = makeIndividual({ consent: true });
-    f.docs.valid_means_of_id = { submitted: true, file: new File(['x'], 'a.exe') };
-    expect(validateIndividualDocuments(f).valid_means_of_id).toBe('File type not allowed: a.exe');
-  });
-
-  it('accepts four files at exactly the 5MB limit (the 20MB total is unreachable with four documents)', () => {
-    const g = makeIndividual({ consent: true });
-    ['valid_means_of_id', 'proof_of_address', 'passport_photograph', 'signature_mandate_card'].forEach((id) => {
-      g.docs[id] = { submitted: true, file: bigFile(id + '.pdf', 5) };
-    });
-    expect(validateIndividualDocuments(g)).toEqual({});
-    g.docs.passport_photograph = { submitted: true, file: bigFile('p.pdf', 5.01) };
-    expect(validateIndividualDocuments(g).passport_photograph).toBe('File exceeds 5MB limit: p.pdf');
+  it('passes with the required files, and blocks a bad optional file', () => {
+    const docs = allDocs(INDIVIDUAL_DOCUMENTS.filter((d) => d.required));
+    expect(validateIndividualDocuments(makeIndividual({ docs, consent: true }))).toEqual({});
+    expect(validateIndividualDocuments(makeIndividual({ docs: { ...docs, work_id: pdf('a.exe') }, consent: true })).work_id).toBe('File type not allowed: a.exe');
   });
 });
 
 describe('validateIndividualDeclaration', () => {
-  it('requires name, signature, date and agreement', () => {
-    const e = validateIndividualDeclaration({});
-    ['declarationName', 'signatureName', 'signatureDate', 'signatureAgree'].forEach((k) => expect(e[k]).toBeTruthy());
-    expect(validateIndividualDeclaration({ declarationName: 'A', signatureName: 'A', signatureDate: '2026-01-01', signatureAgree: true })).toEqual({});
+  it('requires name, date, agreement and the signature image; there is no typed signature', () => {
+    const e = validateIndividualDeclaration(makeIndividual());
+    expect(Object.keys(e).sort()).toEqual(['declarationName', 'signatureAgree', 'signatureDate', 'signatureFile']);
+    expect(e.signatureFile).toBe('Handwritten signature is required.');
+  });
+
+  it('passes with everything provided', () => {
+    const f = makeIndividual({
+      declaration: { declarationName: 'A', signatureDate: '2026-01-01', signatureAgree: true },
+      images: { signatureFile: new File(['x'], 'sig.png') },
+    });
+    expect(validateIndividualDeclaration(f)).toEqual({});
+  });
+
+  it('reports _total when attachments exceed 20MB', () => {
+    const docs = Object.fromEntries(INDIVIDUAL_DOCUMENTS.map((d) => [d.id, bigFile(`${d.id}.pdf`, 4.9)]));
+    expect(validateIndividualDeclaration(makeIndividual({ docs }))._total).toBe('Total attachments exceed the 20MB limit.');
   });
 });

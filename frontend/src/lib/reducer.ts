@@ -1,5 +1,5 @@
 import type {
-  CorporateForm, CustomerType, DirectorField, DirectorFileId, Errors, FormState, IndividualForm,
+  CorporateForm, CustomerType, DirectorField, DirectorFileId, Errors, FormState, ImageName, IndividualForm, MeansOfId,
 } from '../types';
 import { FLOWS } from '../flows/corporate';
 import type { Flow } from '../flows/types';
@@ -9,7 +9,7 @@ import { emptyDirector, initialCorporateForm, initialIndividualForm } from './in
 import { MAX_DIRECTORS } from './validation';
 
 export type FieldGroup = 'entity' | 'funds' | 'declaration' | 'person';
-export type ChoiceName = 'meansOfId' | 'expectedTransactionTypes';
+export type ChoiceName = 'meansOfId';
 
 export interface AppState {
   customerType: CustomerType | null;
@@ -28,13 +28,12 @@ export type Action =
   | { type: 'setField'; group: FieldGroup; name: string; value: string | boolean }
   | { type: 'toggleChoice'; name: ChoiceName; value: string }
   | { type: 'setConsent'; value: boolean }
-  | { type: 'setDocSubmitted'; id: string; value: boolean }
   | { type: 'setDocFile'; id: string; file: File | null }
   | { type: 'addDirector' }
   | { type: 'removeDirector'; index: number }
   | { type: 'setDirectorField'; index: number; name: DirectorField; value: string }
   | { type: 'setDirectorFile'; index: number; fileId: DirectorFileId; file: File | null }
-  | { type: 'setSeal'; file: File | null }
+  | { type: 'setImage'; name: ImageName; file: File | null }
   | { type: 'touch'; name: string }
   | { type: 'next' }
   | { type: 'back' }
@@ -125,16 +124,14 @@ export function reducer(s: AppState, a: Action): AppState {
     }
     case 'toggleChoice': {
       if (s.customerType !== 'individual') return s;
-      const current = s.individual.person[a.name] as string[];
-      const next = current.includes(a.value) ? current.filter((v) => v !== a.value) : [...current, a.value];
-      return withForm(s, { ...s.individual, person: { ...s.individual.person, [a.name]: next } });
+      const current: string[] = s.individual.person.meansOfId;
+      const next = (current.includes(a.value) ? current.filter((v) => v !== a.value) : [...current, a.value]) as MeansOfId[];
+      return withForm(s, { ...s.individual, person: { ...s.individual.person, meansOfId: next } });
     }
     case 'setConsent':
       return form ? withForm(s, { ...form, consent: a.value }) : s;
-    case 'setDocSubmitted':
-      return form ? withForm(s, { ...form, docs: { ...form.docs, [a.id]: { ...form.docs[a.id], submitted: a.value } } }) : s;
     case 'setDocFile':
-      return form ? withForm(s, { ...form, docs: { ...form.docs, [a.id]: { ...form.docs[a.id], file: a.file } } }) : s;
+      return form ? withForm(s, { ...form, docs: { ...form.docs, [a.id]: a.file } }) : s;
     case 'addDirector':
       if (s.customerType !== 'corporate' || s.corporate.directors.length >= MAX_DIRECTORS) return s;
       return withForm(s, { ...s.corporate, directors: [...s.corporate.directors, emptyDirector()] });
@@ -152,8 +149,8 @@ export function reducer(s: AppState, a: Action): AppState {
       return s.customerType === 'corporate'
         ? updateDirector(s, a.index, (d) => ({ ...d, files: { ...d.files, [a.fileId]: a.file } }))
         : s;
-    case 'setSeal':
-      return s.customerType === 'corporate' ? withForm(s, { ...s.corporate, seal: a.file }) : s;
+    case 'setImage':
+      return form ? withForm(s, { ...form, images: { ...form.images, [a.name]: a.file } } as FormState) : s;
     case 'touch': {
       if (!form) return s;
       const touched = { ...s.touched, [a.name]: true };

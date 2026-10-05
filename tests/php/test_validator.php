@@ -152,20 +152,22 @@ function valid_person(array $o = []): array
     return array_replace([
         'fullName' => 'Jane Doe', 'dateOfBirth' => '1990-01-01', 'placeOfBirth' => 'Lagos', 'gender' => 'F', 'nationality' => 'Nigerian',
         'countryOfResidence' => 'Nigeria', 'residentialAddress' => '1 Rd', 'lga' => 'Ikeja', 'state' => 'Lagos', 'phone' => '08000000000', 'email' => 'jane@example.com',
-        'meansOfId' => ['nin', 'passport'], 'idNumber' => 'A123', 'bvn' => '222', 'nin' => '333', 'occupation' => 'Engineer',
-        'sourceOfIncome' => 'salary', 'sourceOfWealth' => 'Savings', 'purposeOfRelationship' => 'loan',
-        'expectedMonthlyTurnover' => '500,000', 'expectedTransactionTypes' => ['transfer'],
+        'meansOfId' => ['nin', 'passport'], 'idNumber' => 'A123', 'idExpiry' => '', 'bvn' => '222', 'nin' => '333', 'occupation' => 'Engineer',
+        'employerName' => 'Acme Engineering', 'officeAddress' => '4 Adeola Odeku St', 'officialEmail' => 'jane@acme-eng.com',
+        'sourceOfIncome' => 'salary', 'sourceOfIncomeOther' => '', 'sourceOfWealth' => 'Savings', 'purposeOfRelationship' => 'loan', 'purposeOther' => '',
     ], $o);
 }
 
-test_case('validate_individual_person flags every required field when empty, but not the optional ones', function () {
-    $r = validate_individual_person([]);
-    foreach (['fullName', 'dateOfBirth', 'placeOfBirth', 'gender', 'nationality', 'countryOfResidence', 'residentialAddress', 'lga', 'state', 'phone', 'email', 'meansOfId', 'idNumber', 'bvn', 'nin', 'occupation', 'sourceOfIncome', 'sourceOfWealth', 'purposeOfRelationship', 'expectedMonthlyTurnover', 'expectedTransactionTypes'] as $k) {
-        assert_true(isset($r['errors'][$k]), $k);
-    }
-    foreach (['idExpiry', 'employerName', 'officeAddress', 'sourceOfIncomeOther', 'purposeOther'] as $k) {
-        assert_true(!isset($r['errors'][$k]), $k);
-    }
+test_case('validate_individual_person: all required except idNumber/idExpiry; officialEmail checked; BVN is not an ID option', function () {
+    $e = validate_individual_person([])['errors'];
+    foreach (['fullName', 'dateOfBirth', 'placeOfBirth', 'gender', 'nationality', 'countryOfResidence', 'residentialAddress', 'lga', 'state', 'phone', 'email', 'bvn', 'nin', 'occupation', 'sourceOfIncome', 'sourceOfWealth', 'purposeOfRelationship', 'employerName', 'officeAddress', 'officialEmail', 'meansOfId'] as $k) assert_true(isset($e[$k]), $k);
+    foreach (['idNumber', 'idExpiry', 'expectedMonthlyTurnover', 'expectedTransactionTypes', 'sourceOfIncomeOther', 'purposeOther'] as $k) assert_true(!isset($e[$k]), $k);
+    assert_equal('Employer/business name is required.', $e['employerName']);
+    assert_equal('Office address is required.', $e['officeAddress']);
+    assert_equal('Official email is required.', $e['officialEmail']);
+    $p = valid_person(['officialEmail' => 'nope']);
+    assert_equal('Enter a valid email address.', validate_individual_person($p)['errors']['officialEmail']);
+    assert_equal('Select at least one means of ID.', validate_individual_person(valid_person(['meansOfId' => ['bvn']]))['errors']['meansOfId']);
 });
 
 test_case('validate_individual_person passes a complete person and checks the email', function () {
@@ -187,27 +189,56 @@ test_case('validate_individual_person rejects unknown/odd choice values without 
     foreach ([['nin', 'bogus'], 'nin', [['nin']], [], [1, 2]] as $bad) {
         assert_equal('Select at least one means of ID.', validate_individual_person(valid_person(['meansOfId' => $bad]))['errors']['meansOfId'], json_encode($bad));
     }
-    foreach ([['cash', 'bogus'], 'cash', [], [['cash']]] as $bad) {
-        assert_equal('Select at least one transaction type.', validate_individual_person(valid_person(['expectedTransactionTypes' => $bad]))['errors']['expectedTransactionTypes'], json_encode($bad));
-    }
     assert_true(isset(validate_individual_person(valid_person(['fullName' => ['x']]))['errors']['fullName']));
 });
 
-test_case('validate_individual_declaration requires name, signature, date and agreement', function () {
-    $r = validate_individual_declaration([]);
-    foreach (['declarationName', 'signatureName', 'signatureDate', 'signatureAgree'] as $k) {
-        assert_true(isset($r['errors'][$k]), $k);
+test_case('validate_individual_declaration no longer needs a typed signature', function () {
+    $r = validate_individual_declaration(['declarationName' => 'A', 'signatureDate' => '2026-10-05', 'signatureAgree' => 'on']);
+    assert_equal(true, $r['valid']);
+    $e = validate_individual_declaration([])['errors'];
+    foreach (['declarationName', 'signatureDate', 'signatureAgree'] as $k) assert_true(isset($e[$k]), $k);
+    assert_true(!isset($e['signatureName']));
+    assert_equal('You must confirm the attached image is your signature.', $e['signatureAgree']);
+});
+
+test_case('validate_declaration agree message names the attached images', function () {
+    assert_equal('You must confirm the attached images are your signatures.', validate_declaration([])['errors']['signatureAgree']);
+});
+
+test_case('validate_image_meta accepts jpg/jpeg/png only', function () {
+    assert_equal(true, validate_image_meta(['name' => 'sig.PNG', 'size' => 10])['valid']);
+    assert_equal('Upload a JPG or PNG image.', validate_image_meta(['name' => 'sig.heic', 'size' => 10])['error']);
+    assert_equal('Upload a JPG or PNG image.', validate_image_meta(['name' => 'sig.pdf', 'size' => 10])['error']);
+    assert_equal('File exceeds 5MB limit: sig.png', validate_image_meta(['name' => 'sig.png', 'size' => 6 * 1024 * 1024])['error']);
+});
+
+test_case('validate_uploads uses the image rule for image entries', function () {
+    $r = validate_uploads([['key' => 'sealFile', 'image' => true, 'file' => ['name' => 'seal.pdf', 'size' => 1]], ['key' => 'doc', 'file' => ['name' => 'a.pdf', 'size' => 1]]]);
+    assert_equal('Upload a JPG or PNG image.', $r['errors']['sealFile']);
+    assert_true(!isset($r['errors']['doc']));
+});
+
+test_case('rcNumber message names the business registration number', function () {
+    assert_equal('Business registration number is required.', validate_entity([])['errors']['rcNumber']);
+});
+
+test_case('document specs match the front end ids and labels', function () {
+    $ts = file_get_contents(__DIR__ . '/../../frontend/src/lib/documents.ts');
+    assert_equal(9, count(CORPORATE_DOCUMENTS));
+    assert_equal(8, count(INDIVIDUAL_DOCUMENTS));
+    foreach ([CORPORATE_DOCUMENTS, INDIVIDUAL_DOCUMENTS] as $docs) {
+        foreach ($docs as $id => $spec) {
+            assert_true(strpos($ts, "id: '{$id}', label: '{$spec['label']}', required: " . ($spec['required'] ? 'true' : 'false')) !== false, $id);
+        }
     }
-    assert_equal(true, validate_individual_declaration(['declarationName' => 'A', 'signatureName' => 'A', 'signatureDate' => '2026-01-01', 'signatureAgree' => 'on'])['valid']);
 });
 
 test_case('sanitize_submission_input cleans individual fields and array fields', function () {
-    $r = sanitize_submission_input(['fullName' => "Jane\r\nBcc: x", 'residentialAddress' => "1 Rd\r\nLagos", 'officeAddress' => "2 Rd\x00", 'meansOfId' => ["nin\r\n", ['x'], 5, 'bvn'], 'expectedTransactionTypes' => 'cash']);
+    $r = sanitize_submission_input(['fullName' => "Jane\r\nBcc: x", 'residentialAddress' => "1 Rd\r\nLagos", 'officeAddress' => "2 Rd\x00", 'meansOfId' => ["nin\r\n", ['x'], 5, 'bvn']]);
     assert_equal('JaneBcc: x', $r['fullName']);
     assert_equal("1 Rd\nLagos", $r['residentialAddress']);
     assert_equal('2 Rd', $r['officeAddress']);
     assert_equal(['nin', 'bvn'], $r['meansOfId']);
-    assert_equal('cash', $r['expectedTransactionTypes']);
 });
 
 test_summary();

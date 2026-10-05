@@ -5,22 +5,6 @@ require_once __DIR__ . '/validator.php';
 require_once __DIR__ . '/pdf-builder.php';
 require_once __DIR__ . '/mailer.php';
 
-const CORPORATE_DOCUMENT_LABELS = [
-    'certificate_of_incorporation' => 'CAC Certificate of Incorporation',
-    'cac_forms' => 'CAC Forms CAC2.3 / CAC1.1 - Directors & Shareholders',
-    'memorandum_articles' => 'Memorandum & Articles of Association',
-    'board_resolution' => 'Board Resolution to open account and obtain facility',
-    'company_bank_statement' => 'Company Bank Statement - Last 12 months',
-    'corporate_id_signatories' => 'Corporate ID of Authorized Signatories',
-];
-
-const INDIVIDUAL_DOCUMENT_LABELS = [
-    'valid_means_of_id' => 'Valid Means of ID',
-    'proof_of_address' => 'Proof of Address (less than 3 months): Utility Bill / Bank Statement',
-    'passport_photograph' => 'Passport Photograph',
-    'signature_mandate_card' => 'Signature Mandate Card',
-];
-
 /**
  * Pull one upload out of PHP's nested $_FILES layout, e.g. the field
  * directors[0][files][id] lives at $_FILES['directors']['name'][0]['files']['id'].
@@ -61,25 +45,61 @@ function upload_error_message(int $code): string
     }
 }
 
-function parse_documents_input(array $post, array $files, array $ids, array $labels): array
+function parse_documents_input(array $files, array $specs): array
 {
-    $docsPost = is_array($post['documents'] ?? null) ? $post['documents'] : [];
     $documents = [];
-    foreach ($ids as $id) {
-        $submitted = is_array($docsPost[$id] ?? null) && !empty($docsPost[$id]['submitted']);
+    foreach ($specs as $id => $spec) {
         $documents[] = [
             'id' => $id,
-            'label' => $labels[$id],
-            'submitted' => $submitted,
-            // Only ticked documents count; a file left on an unticked row is ignored.
-            'file' => $submitted ? extract_upload($files, 'documents', [$id, 'file']) : null,
+            'label' => $spec['label'],
+            'required' => $spec['required'],
+            'file' => extract_upload($files, 'documents', [$id]),
         ];
     }
     return $documents;
 }
 
-/** Every upload that will be validated and attached: ['key', 'slot', 'file']. */
-function collect_uploads(array $documents, array $files, int $directorCount = 0, bool $withSeal = false): array
+function missing_document_errors(array $documents): array
+{
+    $errors = [];
+    foreach ($documents as $doc) {
+        if ($doc['required'] && $doc['file'] === null) {
+            $errors[$doc['id']] = $doc['label'] . ' is required.';
+        }
+    }
+    return $errors;
+}
+
+/** Signature/seal uploads: [uploads, errors for the missing ones]. */
+function collect_images(array $files, array $specs): array
+{
+    $uploads = [];
+    $errors = [];
+    foreach ($specs as $name => $spec) {
+        $meta = extract_upload($files, $name, []);
+        if ($meta === null) {
+            $errors[$name] = $spec['missing'];
+        } else {
+            $uploads[] = ['key' => $name, 'slot' => $spec['slot'], 'file' => $meta, 'image' => true];
+        }
+    }
+    return [$uploads, $errors];
+}
+
+/** Image name => temp path, for attached images only. */
+function image_paths(array $uploads): array
+{
+    $paths = [];
+    foreach ($uploads as $u) {
+        if (!empty($u['image'])) {
+            $paths[$u['key']] = (string) $u['file']['tmp_name'];
+        }
+    }
+    return $paths;
+}
+
+/** Every document and director upload that will be validated and attached: ['key', 'slot', 'file']. */
+function collect_uploads(array $documents, array $files, int $directorCount = 0): array
 {
     $uploads = [];
     foreach ($documents as $doc) {
@@ -93,12 +113,6 @@ function collect_uploads(array $documents, array $files, int $directorCount = 0,
             if ($meta !== null) {
                 $uploads[] = ['key' => "directorFile.$i.$fileId", 'slot' => 'director-' . ($i + 1) . '-' . $fileId, 'file' => $meta];
             }
-        }
-    }
-    if ($withSeal) {
-        $seal = extract_upload($files, 'sealFile', []);
-        if ($seal !== null) {
-            $uploads[] = ['key' => 'sealFile', 'slot' => 'company-seal', 'file' => $seal];
         }
     }
     return $uploads;
@@ -134,15 +148,16 @@ function collect_upload_errors(array $uploads): array
         if ($code !== UPLOAD_ERR_OK) {
             $errors[$upload['key']] = upload_error_message((int) $code);
         } else {
-            $checkable[] = ['key' => $upload['key'], 'file' => $upload['file']];
+            $checkable[] = ['key' => $upload['key'], 'file' => $upload['file'], 'image' => !empty($upload['image'])];
         }
     }
     return array_merge($errors, validate_uploads($checkable)['errors']);
 }
 
 /** Build the PDF, send the emails, always clean up temp files, and shape the result. */
-function deliver_submission(array $data, array $uploads, callable $sendEmails): array
+function deliver_submission(array $data, array $uploads, callable $sendEmails, ?callable $buildPdf = null): array
 {
+    $buildPdf = $buildPdf ?? 'build_submission_pdf';
     $attachments = [];
     foreach ($uploads as $upload) {
         $attachments[] = [
@@ -151,12 +166,19 @@ function deliver_submission(array $data, array $uploads, callable $sendEmails): 
         ];
     }
 
-    $pdfBytes = build_submission_pdf($data);
-    $emailResult = call_user_func($sendEmails, $data, $pdfBytes, $attachments);
-
-    foreach ($attachments as $attachment) {
-        if (file_exists($attachment['tmpPath'])) {
-            @unlink($attachment['tmpPath']);
+    try {
+        try {
+            $pdfBytes = call_user_func($buildPdf, $data);
+        } catch (Throwable $e) {
+            error_log('KYC submission PDF build failed: ' . get_class($e));
+            return failure([], 'We could not send your submission. Please try again shortly.');
+        }
+        $emailResult = call_user_func($sendEmails, $data, $pdfBytes, $attachments);
+    } finally {
+        foreach ($attachments as $attachment) {
+            if (file_exists($attachment['tmpPath'])) {
+                @unlink($attachment['tmpPath']);
+            }
         }
     }
 
@@ -169,7 +191,7 @@ function deliver_submission(array $data, array $uploads, callable $sendEmails): 
 function summarise_documents(array $documents): array
 {
     return array_map(
-        fn(array $d): array => ['id' => $d['id'], 'label' => $d['label'], 'submitted' => $d['submitted']],
+        fn(array $d): array => ['id' => $d['id'], 'label' => $d['label'], 'attached' => $d['file'] !== null],
         $documents
     );
 }
@@ -177,16 +199,19 @@ function summarise_documents(array $documents): array
 function handle_corporate_submission(array $post, array $files, callable $sendEmails): array
 {
     $rows = is_array($post['directors'] ?? null) ? array_values($post['directors']) : [];
-    $documents = parse_documents_input($post, $files, CORPORATE_DOCUMENT_IDS, CORPORATE_DOCUMENT_LABELS);
+    $documents = parse_documents_input($files, CORPORATE_DOCUMENTS);
+    [$images, $imageErrors] = collect_images($files, CORPORATE_IMAGES);
     $consent = !empty($post['consent']);
 
-    $uploads = collect_uploads($documents, $files, min(count($rows), MAX_DIRECTORS), true);
+    $uploads = array_merge(collect_uploads($documents, $files, min(count($rows), MAX_DIRECTORS)), $images);
     $errors = array_merge(
         validate_entity($post)['errors'],
         validate_directors($post['directors'] ?? null)['errors'],
         validate_documents_consent($consent)['errors'],
         validate_funds($post)['errors'],
         validate_declaration($post)['errors'],
+        missing_document_errors($documents),
+        $imageErrors,
         collect_upload_errors($uploads)
     );
     if (count($errors) > 0) {
@@ -213,21 +238,24 @@ function handle_corporate_submission(array $post, array $files, callable $sendEm
         'directors' => $directorRows,
         'documents' => summarise_documents($documents),
         'consent' => $consent,
-        'sealAttached' => count(array_filter($uploads, fn(array $u): bool => $u['key'] === 'sealFile')) > 0,
+        'images' => image_paths($images),
     ];
     return deliver_submission($data, $uploads, $sendEmails);
 }
 
 function handle_individual_submission(array $post, array $files, callable $sendEmails): array
 {
-    $documents = parse_documents_input($post, $files, INDIVIDUAL_DOCUMENT_IDS, INDIVIDUAL_DOCUMENT_LABELS);
+    $documents = parse_documents_input($files, INDIVIDUAL_DOCUMENTS);
+    [$images, $imageErrors] = collect_images($files, INDIVIDUAL_IMAGES);
     $consent = !empty($post['consent']);
 
-    $uploads = collect_uploads($documents, $files);
+    $uploads = array_merge(collect_uploads($documents, $files), $images);
     $errors = array_merge(
         validate_individual_person($post)['errors'],
         validate_documents_consent($consent)['errors'],
         validate_individual_declaration($post)['errors'],
+        missing_document_errors($documents),
+        $imageErrors,
         collect_upload_errors($uploads)
     );
     if (count($errors) > 0) {
@@ -240,6 +268,7 @@ function handle_individual_submission(array $post, array $files, callable $sendE
         'fields' => $post,
         'documents' => summarise_documents($documents),
         'consent' => $consent,
+        'images' => image_paths($images),
     ];
     return deliver_submission($data, $uploads, $sendEmails);
 }
