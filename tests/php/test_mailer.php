@@ -162,6 +162,24 @@ test_case('admin email goes to every configured recipient and lists only attache
     assert_true(strpos($html, 'Corporate ID of Authorized Signatories') === false);
 });
 
+test_case('corporate admin email names the signatures and required seal and gives the company email', function () use ($sampleData) {
+    $html = build_admin_email_html($sampleData);
+    assert_true(strpos($html, "The signatories' handwritten signatures and the company seal are attached and also shown in the PDF.") !== false);
+    assert_true(strpos($html, '(if any)') === false);
+    assert_true(strpos($html, '<strong>Email:</strong> info@acme.com') !== false);
+    assert_true(strpos($html, 'Phone:') === false);
+});
+
+test_case('individual admin email names the customer signature and gives escaped email and phone', function () {
+    $d = ['customerType' => 'individual', 'submittedAt' => 'x',
+        'fields' => ['fullName' => 'Jane Doe', 'email' => 'jane<x>@example.com', 'phone' => '0800 & 1']];
+    $html = build_admin_email_html($d);
+    assert_true(strpos($html, "The customer's handwritten signature is attached and also shown in the PDF.") !== false);
+    assert_true(strpos($html, 'seal') === false);
+    assert_true(strpos($html, '<strong>Email:</strong> jane&lt;x&gt;@example.com') !== false);
+    assert_true(strpos($html, '<strong>Phone:</strong> 0800 &amp; 1') !== false);
+});
+
 test_case('emails say Woodhall Finance, never Woodhall Capital', function () use ($sampleData) {
     $all = build_admin_email_html($sampleData) . build_confirmation_email_html($sampleData);
     assert_true(strpos($all, 'Woodhall Capital') === false);

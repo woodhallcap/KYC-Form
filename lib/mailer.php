@@ -60,6 +60,14 @@ function build_admin_email_html(array $data, string $logoSrc = 'cid:woodhall-log
     $nameLabel = htmlspecialchars($summary['nameLabel'], ENT_QUOTES);
     $name = htmlspecialchars($summary['name'], ENT_QUOTES);
     $submittedAt = htmlspecialchars($data['submittedAt'] ?? '', ENT_QUOTES);
+    $individual = ($data['customerType'] ?? 'corporate') === 'individual';
+    $email = htmlspecialchars($summary['email'], ENT_QUOTES);
+    $phone = $individual && is_string($data['fields']['phone'] ?? null) ? htmlspecialchars($data['fields']['phone'], ENT_QUOTES) : '';
+    $contact = email_paragraph("<strong>Email:</strong> {$email}")
+        . ($individual ? email_paragraph("<strong>Phone:</strong> {$phone}") : '');
+    $imagesNote = $individual
+        ? "The customer's handwritten signature is attached and also shown in the PDF."
+        : "The signatories' handwritten signatures and the company seal are attached and also shown in the PDF.";
     $md = EMAIL_SPACE_MD;
     $items = '';
     foreach ($data['documents'] ?? [] as $doc) {
@@ -69,9 +77,10 @@ function build_admin_email_html(array $data, string $logoSrc = 'cid:woodhall-log
     }
     $inner = "<h2 style=\"color:#224834;margin:0 0 {$md}px 0;font-size:20px;\">New {$kind} Submission</h2>"
         . email_paragraph("<strong>{$nameLabel}:</strong> {$name}")
+        . $contact
         . email_paragraph("<strong>Submitted:</strong> {$submittedAt}")
         . email_paragraph("<strong>Documents attached:</strong><ul style=\"margin:8px 0 0 0;padding-left:20px;\">{$items}</ul>")
-        . email_paragraph('Signature images and the company seal (if any) are attached and also shown in the PDF.')
+        . email_paragraph($imagesNote)
         . email_paragraph('Please review the submission and contact the customer if anything is missing.', true);
     return build_email_shell($inner, $logoSrc);
 }
