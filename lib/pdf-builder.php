@@ -9,6 +9,7 @@ require_once __DIR__ . '/../vendor/tcpdf/tcpdf.php';
 const PDF_SPACE_SM = 2;
 const PDF_SPACE_MD = 4;
 const PDF_SPACE_LG = 8;
+const PDF_LABEL_WIDTH = 55;
 
 function build_submission_pdf(array $data): string
 {
@@ -31,6 +32,7 @@ function corporate_pdf_sections(array $data): array
 {
     $f = $data['fields'] ?? [];
     $v = fn(string $k): string => (string) ($f[$k] ?? '');
+    $img = fn(string $k): ?string => is_string($data['images'][$k] ?? null) ? $data['images'][$k] : null;
 
     $directorGroups = [];
     foreach (array_values($data['directors'] ?? []) as $i => $d) {
@@ -55,14 +57,14 @@ function corporate_pdf_sections(array $data): array
     }
 
     $docRows = array_map(
-        fn(array $doc): array => [$doc['label'], !empty($doc['submitted']) ? 'Submitted' : 'Not submitted'],
+        fn(array $doc): array => [$doc['label'], !empty($doc['attached']) ? 'Attached' : 'Not provided'],
         $data['documents'] ?? []
     );
     $docRows[] = ['Consent to processing', !empty($data['consent']) ? 'Given' : 'Not given'];
 
     return [
         ['title' => 'Section A: Entity Information', 'groups' => [['subtitle' => null, 'rows' => [
-            ['Company Name', $v('companyName')], ['RC Number', $v('rcNumber')], ['Date of Incorporation', $v('dateOfIncorporation')],
+            ['Company Name', $v('companyName')], ['Business Registration No. (BN / RC)', $v('rcNumber')], ['Date of Incorporation', $v('dateOfIncorporation')],
             ['Registered Address', $v('registeredAddress')], ['Business Address', $v('businessAddress')],
             ['Nature of Business', $v('natureOfBusiness')], ['Tax Identification Number', $v('tin')],
             ['Company Email', $v('companyEmail')], ['Corporate Bank Account', $v('bankAccountNumber')], ['Bank', $v('bankName')],
@@ -73,11 +75,13 @@ function corporate_pdf_sections(array $data): array
             ['Source of Funds', $v('sourceOfFunds')], ['Facility Amount Requested (NGN)', $v('facilityAmount')],
         ]]]],
         ['title' => 'Section E: Declaration', 'groups' => [['subtitle' => null, 'rows' => [
-            ['Certification', 'We certify that the above information is true. We understand Woodhall Capital is obligated to report suspicious transactions to NFIU.'],
-            ['Authorized Signatory 1', $v('signatory1Name')], ['Signatory 1 Date', $v('signatory1Date')],
-            ['Authorized Signatory 2', $v('signatory2Name')], ['Signatory 2 Date', $v('signatory2Date')],
-            ['Company Seal', !empty($data['sealAttached']) ? 'Attached' : 'Not provided'],
-            ['Typed signatures agreed', 'Yes'],
+            ['Certification', 'We certify that the above information is true. We understand Woodhall Finance is obligated to report suspicious transactions to NFIU.'],
+            ['Signatory 1 Name', $v('signatory1Name')], ['Signatory 1 Date', $v('signatory1Date')],
+            pdf_image_field('Signatory 1 Signature', $img('signatory1SignatureFile')),
+            ['Signatory 2 Name', $v('signatory2Name')], ['Signatory 2 Date', $v('signatory2Date')],
+            pdf_image_field('Signatory 2 Signature', $img('signatory2SignatureFile')),
+            pdf_image_field('Company Seal or Stamp', $img('sealFile')),
+            ['Handwritten signatures confirmed', 'Yes'],
         ]]]],
     ];
 }
@@ -85,8 +89,8 @@ function corporate_pdf_sections(array $data): array
 function render_pdf(string $title, string $subject, array $data, array $sections): string
 {
     $pdf = new TCPDF('P', 'mm', 'A4', true, 'UTF-8', false);
-    $pdf->SetCreator('Woodhall Capital KYC Form');
-    $pdf->SetAuthor('Woodhall Capital');
+    $pdf->SetCreator('Woodhall Finance KYC Form');
+    $pdf->SetAuthor('Woodhall Finance');
     $pdf->SetTitle($title . ' — ' . $subject);
     $pdf->setPrintHeader(false);
     $pdf->setPrintFooter(true);
@@ -149,8 +153,7 @@ function build_individual_pdf(array $data): string
     return render_pdf('Individual KYC / CDD Submission', $name, $data, individual_pdf_sections($data));
 }
 
-const MEANS_OF_ID_LABELS = ['nin' => 'NIN', 'bvn' => 'BVN', 'passport' => "Int'l Passport", 'drivers_license' => "Driver's License", 'voters_card' => "Voter's Card"];
-const TRANSACTION_TYPE_LABELS = ['cash' => 'Cash', 'transfer' => 'Transfer', 'cheque' => 'Cheque'];
+const MEANS_OF_ID_LABELS = ['nin' => 'NIN', 'passport' => "Int'l Passport", 'drivers_license' => "Driver's License", 'voters_card' => "Voter's Card"];
 const SOURCE_OF_INCOME_LABELS = ['salary' => 'Salary', 'business' => 'Business', 'investment' => 'Investment', 'inheritance' => 'Inheritance', 'other' => 'Other'];
 const PURPOSE_LABELS = ['loan' => 'Loan', 'lease' => 'Lease', 'investment' => 'Investment', 'other' => 'Other'];
 
@@ -180,9 +183,10 @@ function individual_pdf_sections(array $data): array
 {
     $f = $data['fields'] ?? [];
     $v = fn(string $k): string => is_string($f[$k] ?? null) ? $f[$k] : '';
+    $img = fn(string $k): ?string => is_string($data['images'][$k] ?? null) ? $data['images'][$k] : null;
     $gender = ['M' => 'Male', 'F' => 'Female'][is_string($f['gender'] ?? null) ? $f['gender'] : ''] ?? '';
     $docRows = array_map(
-        fn(array $doc): array => [$doc['label'], !empty($doc['submitted']) ? 'Submitted' : 'Not submitted'],
+        fn(array $doc): array => [$doc['label'], !empty($doc['attached']) ? 'Attached' : 'Not provided'],
         $data['documents'] ?? []
     );
     $docRows[] = ['Consent to processing', !empty($data['consent']) ? 'Given' : 'Not given'];
@@ -195,18 +199,17 @@ function individual_pdf_sections(array $data): array
             ['Phone No', $v('phone')], ['Email', $v('email')],
             ['Means of ID', pdf_choice_list($f['meansOfId'] ?? null, MEANS_OF_ID_LABELS)],
             ['ID No', $v('idNumber')], ['ID Expiry Date', $v('idExpiry')], ['BVN', $v('bvn')], ['NIN', $v('nin')],
-            ['Occupation', $v('occupation')], ['Employer/Business Name', $v('employerName')], ['Office Address', $v('officeAddress')],
+            ['Occupation', $v('occupation')], ['Employer/Business Name', $v('employerName')], ['Office Address', $v('officeAddress')], ['Official Email', $v('officialEmail')],
             ['Source of Income', pdf_choice_with_other($f['sourceOfIncome'] ?? null, SOURCE_OF_INCOME_LABELS, $f['sourceOfIncomeOther'] ?? null)],
             ['Source of Wealth', $v('sourceOfWealth')],
-            ['Purpose of Relationship', pdf_choice_with_other($f['purposeOfRelationship'] ?? null, PURPOSE_LABELS, $f['purposeOther'] ?? null)],
-            ['Expected Monthly Turnover (NGN)', $v('expectedMonthlyTurnover')],
-            ['Expected Transaction Type', pdf_choice_list($f['expectedTransactionTypes'] ?? null, TRANSACTION_TYPE_LABELS)],
+            ['Purpose of Relationship with Woodhall Finance', pdf_choice_with_other($f['purposeOfRelationship'] ?? null, PURPOSE_LABELS, $f['purposeOther'] ?? null)],
         ]]]],
         ['title' => 'Section B: Verification Documents', 'groups' => [['subtitle' => null, 'rows' => $docRows]]],
         ['title' => 'Section C: Declaration', 'groups' => [['subtitle' => null, 'rows' => [
-            ['Declaration', 'I hereby declare that the information provided is true and correct. I authorize Woodhall Capital to verify my details with NIBSS, NIMC, Credit Bureaus and report to NFIU/CBN as required by law.'],
-            ['Name', $v('declarationName')], ['Typed Signature', $v('signatureName')], ['Date', $v('signatureDate')],
-            ['Typed signature agreed', 'Yes'],
+            ['Declaration', 'I hereby declare that the information provided is true and correct. I authorize Woodhall Finance to verify my details with NIBSS, NIMC, Credit Bureaus and report to NFIU/CBN as required by law.'],
+            ['Name', $v('declarationName')], ['Date', $v('signatureDate')],
+            pdf_image_field('Signature', $img('signatureFile')),
+            ['Handwritten signature confirmed', 'Yes'],
         ]]]],
     ];
 }
@@ -223,17 +226,55 @@ function pdf_section_title(TCPDF $pdf, string $title, array $color): void
     $pdf->SetFont('helvetica', '', 10);
 }
 
+function pdf_image_field(string $label, ?string $path): array
+{
+    return $path === null ? [$label, 'Not provided'] : [$label, 'Attached (see email)', 'image' => $path];
+}
+
+/** Draws an embedded JPG/PNG beside its label. False (nothing drawn) when the file isn't a usable image. */
+function pdf_image_row(TCPDF $pdf, string $label, string $path): bool
+{
+    $size = @getimagesize($path);
+    if ($size === false || !in_array($size[2], [IMAGETYPE_JPEG, IMAGETYPE_PNG], true) || $size[0] === 0) {
+        return false;
+    }
+    $width = 50;
+    $height = $width * $size[1] / $size[0];
+    if ($height > 30) {
+        $height = 30;
+        $width = $height * $size[0] / $size[1];
+    }
+    $margins = $pdf->getMargins();
+    if ($pdf->GetY() + $height + PDF_SPACE_SM > $pdf->getPageHeight() - $margins['bottom']) {
+        $pdf->AddPage();
+    }
+    $y = $pdf->GetY();
+    try {
+        $pdf->Image($path, $margins['left'] + PDF_LABEL_WIDTH, $y, $width, $height);
+    } catch (Throwable $e) {
+        return false;
+    }
+    $pdf->SetFont('helvetica', 'B', 10);
+    $pdf->MultiCell(PDF_LABEL_WIDTH, 6, $label, 0, 'L', false, 0, $margins['left'], $y);
+    $pdf->SetFont('helvetica', '', 10);
+    $pdf->SetY($y + $height + PDF_SPACE_SM);
+    return true;
+}
+
 function pdf_field_table(TCPDF $pdf, array $rows): void
 {
-    $labelWidth = 55;
     $margins = $pdf->getMargins();
-    $valueWidth = $pdf->getPageWidth() - $margins['left'] - $margins['right'] - $labelWidth;
+    $valueWidth = $pdf->getPageWidth() - $margins['left'] - $margins['right'] - PDF_LABEL_WIDTH;
 
-    foreach ($rows as [$label, $value]) {
+    foreach ($rows as $row) {
+        [$label, $value] = $row;
+        if (isset($row['image']) && pdf_image_row($pdf, $label, (string) $row['image'])) {
+            continue;
+        }
         $displayValue = $value !== '' ? $value : '—';
 
         $pdf->SetFont('helvetica', 'B', 10);
-        $labelHeight = $pdf->getStringHeight($labelWidth, $label);
+        $labelHeight = $pdf->getStringHeight(PDF_LABEL_WIDTH, $label);
         $pdf->SetFont('helvetica', '', 10);
         $valueHeight = $pdf->getStringHeight($valueWidth, $displayValue);
         $rowHeight = max($labelHeight, $valueHeight, 6) + PDF_SPACE_SM;
@@ -244,7 +285,7 @@ function pdf_field_table(TCPDF $pdf, array $rows): void
         }
 
         $pdf->SetFont('helvetica', 'B', 10);
-        $pdf->MultiCell($labelWidth, $rowHeight, $label, 0, 'L', false, 0);
+        $pdf->MultiCell(PDF_LABEL_WIDTH, $rowHeight, $label, 0, 'L', false, 0);
         $pdf->SetFont('helvetica', '', 10);
         $pdf->MultiCell($valueWidth, $rowHeight, $displayValue, 0, 'L', false, 1);
     }
