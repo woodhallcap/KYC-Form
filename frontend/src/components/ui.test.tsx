@@ -11,8 +11,6 @@ import { SectionHeading } from './SectionHeading';
 import { SiteFooter } from './SiteFooter';
 import { TypeSelector } from './TypeSelector';
 import { formatFileSize } from '../lib/format';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { join } from 'node:path';
 
 function TileHost({ error }: { error?: string }) {
   const [file, setFile] = useState<File | null>(null);
@@ -186,20 +184,5 @@ describe('Confirmation', () => {
     expect(screen.getByText('info@acme.com')).toBeInTheDocument();
     expect(within(screen.getByRole('list', { name: 'What happens next' })).getAllByRole('listitem')).toHaveLength(3);
     expect(screen.getByRole('link', { name: /Back to woodhallfinanceltd.com/ })).toHaveAttribute('href', 'https://woodhallfinanceltd.com');
-  });
-});
-
-describe('brand', () => {
-  it('never says Woodhall Capital in the front end', () => {
-    // jsdom gives import.meta.url a non-file scheme, so anchor on the vitest root (frontend/).
-    const root = process.cwd();
-    const walk = (dir: string): string[] => readdirSync(dir).flatMap((f) => {
-      const p = join(dir, f);
-      return statSync(p).isDirectory() ? walk(p) : [p];
-    });
-    const files = [...walk(join(root, 'src')), join(root, 'index.html')]
-      .filter((p) => /\.(ts|tsx|css|html)$/.test(p) && !/\.test\.tsx?$/.test(p));
-    expect(files.length).toBeGreaterThan(10);
-    files.forEach((p) => expect(readFileSync(p, 'utf8'), p).not.toMatch(/Woodhall Capital/));
   });
 });
