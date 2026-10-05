@@ -1,11 +1,12 @@
 import type {
-  CorporateDeclaration, CorporateEntity, CorporateForm, CorporateFunds, Director, DirectorFileId, Errors,
-  IncomeSource, IndividualDeclaration, IndividualForm, IndividualPerson, MeansOfId, Purpose, TransactionType,
+  CorporateEntity, CorporateForm, CorporateFunds, Director, DirectorFileId, Errors,
+  ImageName, IncomeSource, IndividualForm, IndividualPerson, MeansOfId, Purpose, TransactionType,
 } from '../types';
 import { CORPORATE_DOCUMENTS, INDIVIDUAL_DOCUMENTS } from './documents';
 import type { DocumentSpec } from './documents';
 
 export const ALLOWED_FILE_EXTENSIONS = ['pdf', 'jpg', 'jpeg', 'png', 'docx'];
+export const IMAGE_FILE_EXTENSIONS = ['jpg', 'jpeg', 'png'];
 export const MAX_FILE_SIZE = 5 * 1024 * 1024;
 export const MAX_TOTAL_SIZE = 20 * 1024 * 1024;
 export const MAX_DIRECTORS = 25;
@@ -40,6 +41,51 @@ export function validateFileMeta(file: FileMeta): { valid: boolean; error: strin
   return { valid: true, error: null };
 }
 
+export function validateImageMeta(file: FileMeta): { valid: boolean; error: string | null } {
+  const ext = (file.name || '').split('.').pop()!.toLowerCase();
+  if (!IMAGE_FILE_EXTENSIONS.includes(ext)) return { valid: false, error: 'Upload a JPG or PNG image.' };
+  if (file.size > MAX_FILE_SIZE) return { valid: false, error: 'File exceeds 5MB limit: ' + file.name };
+  return { valid: true, error: null };
+}
+
+export interface ImageSpec {
+  name: ImageName;
+  label: string;
+  missing: string;
+}
+
+export const CORPORATE_IMAGES: readonly ImageSpec[] = [
+  { name: 'signatory1SignatureFile', label: 'Authorized Signatory 1 — Handwritten Signature', missing: 'Authorized signatory 1 signature is required.' },
+  { name: 'signatory2SignatureFile', label: 'Authorized Signatory 2 — Handwritten Signature', missing: 'Authorized signatory 2 signature is required.' },
+  { name: 'sealFile', label: 'Company Seal or Stamp', missing: 'Company seal or stamp is required.' },
+];
+export const INDIVIDUAL_IMAGES: readonly ImageSpec[] = [
+  { name: 'signatureFile', label: 'Handwritten Signature', missing: 'Handwritten signature is required.' },
+];
+
+function imageErrors(images: Partial<Record<ImageName, File | null>>, specs: readonly ImageSpec[]): Errors {
+  const errors: Errors = {};
+  specs.forEach(({ name, missing }) => {
+    const file = images[name];
+    if (!file) errors[name] = missing;
+    else {
+      const meta = validateImageMeta(file);
+      if (!meta.valid) errors[name] = meta.error as string;
+    }
+  });
+  return errors;
+}
+
+/** Only the size matters for the total; per-file problems are reported by their own step. */
+function totalError(files: File[]): Errors {
+  const total = files.reduce((sum, f) => sum + f.size, 0);
+  return total > MAX_TOTAL_SIZE ? { _total: 'Total attachments exceed the 20MB limit.' } : {};
+}
+
+function imageUploads(images: Partial<Record<ImageName, File | null>>): { key: string; file: File }[] {
+  return Object.entries(images).flatMap(([key, file]) => (file ? [{ key, file }] : []));
+}
+
 function directorFileErrors(rows: Director[]): Errors {
   const errors: Errors = {};
   rows.forEach((row, i) => {
@@ -53,7 +99,7 @@ function directorFileErrors(rows: Director[]): Errors {
   return errors;
 }
 
-/** Every file that will be sent: attached documents, directors' files, the seal. */
+/** Every file that will be sent: attached documents, directors' files, signature and seal images. */
 export function collectUploads(form: CorporateForm): { key: string; file: File }[] {
   const uploads: { key: string; file: File }[] = [];
   DOCUMENT_IDS.forEach((id) => {
@@ -66,16 +112,16 @@ export function collectUploads(form: CorporateForm): { key: string; file: File }
       if (file) uploads.push({ key: `directorFile.${i}.${fid}`, file });
     });
   });
-  if (form.seal) uploads.push({ key: 'sealFile', file: form.seal });
-  return uploads;
+  return [...uploads, ...imageUploads(form.images)];
 }
 
 /** The individual flow's attached documents. */
 export function collectIndividualUploads(form: IndividualForm): { key: string; file: File }[] {
-  return INDIVIDUAL_DOCUMENT_IDS.flatMap((id) => {
+  const docs = INDIVIDUAL_DOCUMENT_IDS.flatMap((id) => {
     const file = form.docs[id];
     return file ? [{ key: id, file }] : [];
   });
+  return [...docs, ...imageUploads(form.images)];
 }
 
 export function validateEntity(d: Partial<CorporateEntity>): Errors {
@@ -152,18 +198,15 @@ export function validateFunds(d: Partial<CorporateFunds>): Errors {
   return errors;
 }
 
-export function validateDeclaration(d: Partial<CorporateDeclaration>, seal: File | null): Errors {
+export function validateDeclaration(form: CorporateForm): Errors {
+  const d = form.declaration;
   const errors: Errors = {};
   ([1, 2] as const).forEach((n) => {
     if (isBlank(d[`signatory${n}Name`])) errors[`signatory${n}Name`] = `Authorized signatory ${n} name is required.`;
     if (isBlank(d[`signatory${n}Date`])) errors[`signatory${n}Date`] = `Authorized signatory ${n} date is required.`;
   });
-  if (!d.signatureAgree) errors.signatureAgree = 'You must confirm this constitutes your signature.';
-  if (seal) {
-    const meta = validateFileMeta(seal);
-    if (!meta.valid) errors.sealFile = meta.error as string;
-  }
-  return errors;
+  if (!d.signatureAgree) errors.signatureAgree = 'You must confirm the attached images are your signatures.';
+  return { ...errors, ...imageErrors(form.images, CORPORATE_IMAGES), ...totalError(collectUploads(form).map((u) => u.file)) };
 }
 
 export const MEANS_OF_ID_OPTIONS: { value: MeansOfId; label: string }[] = [
@@ -239,11 +282,11 @@ export function validateIndividualDocuments(form: IndividualForm): Errors {
   return { ...documentErrors(form.docs, INDIVIDUAL_DOCUMENTS), ...consentError(form.consent) };
 }
 
-export function validateIndividualDeclaration(d: Partial<IndividualDeclaration>): Errors {
+export function validateIndividualDeclaration(form: IndividualForm): Errors {
+  const d = form.declaration;
   const errors: Errors = {};
   if (isBlank(d.declarationName)) errors.declarationName = 'Name is required.';
-  if (isBlank(d.signatureName)) errors.signatureName = 'Typed signature is required.';
   if (isBlank(d.signatureDate)) errors.signatureDate = 'Signature date is required.';
-  if (!d.signatureAgree) errors.signatureAgree = 'You must confirm this constitutes your signature.';
-  return errors;
+  if (!d.signatureAgree) errors.signatureAgree = 'You must confirm the attached image is your signature.';
+  return { ...errors, ...imageErrors(form.images, INDIVIDUAL_IMAGES), ...totalError(collectIndividualUploads(form).map((u) => u.file)) };
 }

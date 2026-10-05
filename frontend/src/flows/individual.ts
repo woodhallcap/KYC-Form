@@ -8,13 +8,13 @@ const PERSON_FIELDS = [
   'meansOfId', 'idNumber', 'idExpiry', 'bvn', 'nin', 'occupation', 'employerName', 'officeAddress', 'sourceOfIncome', 'sourceOfIncomeOther',
   'sourceOfWealth', 'purposeOfRelationship', 'purposeOther', 'expectedMonthlyTurnover', 'expectedTransactionTypes',
 ];
-const DECLARATION_FIELDS = ['declarationName', 'signatureName', 'signatureDate', 'signatureAgree'];
+const DECLARATION_FIELDS = ['declarationName', 'signatureDate', 'signatureAgree', 'signatureFile'];
 
 export const individualFlow: Flow = {
   id: 'individual',
   steps: [
     step('person', 'Customer Information', PERSON_FIELDS, (f) => validateIndividualPerson(asIndividual(f).person)),
     step('documents', 'Documents', ['consent', ...INDIVIDUAL_DOCUMENT_IDS], (f) => validateIndividualDocuments(asIndividual(f))),
-    step('declaration', 'Declaration', DECLARATION_FIELDS, (f) => validateIndividualDeclaration(asIndividual(f).declaration)),
+    step('declaration', 'Declaration', DECLARATION_FIELDS, (f) => validateIndividualDeclaration(asIndividual(f))),
   ],
 };

@@ -13,7 +13,8 @@ describe('buildFormData', () => {
     s.consent = true;
     s.declaration.signatureAgree = true;
     s.declaration.signatory1Name = 'Jane';
-    s.seal = new File(['x'], 'seal.png');
+    s.images.sealFile = new File(['x'], 'seal.png');
+    s.images.signatory1SignatureFile = new File(['x'], 'sig1.png');
     const fd = buildFormData(s);
     expect(fd.get('customerType')).toBe('corporate');
     expect(fd.get('companyName')).toBe('Acme');
@@ -29,11 +30,13 @@ describe('buildFormData', () => {
     expect(fd.get('signatureAgree')).toBe('on');
     expect(fd.get('signatory1Name')).toBe('Jane');
     expect((fd.get('sealFile') as File).name).toBe('seal.png');
+    expect((fd.get('signatory1SignatureFile') as File).name).toBe('sig1.png');
+    expect(fd.has('signatory2SignatureFile')).toBe(false);
   });
 
   it('omits checkbox fields and files when nothing is ticked or attached', () => {
     const fd = buildFormData(emptyState());
-    ['consent', 'signatureAgree', 'sealFile'].forEach((k) => expect(fd.has(k)).toBe(false));
+    ['consent', 'signatureAgree', 'sealFile', 'signatory1SignatureFile'].forEach((k) => expect(fd.has(k)).toBe(false));
   });
 
   it('numbers every director row', () => {
@@ -69,7 +72,8 @@ describe('buildFormData: individual', () => {
     f.person.sourceOfIncomeOther = 'Gift';
     f.docs.valid_means_of_id = new File(['x'], 'id.pdf');
     f.consent = true;
-    f.declaration = { declarationName: 'Jane Doe', signatureName: 'Jane Doe', signatureDate: '2026-09-15', signatureAgree: true };
+    f.declaration = { declarationName: 'Jane Doe', signatureDate: '2026-09-15', signatureAgree: true };
+    f.images.signatureFile = new File(['x'], 'sig.png');
     const fd = buildFormData(f);
     expect(fd.get('customerType')).toBe('individual');
     expect(fd.get('fullName')).toBe('Jane Doe');
@@ -86,6 +90,8 @@ describe('buildFormData: individual', () => {
     expect(fd.get('declarationName')).toBe('Jane Doe');
     expect(fd.get('signatureDate')).toBe('2026-09-15');
     expect(fd.get('signatureAgree')).toBe('on');
+    expect((fd.get('signatureFile') as File).name).toBe('sig.png');
+    expect(fd.has('signatureName')).toBe(false);
   });
 
   it('appends nothing for empty arrays, unset gender, or unticked checkboxes', () => {
@@ -96,6 +102,6 @@ describe('buildFormData: individual', () => {
 
   it('does not send any corporate fields', () => {
     const fd = buildFormData(emptyIndividual());
-    ['companyName', 'sealFile', 'directors[0][name]'].forEach((k) => expect(fd.has(k), k).toBe(false));
+    ['companyName', 'sealFile', 'signatory1SignatureFile', 'directors[0][name]'].forEach((k) => expect(fd.has(k), k).toBe(false));
   });
 });

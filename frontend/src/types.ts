@@ -6,6 +6,7 @@ export const DIRECTOR_FIELDS = [
   'name', 'designation', 'bvn', 'nin', 'shareholdingPercent', 'nationality', 'pep', 'residentialAddress',
 ] as const;
 export type DirectorField = (typeof DIRECTOR_FIELDS)[number];
+export type ImageName = 'signatureFile' | 'signatory1SignatureFile' | 'signatory2SignatureFile' | 'sealFile';
 export type DirectorFileId = 'id' | 'bvn' | 'nin' | 'proof_of_address';
 
 export interface CorporateEntity {
@@ -54,7 +55,7 @@ export interface CorporateForm {
   consent: boolean;
   funds: CorporateFunds;
   declaration: CorporateDeclaration;
-  seal: File | null;
+  images: Record<'signatory1SignatureFile' | 'signatory2SignatureFile' | 'sealFile', File | null>;
 }
 
 export type MeansOfId = 'nin' | 'bvn' | 'passport' | 'drivers_license' | 'voters_card';
@@ -94,7 +95,6 @@ export interface IndividualPerson {
 
 export interface IndividualDeclaration {
   declarationName: string;
-  signatureName: string;
   signatureDate: string;
   signatureAgree: boolean;
 }
@@ -105,6 +105,7 @@ export interface IndividualForm {
   docs: Record<string, File | null>;
   consent: boolean;
   declaration: IndividualDeclaration;
+  images: Record<'signatureFile', File | null>;
 }
 
 export type FormState = CorporateForm | IndividualForm;

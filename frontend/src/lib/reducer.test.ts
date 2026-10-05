@@ -148,10 +148,11 @@ describe('reducer: corporate directors', () => {
     expect(s.corporate.directors[0].files.id).toBeNull();
   });
 
-  it('director and seal actions are ignored when the individual form is active', () => {
+  it('director actions are ignored when the individual form is active, and setImage stores the signature', () => {
     const s = indiv();
     expect(run(s, { type: 'addDirector' })).toBe(s);
-    expect(run(s, { type: 'setSeal', file: new File(['x'], 's.png') })).toBe(s);
+    const file = new File(['x'], 'sig.png');
+    expect(run(s, { type: 'setImage', name: 'signatureFile', file }).individual.images.signatureFile).toBe(file);
   });
 });
 
@@ -178,9 +179,18 @@ describe('reducer: corporate documents and seal', () => {
     expect(s.errors.cac_forms).toBe('File type not allowed: a.exe');
   });
 
-  it('a bad seal blocks the declaration step', () => {
-    const s = run(atStep(corp(), 5), { type: 'setSeal', file: new File(['x'], 's.exe') }, { type: 'next' });
-    expect(s.errors.sealFile).toBe('File type not allowed: s.exe');
+  it('a non-image seal blocks the declaration step', () => {
+    const s = run(atStep(corp(), 5), { type: 'setImage', name: 'sealFile', file: new File(['x'], 's.pdf') }, { type: 'next' });
+    expect(s.errors.sealFile).toBe('Upload a JPG or PNG image.');
+  });
+
+  it('a missing seal blocks the declaration step, and setImage stores the file', () => {
+    const file = new File(['x'], 's.png');
+    let s = run(atStep(corp(), 5), { type: 'next' });
+    expect(s.errors.sealFile).toBe('Company seal or stamp is required.');
+    s = run(s, { type: 'setImage', name: 'sealFile', file });
+    expect(s.corporate.images.sealFile).toBe(file);
+    expect(s.errors.sealFile).toBeUndefined();
   });
 
   it('declaration group edits the active form\'s own declaration', () => {

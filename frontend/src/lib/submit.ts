@@ -25,8 +25,14 @@ function buildCorporateFormData(state: CorporateForm): FormData {
     });
   });
   appendDocuments(fd, state.docs, DOCUMENT_IDS);
-  if (state.seal) fd.append('sealFile', state.seal);
+  appendImages(fd, state.images);
   return fd;
+}
+
+function appendImages(fd: FormData, images: Record<string, File | null>): void {
+  Object.entries(images).forEach(([k, f]) => {
+    if (f) fd.append(k, f);
+  });
 }
 
 function appendDocuments(fd: FormData, docs: Record<string, File | null>, ids: readonly string[]): void {
@@ -49,6 +55,7 @@ function buildIndividualFormData(form: IndividualForm): FormData {
   if (signatureAgree) fd.append('signatureAgree', 'on');
   if (form.consent) fd.append('consent', 'on');
   appendDocuments(fd, form.docs, INDIVIDUAL_DOCUMENT_IDS);
+  appendImages(fd, form.images);
   return fd;
 }
 

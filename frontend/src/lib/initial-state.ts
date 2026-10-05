@@ -21,7 +21,7 @@ export function initialCorporateForm(): CorporateForm {
     consent: false,
     funds: { sourceOfFunds: '', facilityAmount: '' },
     declaration: { signatory1Name: '', signatory1Date: '', signatory2Name: '', signatory2Date: '', signatureAgree: false },
-    seal: null,
+    images: { signatory1SignatureFile: null, signatory2SignatureFile: null, sealFile: null },
   };
 }
 
@@ -37,6 +37,7 @@ export function initialIndividualForm(): IndividualForm {
     },
     docs,
     consent: false,
-    declaration: { declarationName: '', signatureName: '', signatureDate: '', signatureAgree: false },
+    declaration: { declarationName: '', signatureDate: '', signatureAgree: false },
+    images: { signatureFile: null },
   };
 }

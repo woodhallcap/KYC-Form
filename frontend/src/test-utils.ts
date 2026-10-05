@@ -25,7 +25,7 @@ export function makeForm(o: Partial<CorporateForm> = {}): CorporateForm {
     docs, consent: false,
     funds: { sourceOfFunds: '', facilityAmount: '' },
     declaration: { signatory1Name: '', signatory1Date: '', signatory2Name: '', signatory2Date: '', signatureAgree: false },
-    seal: null,
+    images: { signatory1SignatureFile: null, signatory2SignatureFile: null, sealFile: null },
     ...o,
   };
 }
@@ -54,7 +54,8 @@ export function makeIndividual(o: Partial<IndividualForm> = {}): IndividualForm 
       purposeOther: '', expectedMonthlyTurnover: '', gender: '', meansOfId: [], sourceOfIncome: '', purposeOfRelationship: '', expectedTransactionTypes: [],
     },
     docs, consent: false,
-    declaration: { declarationName: '', signatureName: '', signatureDate: '', signatureAgree: false },
+    declaration: { declarationName: '', signatureDate: '', signatureAgree: false },
+    images: { signatureFile: null },
     ...o,
   };
 }

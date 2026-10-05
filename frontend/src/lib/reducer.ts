@@ -1,5 +1,5 @@
 import type {
-  CorporateForm, CustomerType, DirectorField, DirectorFileId, Errors, FormState, IndividualForm,
+  CorporateForm, CustomerType, DirectorField, DirectorFileId, Errors, FormState, ImageName, IndividualForm,
 } from '../types';
 import { FLOWS } from '../flows/corporate';
 import type { Flow } from '../flows/types';
@@ -33,7 +33,7 @@ export type Action =
   | { type: 'removeDirector'; index: number }
   | { type: 'setDirectorField'; index: number; name: DirectorField; value: string }
   | { type: 'setDirectorFile'; index: number; fileId: DirectorFileId; file: File | null }
-  | { type: 'setSeal'; file: File | null }
+  | { type: 'setImage'; name: ImageName; file: File | null }
   | { type: 'touch'; name: string }
   | { type: 'next' }
   | { type: 'back' }
@@ -149,8 +149,8 @@ export function reducer(s: AppState, a: Action): AppState {
       return s.customerType === 'corporate'
         ? updateDirector(s, a.index, (d) => ({ ...d, files: { ...d.files, [a.fileId]: a.file } }))
         : s;
-    case 'setSeal':
-      return s.customerType === 'corporate' ? withForm(s, { ...s.corporate, seal: a.file }) : s;
+    case 'setImage':
+      return form ? withForm(s, { ...form, images: { ...form.images, [a.name]: a.file } } as FormState) : s;
     case 'touch': {
       if (!form) return s;
       const touched = { ...s.touched, [a.name]: true };

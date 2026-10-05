@@ -69,12 +69,19 @@ async function toDeclaration(user: User) {
   setVal('Facility Amount Requested (₦)', '5,000,000');
   await next(user, 'Next: Declaration');
 }
+const png = (name: string) => new File(['x'], name, { type: 'image/png' });
+async function uploadCorporateImages(user: User) {
+  await user.upload(screen.getByLabelText('Authorized Signatory 1 — Handwritten Signature'), png('sig1.png'));
+  await user.upload(screen.getByLabelText('Authorized Signatory 2 — Handwritten Signature'), png('sig2.png'));
+  await user.upload(screen.getByLabelText('Company Seal or Stamp'), png('seal.png'));
+}
 async function submitCorporate(user: User) {
   setVal('Authorized Signatory 1 — Name', 'Jane Doe');
   setVal('Authorized Signatory 1 — Date', '2026-09-15');
   setVal('Authorized Signatory 2 — Name', 'John Roe');
   setVal('Authorized Signatory 2 — Date', '2026-09-15');
-  await user.click(screen.getByLabelText(/^I agree that the typed names/));
+  await uploadCorporateImages(user);
+  await user.click(screen.getByLabelText(/^We confirm the attached images/));
   await user.click(screen.getByRole('button', { name: 'Submit Form' }));
 }
 
@@ -121,10 +128,10 @@ async function toIndividualDeclaration(user: User) {
   await next(user, 'Next: Declaration');
 }
 async function submitIndividual(user: User) {
-  setVal('Name', 'Jane Doe');
-  setVal('Typed Signature (type your full name)', 'Jane Doe');
+  setVal('Full Name', 'Jane Doe');
   setVal('Date', '2026-09-15');
-  await user.click(screen.getByLabelText(/^I agree that the typed name above/));
+  await user.upload(screen.getByLabelText('Handwritten Signature'), png('sig.png'));
+  await user.click(screen.getByLabelText(/^I confirm the attached image/));
   await user.click(screen.getByRole('button', { name: 'Submit Form' }));
 }
 
@@ -246,7 +253,27 @@ describe('corporate submission', () => {
     expect(body.get('customerType')).toBe('corporate');
     expect(body.get('directors[0][name]')).toBe('Jane');
     expect(body.get('companyEmail')).toBe('info@acme.com');
+    expect((body.get('sealFile') as File).name).toBe('seal.png');
+    expect((body.get('signatory2SignatureFile') as File).name).toBe('sig2.png');
     expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+  });
+
+  it('blocks submit and shows an inline error when the seal is missing', async () => {
+    const user = userEvent.setup();
+    const fetchMock = json({ success: true });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<App />);
+    await toDeclaration(user);
+    setVal('Authorized Signatory 1 — Name', 'Jane Doe');
+    setVal('Authorized Signatory 1 — Date', '2026-09-15');
+    setVal('Authorized Signatory 2 — Name', 'John Roe');
+    setVal('Authorized Signatory 2 — Date', '2026-09-15');
+    await user.upload(screen.getByLabelText('Authorized Signatory 1 — Handwritten Signature'), png('sig1.png'));
+    await user.upload(screen.getByLabelText('Authorized Signatory 2 — Handwritten Signature'), png('sig2.png'));
+    await user.click(screen.getByLabelText(/^We confirm the attached images/));
+    await user.click(screen.getByRole('button', { name: 'Submit Form' }));
+    expect(await screen.findByText('Company seal or stamp is required.')).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('jumps to the earliest step with a server error and keeps submit usable afterwards', async () => {

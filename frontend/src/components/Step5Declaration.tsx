@@ -4,33 +4,50 @@ import { FileTile } from './FileTile';
 import { SectionHeading } from './SectionHeading';
 import { SubmitActions } from './SubmitActions';
 import { TextField } from './TextField';
+import { CORPORATE_IMAGES } from '../lib/validation';
+import type { ImageSpec } from '../lib/validation';
+import type { CorporateForm } from '../types';
 import type { StepProps } from './stepProps';
 
 export function Step5Declaration({ state, dispatch, onBack }: StepProps) {
   const common = { state, dispatch, group: 'declaration' as const };
+  const imageTile = (spec: ImageSpec) => (
+    <FileTile
+      imageOnly
+      label={spec.label}
+      caption={spec.label}
+      file={state.corporate.images[spec.name as keyof CorporateForm['images']]}
+      error={state.errors[spec.name]}
+      onChange={(file) => {
+        dispatch({ type: 'setImage', name: spec.name, file });
+        dispatch({ type: 'touch', name: spec.name });
+      }}
+    />
+  );
   return (
     <section>
       <SectionHeading text="Section E: Declaration" />
       <p>
-        We certify that the above information is true. We understand Woodhall Capital is obligated to report
+        We certify that the above information is true. We understand Woodhall Finance is obligated to report
         suspicious transactions to NFIU.
       </p>
 
-      <FieldGrid>
-        <TextField {...common} name="signatory1Name" label="Authorized Signatory 1 — Name" placeholder="Type your full legal name" />
-        <TextField {...common} name="signatory1Date" label="Authorized Signatory 1 — Date" type="date" />
-        <TextField {...common} name="signatory2Name" label="Authorized Signatory 2 — Name" placeholder="Type your full legal name" />
-        <TextField {...common} name="signatory2Date" label="Authorized Signatory 2 — Date" type="date" />
-      </FieldGrid>
+      <p className="text-sm text-ink/70">Sign on plain white paper, then upload a clear photo or scan.</p>
 
+      {([1, 2] as const).map((n) => {
+        const spec = CORPORATE_IMAGES[n - 1];
+        return (
+          <div key={n} className="mb-5">
+            <FieldGrid>
+              <TextField {...common} name={`signatory${n}Name`} label={`Authorized Signatory ${n} — Name`} placeholder="Type your full legal name" />
+              <TextField {...common} name={`signatory${n}Date`} label={`Authorized Signatory ${n} — Date`} type="date" />
+            </FieldGrid>
+            {imageTile(spec)}
+          </div>
+        );
+      })}
       <div className="mb-5">
-        <FileTile
-          label="Company seal (optional)"
-          caption="Company seal (optional)"
-          file={state.corporate.seal}
-          onChange={(file) => dispatch({ type: 'setSeal', file })}
-          error={state.errors.sealFile}
-        />
+        {imageTile(CORPORATE_IMAGES[2])}
       </div>
 
       <Field error={state.errors.signatureAgree}>
@@ -46,7 +63,7 @@ export function Step5Declaration({ state, dispatch, onBack }: StepProps) {
               dispatch({ type: 'touch', name: 'signatureAgree' });
             }}
           />
-          <span>I agree that the typed names above constitute our signatures.</span>
+          <span>We confirm the attached images are our own handwritten signatures.</span>
         </label>
       </Field>
 

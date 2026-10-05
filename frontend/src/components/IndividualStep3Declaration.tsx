@@ -1,25 +1,39 @@
 import { Field } from './Field';
-import { FieldGrid } from './FieldGrid';
+import { FileTile } from './FileTile';
 import { SectionHeading } from './SectionHeading';
 import { SubmitActions } from './SubmitActions';
 import { TextField } from './TextField';
 import type { StepProps } from './stepProps';
+import { INDIVIDUAL_IMAGES } from '../lib/validation';
 
 export function IndividualStep3Declaration({ state, dispatch, onBack }: StepProps) {
   const common = { state, dispatch, group: 'declaration' as const };
+  const spec = INDIVIDUAL_IMAGES[0];
   return (
     <section>
       <SectionHeading text="Section C: Declaration" />
       <p>
-        I hereby declare that the information provided is true and correct. I authorize Woodhall Capital to verify my
+        I hereby declare that the information provided is true and correct. I authorize Woodhall Finance to verify my
         details with NIBSS, NIMC, Credit Bureaus and report to NFIU/CBN as required by law.
       </p>
 
-      <TextField {...common} name="declarationName" label="Name" placeholder="e.g. Jane Doe" />
-      <FieldGrid>
-        <TextField {...common} name="signatureName" label="Typed Signature (type your full name)" placeholder="Type your full legal name" />
-        <TextField {...common} name="signatureDate" label="Date" type="date" />
-      </FieldGrid>
+      <TextField {...common} name="declarationName" label="Full Name" placeholder="e.g. Jane Doe" />
+      <TextField {...common} name="signatureDate" label="Date" type="date" />
+
+      <p className="text-sm text-ink/70">Sign on plain white paper, then upload a clear photo or scan.</p>
+      <div className="mb-5">
+        <FileTile
+          imageOnly
+          label={spec.label}
+          caption={spec.label}
+          file={state.individual.images.signatureFile}
+          error={state.errors.signatureFile}
+          onChange={(file) => {
+            dispatch({ type: 'setImage', name: 'signatureFile', file });
+            dispatch({ type: 'touch', name: 'signatureFile' });
+          }}
+        />
+      </div>
 
       <Field error={state.errors.signatureAgree}>
         <label className="flex items-start gap-2">
@@ -34,7 +48,7 @@ export function IndividualStep3Declaration({ state, dispatch, onBack }: StepProp
               dispatch({ type: 'touch', name: 'signatureAgree' });
             }}
           />
-          <span>I agree that the typed name above constitutes my signature.</span>
+          <span>I confirm the attached image is my own handwritten signature.</span>
         </label>
       </Field>
 

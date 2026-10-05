@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
-  validateDeclaration, validateDirectors, validateDocuments, validateEntity, validateFileMeta, validateFunds,
-  validateIndividualDeclaration, validateIndividualDocuments, validateIndividualPerson,
+  DOCUMENT_IDS, validateDeclaration, validateDirectors, validateDocuments, validateEntity, validateFileMeta, validateFunds,
+  validateImageMeta, validateIndividualDeclaration, validateIndividualDocuments, validateIndividualPerson,
 } from './validation';
 import { CORPORATE_DOCUMENTS, INDIVIDUAL_DOCUMENTS } from './documents';
 import { bigFile, dir, makeForm, makeIndividual, validEntity, validPerson } from '../test-utils';
@@ -82,12 +82,38 @@ describe('validateFunds and validateDeclaration', () => {
     expect(validateFunds({ sourceOfFunds: 'Sales', facilityAmount: '5,000,000' })).toEqual({});
   });
 
-  it('requires both signatories, dates and agreement, and checks the seal', () => {
-    const e = validateDeclaration({}, null);
+  it('requires both signatories, dates and agreement', () => {
+    const e = validateDeclaration(makeForm());
     ['signatory1Name', 'signatory1Date', 'signatory2Name', 'signatory2Date', 'signatureAgree'].forEach((k) => expect(e[k]).toBeTruthy());
-    const ok = { signatory1Name: 'A', signatory1Date: '2026-01-01', signatory2Name: 'B', signatory2Date: '2026-01-01', signatureAgree: true };
-    expect(validateDeclaration(ok, null)).toEqual({});
-    expect(validateDeclaration(ok, new File(['x'], 's.exe')).sealFile).toBe('File type not allowed: s.exe');
+  });
+
+  it('requires both signature images and the seal', () => {
+    const e = validateDeclaration(makeForm());
+    expect(e.signatory1SignatureFile).toBe('Authorized signatory 1 signature is required.');
+    expect(e.signatory2SignatureFile).toBe('Authorized signatory 2 signature is required.');
+    expect(e.sealFile).toBe('Company seal or stamp is required.');
+  });
+
+  it('passes when everything is filled and the images are valid, and flags a non-image', () => {
+    const png = (n: string) => new File(['x'], n);
+    const images = { signatory1SignatureFile: png('a.png'), signatory2SignatureFile: png('b.jpg'), sealFile: png('s.png') };
+    const declaration = { signatory1Name: 'A', signatory1Date: '2026-01-01', signatory2Name: 'B', signatory2Date: '2026-01-01', signatureAgree: true };
+    expect(validateDeclaration(makeForm({ images, declaration }))).toEqual({});
+    expect(validateDeclaration(makeForm({ images: { ...images, sealFile: png('s.pdf') }, declaration })).sealFile).toBe('Upload a JPG or PNG image.');
+  });
+
+  it('reports _total when all uploads exceed 20MB', () => {
+    const docs = Object.fromEntries(DOCUMENT_IDS.map((id) => [id, bigFile(`${id}.pdf`, 4.9)]));
+    expect(validateDeclaration(makeForm({ docs }))._total).toBe('Total attachments exceed the 20MB limit.');
+  });
+});
+
+describe('validateImageMeta', () => {
+  it('accepts jpg/jpeg/png only and keeps the 5MB cap', () => {
+    expect(validateImageMeta(new File(['x'], 'sig.PNG')).valid).toBe(true);
+    expect(validateImageMeta(new File(['x'], 'sig.heic')).error).toBe('Upload a JPG or PNG image.');
+    expect(validateImageMeta(new File(['x'], 'sig.pdf')).error).toBe('Upload a JPG or PNG image.');
+    expect(validateImageMeta(bigFile('sig.jpg', 5.1)).error).toBe('File exceeds 5MB limit: sig.jpg');
   });
 });
 
@@ -135,9 +161,22 @@ describe('validateIndividualDocuments', () => {
 });
 
 describe('validateIndividualDeclaration', () => {
-  it('requires name, signature, date and agreement', () => {
-    const e = validateIndividualDeclaration({});
-    ['declarationName', 'signatureName', 'signatureDate', 'signatureAgree'].forEach((k) => expect(e[k]).toBeTruthy());
-    expect(validateIndividualDeclaration({ declarationName: 'A', signatureName: 'A', signatureDate: '2026-01-01', signatureAgree: true })).toEqual({});
+  it('requires name, date, agreement and the signature image; there is no typed signature', () => {
+    const e = validateIndividualDeclaration(makeIndividual());
+    expect(Object.keys(e).sort()).toEqual(['declarationName', 'signatureAgree', 'signatureDate', 'signatureFile']);
+    expect(e.signatureFile).toBe('Handwritten signature is required.');
+  });
+
+  it('passes with everything provided', () => {
+    const f = makeIndividual({
+      declaration: { declarationName: 'A', signatureDate: '2026-01-01', signatureAgree: true },
+      images: { signatureFile: new File(['x'], 'sig.png') },
+    });
+    expect(validateIndividualDeclaration(f)).toEqual({});
+  });
+
+  it('reports _total when attachments exceed 20MB', () => {
+    const docs = Object.fromEntries(INDIVIDUAL_DOCUMENTS.map((d) => [d.id, bigFile(`${d.id}.pdf`, 4.9)]));
+    expect(validateIndividualDeclaration(makeIndividual({ docs }))._total).toBe('Total attachments exceed the 20MB limit.');
   });
 });

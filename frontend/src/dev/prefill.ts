@@ -1,5 +1,5 @@
 import { DIRECTOR_FIELDS } from '../types';
-import type { CustomerType, DirectorField } from '../types';
+import type { CustomerType, DirectorField, ImageName } from '../types';
 import { CORPORATE_DOCUMENTS, INDIVIDUAL_DOCUMENTS } from '../lib/documents';
 import type { DocumentSpec } from '../lib/documents';
 import type { Action, FieldGroup } from '../lib/reducer';
@@ -41,6 +41,9 @@ const requiredDocs = (specs: readonly DocumentSpec[]): Action[] =>
     .filter((d) => d.required)
     .map((d): Action => ({ type: 'setDocFile', id: d.id, file: new File(['test'], `${d.id}.pdf`, { type: 'application/pdf' }) }));
 
+const images = (...names: ImageName[]): Action[] =>
+  names.map((name): Action => ({ type: 'setImage', name, file: new File(['test'], 'signature.png', { type: 'image/png' }) }));
+
 const fields = (group: FieldGroup, values: Record<string, string>): Action[] =>
   Object.entries(values).map(([name, value]): Action => ({ type: 'setField', group, name, value }));
 
@@ -52,6 +55,7 @@ function corporateActions(): Action[] {
     { type: 'setConsent', value: true },
     ...fields('funds', funds),
     ...fields('declaration', declaration),
+    ...images('signatory1SignatureFile', 'signatory2SignatureFile', 'sealFile'),
     { type: 'setField', group: 'declaration', name: 'signatureAgree', value: true },
   ];
 }
@@ -83,7 +87,6 @@ const person: Record<string, string> = {
 
 const individualDeclaration: Record<string, string> = {
   declarationName: 'Jane Doe',
-  signatureName: 'Jane Doe',
   signatureDate: '2026-09-15',
 };
 
@@ -96,6 +99,7 @@ function individualActions(): Action[] {
     ...requiredDocs(INDIVIDUAL_DOCUMENTS),
     { type: 'setConsent', value: true },
     ...fields('declaration', individualDeclaration),
+    ...images('signatureFile'),
     { type: 'setField', group: 'declaration', name: 'signatureAgree', value: true },
   ];
 }

@@ -19,7 +19,7 @@ describe('autosave v2', () => {
     s.docs.cac_forms = new File(['x'], 'c.pdf');
     s.consent = true;
     s.declaration.signatureAgree = true;
-    s.seal = new File(['x'], 'seal.png');
+    s.images.sealFile = new File(['x'], 'seal.png');
     saveDraft(s);
     expect(localStorage.getItem(STORAGE_KEY)).not.toContain('secret.pdf');
     expect(localStorage.getItem(STORAGE_KEY)).not.toContain('seal.png');
@@ -32,7 +32,7 @@ describe('autosave v2', () => {
     expect(r.consent).toBe(true);
     expect(r.declaration.signatureAgree).toBe(true);
     expect(r.directors[0].files.id).toBeNull();
-    expect(r.seal).toBeNull();
+    expect(r.images.sealFile).toBeNull();
   });
 
   it('ignores v1, corrupt and non-object drafts', () => {

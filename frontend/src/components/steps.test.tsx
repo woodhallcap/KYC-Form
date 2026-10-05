@@ -29,7 +29,7 @@ function Host({ Step, init }: { Step: ComponentType<StepProps>; init?: AppState 
   return (
     <>
       <Step state={state} dispatch={dispatch} onNext={() => {}} onBack={() => {}} />
-      <span data-testid="seal-name">{state.corporate.seal?.name ?? ''}</span>
+      <span data-testid="seal-name">{state.corporate.images.sealFile?.name ?? ''}</span>
       <span data-testid="pct-0">{state.corporate.directors[0]?.shareholdingPercent}</span>
       <span data-testid="pep-0">{state.corporate.directors[0]?.pep}</span>
       <span data-testid="gender">{p.gender}</span>
@@ -154,21 +154,30 @@ describe('Step4Funds', () => {
 });
 
 describe('Step5Declaration (corporate)', () => {
-  it('has both signatories with name and date fields and an optional seal input', () => {
+  it('has both signatories with name and date fields and the signature and seal image tiles', () => {
     render(<Host Step={Step5Declaration} />);
     ['Authorized Signatory 1 — Name', 'Authorized Signatory 1 — Date', 'Authorized Signatory 2 — Name', 'Authorized Signatory 2 — Date']
       .forEach((l) => expect(screen.getByLabelText(l)).toBeInTheDocument());
-    expect(screen.getByLabelText('Company seal (optional)')).toBeInTheDocument();
-    expect(screen.getByLabelText(/^I agree that the typed names/)).toBeInTheDocument();
+    ['Authorized Signatory 1 — Handwritten Signature', 'Authorized Signatory 2 — Handwritten Signature', 'Company Seal or Stamp']
+      .forEach((l) => expect(screen.getByLabelText(l)).toBeInTheDocument());
+    expect(screen.getByLabelText(/^We confirm the attached images/)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/^I agree that the typed names/)).toBeNull();
   });
 
   it('stores the chosen seal file and shows a seal error from state', async () => {
     const user = userEvent.setup({ applyAccept: false });
-    const init = { ...corp(5), errors: { sealFile: 'File type not allowed: s.exe' } };
+    const init = { ...corp(5), errors: { sealFile: 'Company seal or stamp is required.' } };
     render(<Host Step={Step5Declaration} init={init} />);
-    expect(screen.getByText('File type not allowed: s.exe')).toBeInTheDocument();
-    await user.upload(screen.getByLabelText('Company seal (optional)'), new File(['x'], 'seal.png'));
+    expect(screen.getByText('Company seal or stamp is required.')).toBeInTheDocument();
+    await user.upload(screen.getByLabelText('Company Seal or Stamp'), new File(['x'], 'seal.png'));
     expect(screen.getByTestId('seal-name')).toHaveTextContent('seal.png');
+  });
+
+  it('shows the image-type error when a PDF is chosen as the seal', async () => {
+    const user = userEvent.setup({ applyAccept: false });
+    render(<Host Step={Step5Declaration} />);
+    await user.upload(screen.getByLabelText('Company Seal or Stamp'), new File(['x'], 'sig.pdf'));
+    expect(screen.getByText('Upload a JPG or PNG image.')).toBeInTheDocument();
   });
 
   it('disables submit and Back and shows Submitting… while sending', () => {
@@ -278,15 +287,23 @@ describe('IndividualStep2Documents', () => {
 });
 
 describe('IndividualStep3Declaration', () => {
-  it('has name, typed signature, date and agreement, and validates after blur', async () => {
+  it('has name, date, signature image and agreement, and validates after blur', async () => {
     const user = userEvent.setup();
     render(<Host Step={IndividualStep3Declaration} init={indiv(3)} />);
     expect(screen.getByRole('heading', { name: 'Section C: Declaration' })).toBeInTheDocument();
-    ['Name', 'Typed Signature (type your full name)', 'Date'].forEach((l) => expect(screen.getByLabelText(l)).toBeInTheDocument());
-    expect(screen.getByLabelText(/^I agree that the typed name above/)).toBeInTheDocument();
-    await user.click(screen.getByLabelText('Name'));
+    ['Full Name', 'Date', 'Handwritten Signature'].forEach((l) => expect(screen.getByLabelText(l)).toBeInTheDocument());
+    expect(screen.getByLabelText(/^I confirm the attached image/)).toBeInTheDocument();
+    expect(screen.queryByLabelText('Typed Signature (type your full name)')).toBeNull();
+    await user.click(screen.getByLabelText('Full Name'));
     await user.tab();
     expect(screen.getByText('Name is required.')).toBeInTheDocument();
+  });
+
+  it('shows the image-type error when a PDF is chosen as the signature', async () => {
+    const user = userEvent.setup({ applyAccept: false });
+    render(<Host Step={IndividualStep3Declaration} init={indiv(3)} />);
+    await user.upload(screen.getByLabelText('Handwritten Signature'), new File(['x'], 'sig.pdf'));
+    expect(screen.getByText('Upload a JPG or PNG image.')).toBeInTheDocument();
   });
 
   it('disables submit and Back while sending, and shows Submit Form when idle', () => {

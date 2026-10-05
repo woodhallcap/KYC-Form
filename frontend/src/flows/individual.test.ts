@@ -20,6 +20,7 @@ describe('individualFlow', () => {
     const own = (k: string) => individualFlow.steps.findIndex((s) => s.owns(k)) + 1;
     PERSON_KEYS.forEach((k) => expect(own(k), k).toBe(1));
     expect([own('consent'), own('signatureAgree'), own('declarationName'), own('signatureDate')]).toEqual([2, 3, 3, 3]);
+    expect(own('signatureFile')).toBe(3);
     ['_total', 'customerType'].forEach((k) => expect(own(k)).toBe(0));
   });
 
