@@ -73,9 +73,9 @@ export function IndividualStep1Person({ state, dispatch, onNext }: StepProps) {
         <TextField {...common} name="bvn" label="BVN" />
         <TextField {...common} name="nin" label="NIN" />
         <TextField {...common} name="occupation" label="Occupation" placeholder="e.g. Engineer" />
-        <TextField {...common} name="employerName" label="Employer/Business Name (if any)" />
+        <TextField {...common} name="employerName" label="Employer/Business Name" />
       </FieldGrid>
-      <TextField {...common} name="officeAddress" label="Office Address (if any)" multiline />
+      <TextField {...common} name="officeAddress" label="Office Address" multiline />
       <TextField {...common} name="officialEmail" label="Official Email" type="email" placeholder="e.g. jane.doe@employer.com" />
       <ChoiceGroup state={state} dispatch={dispatch} name="sourceOfIncome" label="Source of Income" options={INCOME_OPTIONS} />
       {person.sourceOfIncome === 'other' && (

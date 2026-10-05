@@ -101,8 +101,8 @@ const PERSON: Record<string, string> = {
   'ID No (optional)': 'A123',
   Occupation: 'Engineer',
   'Source of Wealth': 'Savings',
-  'Office Address (if any)': '4 Adeola Odeku St',
-  'Employer/Business Name (if any)': 'Acme Engineering',
+  'Office Address': '4 Adeola Odeku St',
+  'Employer/Business Name': 'Acme Engineering',
   'Official Email': 'jane@acme-eng.com',
 };
 

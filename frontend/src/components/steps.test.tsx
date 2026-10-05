@@ -211,7 +211,7 @@ describe('IndividualStep1Person', () => {
   it('has every field, with duplicate labels reachable within their groups', () => {
     render(<Host Step={IndividualStep1Person} init={indiv()} />);
     ['Full Name', 'Date of Birth', 'Place of Birth', 'Nationality', 'Country of Residence', 'Residential Address', 'LGA', 'State', 'Phone No', 'Email',
-      'ID No (optional)', 'Expiry Date (optional)', 'Occupation', 'Employer/Business Name (if any)', 'Office Address (if any)', 'Source of Wealth',
+      'ID No (optional)', 'Expiry Date (optional)', 'Occupation', 'Employer/Business Name', 'Office Address', 'Source of Wealth',
       'Official Email'].forEach((l) => expect(screen.getByLabelText(l), l).toBeInTheDocument());
     expect(screen.getByRole('textbox', { name: 'BVN' })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'NIN' })).toBeInTheDocument();
@@ -222,7 +222,7 @@ describe('IndividualStep1Person', () => {
     expect(within(radiosOf('Purpose of Relationship with Woodhall Finance')).getAllByRole('radio')).toHaveLength(4);
     expect(screen.queryByLabelText(/Expected Monthly Turnover/)).toBeNull();
     expect(screen.queryByText(/Expected Transaction Type/)).toBeNull();
-    const office = screen.getByLabelText('Office Address (if any)');
+    const office = screen.getByLabelText('Office Address');
     const official = screen.getByLabelText('Official Email');
     expect(office.compareDocumentPosition(official) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
