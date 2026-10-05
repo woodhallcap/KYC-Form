@@ -5,17 +5,20 @@ export const NEEDS: Record<CustomerType, string[]> = {
   individual: [
     "A valid means of ID (NIN slip, international passport, driver's license or voter's card)",
     'Your BVN and NIN',
-    'Proof of address from the last 3 months, such as a utility bill or bank statement',
+    'Proof of address from the last 3 months: a utility bill and a bank statement',
+    'The last 12 months of bank statements',
     'A recent passport photograph',
-    'Your signature mandate card',
+    'A photo or scan of your handwritten signature',
+    'Optional: work ID, employment letter, signature mandate card',
   ],
   corporate: [
-    'CAC certificate of incorporation',
+    'CAC certificate of incorporation and CAC status report',
     'CAC forms CAC2.3 and CAC1.1 for directors and shareholders',
     'Memorandum and articles of association',
     'A board resolution to open the account and obtain the facility',
     'The last 12 months of company bank statements',
-    'ID, BVN, NIN and proof of address for each director, signatory and owner above 5%',
+    'Government-issued ID and a recent passport photograph of each authorized signatory',
+    "Photos or scans of both signatories' handwritten signatures and the company seal or stamp",
   ],
 };
 

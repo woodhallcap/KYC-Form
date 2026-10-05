@@ -11,7 +11,7 @@ export function Step1Entity({ state, dispatch, onNext }: StepProps) {
       <SectionHeading text="Section A: Entity Information" />
       <TextField {...common} name="companyName" label="Company Name" placeholder="e.g. Acme Trading Limited" />
       <FieldGrid>
-        <TextField {...common} name="rcNumber" label="RC Number" placeholder="e.g. RC1234567" />
+        <TextField {...common} name="rcNumber" label="Business Registration Number (BN / RC)" placeholder="e.g. RC1234567 or BN1234567" />
         <TextField {...common} name="dateOfIncorporation" label="Date of Incorporation" type="date" />
       </FieldGrid>
       <TextField

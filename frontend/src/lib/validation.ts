@@ -128,7 +128,7 @@ export function validateEntity(d: Partial<CorporateEntity>): Errors {
   const errors: Errors = {};
   const required: [keyof CorporateEntity, string][] = [
     ['companyName', 'Company name is required.'],
-    ['rcNumber', 'RC number is required.'],
+    ['rcNumber', 'Business registration number is required.'],
     ['dateOfIncorporation', 'Date of incorporation is required.'],
     ['registeredAddress', 'Registered address is required.'],
     ['natureOfBusiness', 'Nature of business is required.'],

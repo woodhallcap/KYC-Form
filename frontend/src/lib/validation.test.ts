@@ -23,6 +23,7 @@ describe('validateEntity', () => {
     const e = validateEntity({});
     ['companyName', 'rcNumber', 'dateOfIncorporation', 'registeredAddress', 'natureOfBusiness', 'tin', 'companyEmail', 'bankAccountNumber', 'bankName']
       .forEach((k) => expect(e[k]).toBeTruthy());
+    expect(e.rcNumber).toBe('Business registration number is required.');
     expect(e.businessAddress).toBeUndefined();
     expect(validateEntity(validEntity)).toEqual({});
     expect(validateEntity({ ...validEntity, companyEmail: 'nope' }).companyEmail).toBe('Enter a valid email address.');

@@ -62,6 +62,12 @@ describe('Step1Entity', () => {
     expect(screen.getByText('Company name is required.')).toBeInTheDocument();
   });
 
+  it('labels the registration number as BN / RC', () => {
+    render(<Host Step={Step1Entity} />);
+    expect(screen.getByLabelText('Business Registration Number (BN / RC)')).toBeInTheDocument();
+    expect(screen.queryByLabelText('RC Number')).toBeNull();
+  });
+
   it('has company email and no legal status or website', () => {
     render(<Host Step={Step1Entity} />);
     expect(screen.getByLabelText('Company Email')).toBeInTheDocument();

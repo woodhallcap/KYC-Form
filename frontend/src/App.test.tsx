@@ -17,7 +17,7 @@ const chooseIndividual = (user: User) => user.click(screen.getByRole('button', {
 
 const ENTITY: Record<string, string> = {
   'Company Name': 'Acme Ltd',
-  'RC Number': 'RC1',
+  'Business Registration Number (BN / RC)': 'RC1',
   'Date of Incorporation': '2020-01-01',
   'Registered Address': '1 Main St',
   'Nature of Business': 'Trading',
