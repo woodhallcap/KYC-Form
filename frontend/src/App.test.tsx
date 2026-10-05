@@ -5,6 +5,7 @@ import App from './App';
 import { STORAGE_KEY } from './lib/autosave';
 import { CORPORATE_DOCUMENTS, INDIVIDUAL_DOCUMENTS } from './lib/documents';
 import type { DocumentSpec } from './lib/documents';
+import { bigFile } from './test-utils';
 
 type User = ReturnType<typeof userEvent.setup>;
 
@@ -461,6 +462,25 @@ describe('individual flow', () => {
     await submitIndividual(user);
     await waitFor(() => expect(alertSpy).toHaveBeenCalledWith('Network error. Please try again.'));
     expect(screen.getByRole('button', { name: 'Submit Form' })).toBeEnabled();
+  });
+
+  it('blocks Submit and shows the total-size error when attachments exceed 20MB', async () => {
+    const user = userEvent.setup();
+    const fetchMock = json({ success: true });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<App />);
+    await toIndividualDocuments(user);
+    for (const d of INDIVIDUAL_DOCUMENTS.filter((s) => s.required)) {
+      await user.upload(screen.getByLabelText(d.label), bigFile(`${d.id}.pdf`, 4.5));
+    }
+    await user.click(screen.getByLabelText(/^I consent/));
+    await next(user, 'Next: Declaration');
+    await submitIndividual(user);
+    const message = 'Total attachments exceed the 20MB limit.';
+    expect(screen.getByRole('alert')).toHaveTextContent(message);
+    expect(alertSpy).toHaveBeenCalledWith(message);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.getByRole('heading', { name: 'Section C: Declaration' })).toBeInTheDocument();
   });
 
   it('sends only one request when submit is triggered twice', async () => {
