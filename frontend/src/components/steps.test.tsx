@@ -35,7 +35,6 @@ function Host({ Step, init }: { Step: ComponentType<StepProps>; init?: AppState 
       <span data-testid="gender">{p.gender}</span>
       <span data-testid="means">{p.meansOfId.join(',')}</span>
       <span data-testid="income">{p.sourceOfIncome}</span>
-      <span data-testid="types">{p.expectedTransactionTypes.join(',')}</span>
     </>
   );
 }
@@ -212,18 +211,23 @@ describe('IndividualStep1Person', () => {
   it('has every field, with duplicate labels reachable within their groups', () => {
     render(<Host Step={IndividualStep1Person} init={indiv()} />);
     ['Full Name', 'Date of Birth', 'Place of Birth', 'Nationality', 'Country of Residence', 'Residential Address', 'LGA', 'State', 'Phone No', 'Email',
-      'ID No', 'Expiry Date (if any)', 'Occupation', 'Employer/Business Name (if any)', 'Office Address (if any)', 'Source of Wealth',
-      'Expected Monthly Turnover (₦)'].forEach((l) => expect(screen.getByLabelText(l), l).toBeInTheDocument());
+      'ID No (optional)', 'Expiry Date (optional)', 'Occupation', 'Employer/Business Name (if any)', 'Office Address (if any)', 'Source of Wealth',
+      'Official Email'].forEach((l) => expect(screen.getByLabelText(l), l).toBeInTheDocument());
     expect(screen.getByRole('textbox', { name: 'BVN' })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'NIN' })).toBeInTheDocument();
-    expect(within(groupOf('Means of ID')).getAllByRole('checkbox')).toHaveLength(5);
-    expect(within(groupOf('Expected Transaction Type')).getAllByRole('checkbox')).toHaveLength(3);
+    expect(within(groupOf('Means of ID')).getAllByRole('checkbox')).toHaveLength(4);
+    expect(within(groupOf('Means of ID')).queryByLabelText('BVN')).toBeNull();
     expect(within(radiosOf('Gender')).getAllByRole('radio')).toHaveLength(2);
     expect(within(radiosOf('Source of Income')).getAllByRole('radio')).toHaveLength(5);
-    expect(within(radiosOf('Purpose of Relationship')).getAllByRole('radio')).toHaveLength(4);
+    expect(within(radiosOf('Purpose of Relationship with Woodhall Finance')).getAllByRole('radio')).toHaveLength(4);
+    expect(screen.queryByLabelText(/Expected Monthly Turnover/)).toBeNull();
+    expect(screen.queryByText(/Expected Transaction Type/)).toBeNull();
+    const office = screen.getByLabelText('Office Address (if any)');
+    const official = screen.getByLabelText('Official Email');
+    expect(office.compareDocumentPosition(official) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('sets gender and toggles multiple means of ID and transaction types', async () => {
+  it('sets gender and toggles multiple means of ID', async () => {
     const user = userEvent.setup();
     render(<Host Step={IndividualStep1Person} init={indiv()} />);
     await user.click(within(radiosOf('Gender')).getByLabelText('Female'));
@@ -234,9 +238,6 @@ describe('IndividualStep1Person', () => {
     expect(screen.getByTestId('means')).toHaveTextContent('nin,drivers_license');
     await user.click(means.getByLabelText('NIN'));
     expect(screen.getByTestId('means')).toHaveTextContent(/^drivers_license$/);
-    await user.click(within(groupOf('Expected Transaction Type')).getByLabelText('Cash'));
-    await user.click(within(groupOf('Expected Transaction Type')).getByLabelText('Cheque'));
-    expect(screen.getByTestId('types')).toHaveTextContent('cash,cheque');
   });
 
   it('reveals the specify input only for Source of Income = Other, independently of Purpose', async () => {
@@ -247,7 +248,7 @@ describe('IndividualStep1Person', () => {
     await user.click(within(radiosOf('Source of Income')).getByLabelText('Other'));
     expect(screen.getByLabelText('Specify source of income')).toBeInTheDocument();
     expect(screen.queryByLabelText('Specify purpose')).toBeNull();
-    await user.click(within(radiosOf('Purpose of Relationship')).getByLabelText('Other'));
+    await user.click(within(radiosOf('Purpose of Relationship with Woodhall Finance')).getByLabelText('Other'));
     expect(screen.getByLabelText('Specify purpose')).toBeInTheDocument();
     await user.click(within(radiosOf('Source of Income')).getByLabelText('Salary'));
     expect(screen.queryByLabelText('Specify source of income')).toBeNull();

@@ -87,7 +87,6 @@ describe('autosave: individual drafts', () => {
     const f = emptyIndividual();
     f.person.fullName = 'Jane Doe';
     f.person.meansOfId = ['nin', 'voters_card'];
-    f.person.expectedTransactionTypes = ['cash'];
     f.person.gender = 'F';
     f.person.sourceOfIncome = 'other';
     f.person.sourceOfIncomeOther = 'Gift';
@@ -103,7 +102,6 @@ describe('autosave: individual drafts', () => {
     const r = applyIndividualDraft(emptyIndividual(), d as IndividualDraft);
     expect(r.person.fullName).toBe('Jane Doe');
     expect(r.person.meansOfId).toEqual(['nin', 'voters_card']);
-    expect(r.person.expectedTransactionTypes).toEqual(['cash']);
     expect(r.person.gender).toBe('F');
     expect(r.person.sourceOfIncome).toBe('other');
     expect(r.person.sourceOfIncomeOther).toBe('Gift');
@@ -131,18 +129,32 @@ describe('autosave: individual drafts', () => {
   it('applyIndividualDraft tolerates malformed input and drops unknown option values', () => {
     const bad = {
       v: 2, customerType: 'individual',
-      person: { fullName: 5, meansOfId: 'nin', expectedTransactionTypes: ['cash', 'bogus', 7], gender: 'X', sourceOfIncome: 'lottery', purposeOfRelationship: 'gift', email: 'a@b.co' },
+      person: { fullName: 5, meansOfId: 'nin', gender: 'X', sourceOfIncome: 'lottery', purposeOfRelationship: 'gift', email: 'a@b.co' },
       declaration: [], documents: 'no', consent: 'yes',
     } as unknown as IndividualDraft;
     const r = applyIndividualDraft(emptyIndividual(), bad);
     expect(r.person.fullName).toBe('');
     expect(r.person.meansOfId).toEqual([]);
-    expect(r.person.expectedTransactionTypes).toEqual(['cash']);
     expect(r.person.gender).toBe('');
     expect(r.person.sourceOfIncome).toBe('');
     expect(r.person.purposeOfRelationship).toBe('');
     expect(r.person.email).toBe('a@b.co');
     expect(r.consent).toBe(false);
+  });
+
+  it('restores a legacy draft: drops BVN from means of ID and ignores removed keys', () => {
+    const legacy = {
+      v: 2, customerType: 'individual',
+      person: { fullName: 'A', meansOfId: ['bvn', 'nin'], expectedTransactionTypes: ['cash'], expectedMonthlyTurnover: '5' },
+      declaration: { signatureName: 'A' }, documents: { proof_of_address: true }, consent: true,
+    } as unknown as IndividualDraft;
+    const r = applyIndividualDraft(emptyIndividual(), legacy);
+    expect(r.person.meansOfId).toEqual(['nin']);
+    expect(r.person.fullName).toBe('A');
+    expect(r.person).not.toHaveProperty('expectedTransactionTypes');
+    expect(r.person).not.toHaveProperty('expectedMonthlyTurnover');
+    expect(r.declaration).not.toHaveProperty('signatureName');
+    expect(r).not.toHaveProperty('documents');
   });
 
   it('hasAnyContent is false for an empty individual draft and true for any text, array or checkbox', () => {

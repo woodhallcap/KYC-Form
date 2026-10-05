@@ -38,9 +38,9 @@ export { initialCorporateForm as emptyState, initialIndividualForm as emptyIndiv
 export const validPerson: IndividualPerson = {
   fullName: 'Jane Doe', dateOfBirth: '1990-01-01', placeOfBirth: 'Lagos', nationality: 'Nigerian', countryOfResidence: 'Nigeria',
   residentialAddress: '1 Rd', lga: 'Ikeja', state: 'Lagos', phone: '08000000000', email: 'jane@example.com',
-  idNumber: 'A123', idExpiry: '', bvn: '222', nin: '333', occupation: 'Engineer', employerName: '', officeAddress: '',
-  sourceOfIncomeOther: '', sourceOfWealth: 'Savings', purposeOther: '', expectedMonthlyTurnover: '500,000',
-  gender: 'F', meansOfId: ['nin', 'passport'], sourceOfIncome: 'salary', purposeOfRelationship: 'loan', expectedTransactionTypes: ['transfer'],
+  idNumber: 'A123', idExpiry: '', bvn: '222', nin: '333', occupation: 'Engineer', employerName: 'Acme Engineering', officeAddress: '4 Adeola Odeku St', officialEmail: 'jane@acme-eng.com',
+  sourceOfIncomeOther: '', sourceOfWealth: 'Savings', purposeOther: '',
+  gender: 'F', meansOfId: ['nin', 'passport'], sourceOfIncome: 'salary', purposeOfRelationship: 'loan',
 };
 
 /** A blank individual form. */
@@ -50,8 +50,8 @@ export function makeIndividual(o: Partial<IndividualForm> = {}): IndividualForm 
     customerType: 'individual',
     person: {
       fullName: '', dateOfBirth: '', placeOfBirth: '', nationality: '', countryOfResidence: '', residentialAddress: '', lga: '', state: '', phone: '', email: '',
-      idNumber: '', idExpiry: '', bvn: '', nin: '', occupation: '', employerName: '', officeAddress: '', sourceOfIncomeOther: '', sourceOfWealth: '',
-      purposeOther: '', expectedMonthlyTurnover: '', gender: '', meansOfId: [], sourceOfIncome: '', purposeOfRelationship: '', expectedTransactionTypes: [],
+      idNumber: '', idExpiry: '', bvn: '', nin: '', occupation: '', employerName: '', officeAddress: '', officialEmail: '', sourceOfIncomeOther: '', sourceOfWealth: '',
+      purposeOther: '', gender: '', meansOfId: [], sourceOfIncome: '', purposeOfRelationship: '',
     },
     docs, consent: false,
     declaration: { declarationName: '', signatureDate: '', signatureAgree: false },

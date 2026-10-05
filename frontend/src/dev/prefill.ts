@@ -79,10 +79,10 @@ const person: Record<string, string> = {
   occupation: 'Engineer',
   employerName: 'Acme Engineering',
   officeAddress: '4 Adeola Odeku Street, Victoria Island, Lagos',
+  officialEmail: 'jane.doe@acme-engineering.com',
   sourceOfIncome: 'salary',
   sourceOfWealth: 'Savings and property rental',
   purposeOfRelationship: 'loan',
-  expectedMonthlyTurnover: '500,000',
 };
 
 const individualDeclaration: Record<string, string> = {
@@ -95,7 +95,6 @@ function individualActions(): Action[] {
     ...fields('person', person),
     { type: 'toggleChoice', name: 'meansOfId', value: 'nin' },
     { type: 'toggleChoice', name: 'meansOfId', value: 'passport' },
-    { type: 'toggleChoice', name: 'expectedTransactionTypes', value: 'transfer' },
     ...requiredDocs(INDIVIDUAL_DOCUMENTS),
     { type: 'setConsent', value: true },
     ...fields('declaration', individualDeclaration),

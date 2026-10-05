@@ -67,7 +67,7 @@ describe('buildFormData: individual', () => {
     f.person.email = 'jane@example.com';
     f.person.gender = 'F';
     f.person.meansOfId = ['nin', 'passport'];
-    f.person.expectedTransactionTypes = ['cash', 'transfer'];
+    f.person.officialEmail = 'jane@acme-eng.com';
     f.person.sourceOfIncome = 'other';
     f.person.sourceOfIncomeOther = 'Gift';
     f.docs.valid_means_of_id = new File(['x'], 'id.pdf');
@@ -80,7 +80,9 @@ describe('buildFormData: individual', () => {
     expect(fd.get('email')).toBe('jane@example.com');
     expect(fd.get('gender')).toBe('F');
     expect(fd.getAll('meansOfId[]')).toEqual(['nin', 'passport']);
-    expect(fd.getAll('expectedTransactionTypes[]')).toEqual(['cash', 'transfer']);
+    expect(fd.get('officialEmail')).toBe('jane@acme-eng.com');
+    expect(fd.has('expectedTransactionTypes[]')).toBe(false);
+    expect(fd.has('expectedMonthlyTurnover')).toBe(false);
     expect(fd.get('sourceOfIncome')).toBe('other');
     expect(fd.get('sourceOfIncomeOther')).toBe('Gift');
     expect((fd.get('documents[valid_means_of_id]') as File).name).toBe('id.pdf');
@@ -96,7 +98,7 @@ describe('buildFormData: individual', () => {
 
   it('appends nothing for empty arrays, unset gender, or unticked checkboxes', () => {
     const fd = buildFormData(emptyIndividual());
-    ['meansOfId[]', 'expectedTransactionTypes[]', 'gender', 'consent', 'signatureAgree'].forEach((k) => expect(fd.has(k), k).toBe(false));
+    ['meansOfId[]', 'gender', 'consent', 'signatureAgree'].forEach((k) => expect(fd.has(k), k).toBe(false));
     expect(fd.get('fullName')).toBe('');
   });
 

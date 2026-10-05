@@ -31,9 +31,9 @@ export function initialIndividualForm(): IndividualForm {
     customerType: 'individual',
     person: {
       fullName: '', dateOfBirth: '', placeOfBirth: '', nationality: '', countryOfResidence: '', residentialAddress: '', lga: '', state: '',
-      phone: '', email: '', idNumber: '', idExpiry: '', bvn: '', nin: '', occupation: '', employerName: '', officeAddress: '',
-      sourceOfIncomeOther: '', sourceOfWealth: '', purposeOther: '', expectedMonthlyTurnover: '',
-      gender: '', meansOfId: [], sourceOfIncome: '', purposeOfRelationship: '', expectedTransactionTypes: [],
+      phone: '', email: '', idNumber: '', idExpiry: '', bvn: '', nin: '', occupation: '', employerName: '', officeAddress: '', officialEmail: '',
+      sourceOfIncomeOther: '', sourceOfWealth: '', purposeOther: '',
+      gender: '', meansOfId: [], sourceOfIncome: '', purposeOfRelationship: '',
     },
     docs,
     consent: false,

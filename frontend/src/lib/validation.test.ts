@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   DOCUMENT_IDS, validateDeclaration, validateDirectors, validateDocuments, validateEntity, validateFileMeta, validateFunds,
-  validateImageMeta, validateIndividualDeclaration, validateIndividualDocuments, validateIndividualPerson,
+  MEANS_OF_ID_OPTIONS, validateImageMeta, validateIndividualDeclaration, validateIndividualDocuments, validateIndividualPerson,
 } from './validation';
 import { CORPORATE_DOCUMENTS, INDIVIDUAL_DOCUMENTS } from './documents';
 import { bigFile, dir, makeForm, makeIndividual, validEntity, validPerson } from '../test-utils';
@@ -118,12 +118,22 @@ describe('validateImageMeta', () => {
 });
 
 describe('validateIndividualPerson', () => {
-  it('flags every required field, but not the optional ones', () => {
-    const e = validateIndividualPerson({});
+  it('requires everything except ID number and expiry', () => {
+    const e = validateIndividualPerson(makeIndividual().person);
     ['fullName', 'dateOfBirth', 'placeOfBirth', 'gender', 'nationality', 'countryOfResidence', 'residentialAddress', 'lga', 'state', 'phone', 'email',
-      'meansOfId', 'idNumber', 'bvn', 'nin', 'occupation', 'sourceOfIncome', 'sourceOfWealth', 'purposeOfRelationship', 'expectedMonthlyTurnover',
-      'expectedTransactionTypes'].forEach((k) => expect(e[k], k).toBeTruthy());
-    ['idExpiry', 'employerName', 'officeAddress', 'sourceOfIncomeOther', 'purposeOther'].forEach((k) => expect(e[k], k).toBeUndefined());
+      'employerName', 'officeAddress', 'officialEmail', 'bvn', 'nin', 'meansOfId', 'occupation', 'sourceOfIncome', 'sourceOfWealth',
+      'purposeOfRelationship'].forEach((k) => expect(e[k], k).toBeTruthy());
+    ['idNumber', 'idExpiry', 'sourceOfIncomeOther', 'purposeOther', 'expectedMonthlyTurnover', 'expectedTransactionTypes'].forEach((k) => expect(e[k], k).toBeUndefined());
+  });
+
+  it('checks the official email format', () => {
+    expect(validateIndividualPerson({ ...validPerson, officialEmail: 'nope' }).officialEmail).toBe('Enter a valid email address.');
+    expect(validateIndividualPerson({ ...validPerson, officialEmail: '' }).officialEmail).toBe('Official email is required.');
+    expect(validateIndividualPerson(validPerson)).toEqual({});
+  });
+
+  it('no longer offers BVN as a means of ID', () => {
+    expect(MEANS_OF_ID_OPTIONS.map((o) => o.value)).toEqual(['nin', 'passport', 'drivers_license', 'voters_card']);
   });
 
   it('passes a complete person and checks the email', () => {
@@ -138,10 +148,9 @@ describe('validateIndividualPerson', () => {
     expect(validateIndividualPerson({ ...validPerson, sourceOfIncome: 'salary', sourceOfIncomeOther: '' }).sourceOfIncomeOther).toBeUndefined();
   });
 
-  it('requires a gender and at least one means of ID and transaction type', () => {
+  it('requires a gender and at least one means of ID', () => {
     expect(validateIndividualPerson({ ...validPerson, gender: '' }).gender).toBe('Select a gender.');
     expect(validateIndividualPerson({ ...validPerson, meansOfId: [] }).meansOfId).toBe('Select at least one means of ID.');
-    expect(validateIndividualPerson({ ...validPerson, expectedTransactionTypes: [] }).expectedTransactionTypes).toBe('Select at least one transaction type.');
   });
 });
 

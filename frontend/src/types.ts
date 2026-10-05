@@ -58,8 +58,7 @@ export interface CorporateForm {
   images: Record<'signatory1SignatureFile' | 'signatory2SignatureFile' | 'sealFile', File | null>;
 }
 
-export type MeansOfId = 'nin' | 'bvn' | 'passport' | 'drivers_license' | 'voters_card';
-export type TransactionType = 'cash' | 'transfer' | 'cheque';
+export type MeansOfId = 'nin' | 'passport' | 'drivers_license' | 'voters_card';
 export type Gender = '' | 'M' | 'F';
 export type IncomeSource = '' | 'salary' | 'business' | 'investment' | 'inheritance' | 'other';
 export type Purpose = '' | 'loan' | 'lease' | 'investment' | 'other';
@@ -82,15 +81,14 @@ export interface IndividualPerson {
   occupation: string;
   employerName: string;
   officeAddress: string;
+  officialEmail: string;
   sourceOfIncomeOther: string;
   sourceOfWealth: string;
   purposeOther: string;
-  expectedMonthlyTurnover: string;
   gender: Gender;
   meansOfId: MeansOfId[];
   sourceOfIncome: IncomeSource;
   purposeOfRelationship: Purpose;
-  expectedTransactionTypes: TransactionType[];
 }
 
 export interface IndividualDeclaration {

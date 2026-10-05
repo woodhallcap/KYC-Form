@@ -45,11 +45,10 @@ function appendDocuments(fd: FormData, docs: Record<string, File | null>, ids: r
 function buildIndividualFormData(form: IndividualForm): FormData {
   const fd = new FormData();
   fd.append('customerType', 'individual');
-  const { meansOfId, expectedTransactionTypes, gender, ...scalars } = form.person;
+  const { meansOfId, gender, ...scalars } = form.person;
   Object.entries(scalars).forEach(([k, v]) => fd.append(k, v));
   if (gender) fd.append('gender', gender);
   meansOfId.forEach((v) => fd.append('meansOfId[]', v));
-  expectedTransactionTypes.forEach((v) => fd.append('expectedTransactionTypes[]', v));
   const { signatureAgree, ...declaration } = form.declaration;
   Object.entries(declaration).forEach(([k, v]) => fd.append(k, v));
   if (signatureAgree) fd.append('signatureAgree', 'on');

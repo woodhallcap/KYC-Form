@@ -6,8 +6,8 @@ import { makeForm, makeIndividual } from '../test-utils';
 
 const PERSON_KEYS = [
   'fullName', 'dateOfBirth', 'placeOfBirth', 'gender', 'nationality', 'countryOfResidence', 'residentialAddress', 'lga', 'state', 'phone', 'email',
-  'meansOfId', 'idNumber', 'idExpiry', 'bvn', 'nin', 'occupation', 'employerName', 'officeAddress', 'sourceOfIncome', 'sourceOfIncomeOther',
-  'sourceOfWealth', 'purposeOfRelationship', 'purposeOther', 'expectedMonthlyTurnover', 'expectedTransactionTypes',
+  'meansOfId', 'idNumber', 'idExpiry', 'bvn', 'nin', 'occupation', 'employerName', 'officeAddress', 'officialEmail', 'sourceOfIncome', 'sourceOfIncomeOther',
+  'sourceOfWealth', 'purposeOfRelationship', 'purposeOther',
 ];
 
 describe('individualFlow', () => {

@@ -29,7 +29,6 @@ const fillPerson = (s: AppState) =>
     s,
     ...SCALARS.map(([name, value]): Action => ({ type: 'setField', group: 'person', name, value: value as string })),
     ...validPerson.meansOfId.map((value): Action => ({ type: 'toggleChoice', name: 'meansOfId', value })),
-    ...validPerson.expectedTransactionTypes.map((value): Action => ({ type: 'toggleChoice', name: 'expectedTransactionTypes', value })),
   );
 
 describe('reducer: customer type', () => {

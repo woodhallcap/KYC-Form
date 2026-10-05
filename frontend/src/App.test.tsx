@@ -98,10 +98,12 @@ const PERSON: Record<string, string> = {
   State: 'Lagos',
   'Phone No': '08000000000',
   Email: 'jane@example.com',
-  'ID No': 'A123',
+  'ID No (optional)': 'A123',
   Occupation: 'Engineer',
   'Source of Wealth': 'Savings',
-  'Expected Monthly Turnover (₦)': '500,000',
+  'Office Address (if any)': '4 Adeola Odeku St',
+  'Employer/Business Name (if any)': 'Acme Engineering',
+  'Official Email': 'jane@acme-eng.com',
 };
 
 async function fillPerson(user: User) {
@@ -112,8 +114,7 @@ async function fillPerson(user: User) {
   await user.click(within(screen.getByRole('group', { name: 'Means of ID' })).getByLabelText('NIN'));
   await user.click(within(screen.getByRole('group', { name: 'Means of ID' })).getByLabelText("Int'l Passport"));
   await user.click(within(screen.getByRole('radiogroup', { name: 'Source of Income' })).getByLabelText('Salary'));
-  await user.click(within(screen.getByRole('radiogroup', { name: 'Purpose of Relationship' })).getByLabelText('Loan'));
-  await user.click(within(screen.getByRole('group', { name: 'Expected Transaction Type' })).getByLabelText('Transfer'));
+  await user.click(within(screen.getByRole('radiogroup', { name: 'Purpose of Relationship with Woodhall Finance' })).getByLabelText('Loan'));
 }
 
 async function toIndividualDocuments(user: User) {
@@ -393,7 +394,7 @@ describe('individual flow', () => {
     expect(body.get('customerType')).toBe('individual');
     expect(body.get('email')).toBe('jane@example.com');
     expect(body.getAll('meansOfId[]')).toEqual(['nin', 'passport']);
-    expect(body.getAll('expectedTransactionTypes[]')).toEqual(['transfer']);
+    expect(body.get('officialEmail')).toBe('jane@acme-eng.com');
     expect(body.get('declarationName')).toBe('Jane Doe');
     expect(body.get('consent')).toBe('on');
     expect(body.has('companyName')).toBe(false);

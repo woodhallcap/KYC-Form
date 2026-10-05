@@ -1,5 +1,5 @@
 import type { Dispatch } from 'react';
-import { INCOME_OPTIONS, MEANS_OF_ID_OPTIONS, PURPOSE_OPTIONS, TRANSACTION_TYPE_OPTIONS } from '../lib/validation';
+import { INCOME_OPTIONS, MEANS_OF_ID_OPTIONS, PURPOSE_OPTIONS } from '../lib/validation';
 import type { Action, AppState } from '../lib/reducer';
 import { Button } from './Button';
 import { CheckboxGroup } from './CheckboxGroup';
@@ -68,31 +68,24 @@ export function IndividualStep1Person({ state, dispatch, onNext }: StepProps) {
       </FieldGrid>
       <CheckboxGroup state={state} dispatch={dispatch} name="meansOfId" label="Means of ID" options={MEANS_OF_ID_OPTIONS} />
       <FieldGrid>
-        <TextField {...common} name="idNumber" label="ID No" />
-        <TextField {...common} name="idExpiry" label="Expiry Date (if any)" type="date" />
+        <TextField {...common} name="idNumber" label="ID No (optional)" />
+        <TextField {...common} name="idExpiry" label="Expiry Date (optional)" type="date" />
         <TextField {...common} name="bvn" label="BVN" />
         <TextField {...common} name="nin" label="NIN" />
         <TextField {...common} name="occupation" label="Occupation" placeholder="e.g. Engineer" />
         <TextField {...common} name="employerName" label="Employer/Business Name (if any)" />
       </FieldGrid>
       <TextField {...common} name="officeAddress" label="Office Address (if any)" multiline />
+      <TextField {...common} name="officialEmail" label="Official Email" type="email" placeholder="e.g. jane.doe@employer.com" />
       <ChoiceGroup state={state} dispatch={dispatch} name="sourceOfIncome" label="Source of Income" options={INCOME_OPTIONS} />
       {person.sourceOfIncome === 'other' && (
         <OtherText state={state} dispatch={dispatch} name="sourceOfIncomeOther" ariaLabel="Specify source of income" />
       )}
       <TextField {...common} name="sourceOfWealth" label="Source of Wealth" />
-      <ChoiceGroup state={state} dispatch={dispatch} name="purposeOfRelationship" label="Purpose of Relationship" options={PURPOSE_OPTIONS} />
+      <ChoiceGroup state={state} dispatch={dispatch} name="purposeOfRelationship" label="Purpose of Relationship with Woodhall Finance" options={PURPOSE_OPTIONS} />
       {person.purposeOfRelationship === 'other' && (
         <OtherText state={state} dispatch={dispatch} name="purposeOther" ariaLabel="Specify purpose" />
       )}
-      <TextField {...common} name="expectedMonthlyTurnover" label="Expected Monthly Turnover (₦)" placeholder="e.g. 500,000" />
-      <CheckboxGroup
-        state={state}
-        dispatch={dispatch}
-        name="expectedTransactionTypes"
-        label="Expected Transaction Type"
-        options={TRANSACTION_TYPE_OPTIONS}
-      />
 
       <div className="mt-7 flex justify-between">
         <span />

@@ -1,6 +1,6 @@
 import type {
   CorporateEntity, CorporateForm, CorporateFunds, Director, DirectorFileId, Errors,
-  ImageName, IncomeSource, IndividualForm, IndividualPerson, MeansOfId, Purpose, TransactionType,
+  ImageName, IncomeSource, IndividualForm, IndividualPerson, MeansOfId, Purpose,
 } from '../types';
 import { CORPORATE_DOCUMENTS, INDIVIDUAL_DOCUMENTS } from './documents';
 import type { DocumentSpec } from './documents';
@@ -211,16 +211,9 @@ export function validateDeclaration(form: CorporateForm): Errors {
 
 export const MEANS_OF_ID_OPTIONS: { value: MeansOfId; label: string }[] = [
   { value: 'nin', label: 'NIN' },
-  { value: 'bvn', label: 'BVN' },
   { value: 'passport', label: "Int'l Passport" },
   { value: 'drivers_license', label: "Driver's License" },
   { value: 'voters_card', label: "Voter's Card" },
-];
-
-export const TRANSACTION_TYPE_OPTIONS: { value: TransactionType; label: string }[] = [
-  { value: 'cash', label: 'Cash' },
-  { value: 'transfer', label: 'Transfer' },
-  { value: 'cheque', label: 'Cheque' },
 ];
 
 export const INCOME_OPTIONS: { value: Exclude<IncomeSource, ''>; label: string }[] = [
@@ -250,12 +243,12 @@ export function validateIndividualPerson(p: Partial<IndividualPerson>): Errors {
     ['lga', 'LGA is required.'],
     ['state', 'State is required.'],
     ['phone', 'Phone number is required.'],
-    ['idNumber', 'ID number is required.'],
     ['bvn', 'BVN is required.'],
     ['nin', 'NIN is required.'],
     ['occupation', 'Occupation is required.'],
+    ['employerName', 'Employer/business name is required.'],
+    ['officeAddress', 'Office address is required.'],
     ['sourceOfWealth', 'Source of wealth is required.'],
-    ['expectedMonthlyTurnover', 'Expected monthly turnover is required.'],
   ];
   required.forEach(([key, message]) => {
     if (isBlank(p[key])) errors[key] = message;
@@ -263,6 +256,8 @@ export function validateIndividualPerson(p: Partial<IndividualPerson>): Errors {
   if (p.gender !== 'M' && p.gender !== 'F') errors.gender = 'Select a gender.';
   if (isBlank(p.email)) errors.email = 'Email is required.';
   else if (!isValidEmail(p.email as string)) errors.email = 'Enter a valid email address.';
+  if (isBlank(p.officialEmail)) errors.officialEmail = 'Official email is required.';
+  else if (!isValidEmail(p.officialEmail as string)) errors.officialEmail = 'Enter a valid email address.';
   if (!p.meansOfId || p.meansOfId.length === 0) errors.meansOfId = 'Select at least one means of ID.';
   if (!p.sourceOfIncome) errors.sourceOfIncome = 'Select a source of income.';
   else if (p.sourceOfIncome === 'other' && isBlank(p.sourceOfIncomeOther)) {
@@ -271,9 +266,6 @@ export function validateIndividualPerson(p: Partial<IndividualPerson>): Errors {
   if (!p.purposeOfRelationship) errors.purposeOfRelationship = 'Select the purpose of the relationship.';
   else if (p.purposeOfRelationship === 'other' && isBlank(p.purposeOther)) {
     errors.purposeOther = 'Please specify the purpose.';
-  }
-  if (!p.expectedTransactionTypes || p.expectedTransactionTypes.length === 0) {
-    errors.expectedTransactionTypes = 'Select at least one transaction type.';
   }
   return errors;
 }

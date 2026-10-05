@@ -1,7 +1,7 @@
 import { DIRECTOR_FIELDS } from '../types';
 import type { CorporateForm, CustomerType, Director, FormState, IndividualForm, IndividualPerson } from '../types';
 import { emptyDirector } from './initial-state';
-import { INCOME_OPTIONS, MAX_DIRECTORS, MEANS_OF_ID_OPTIONS, PURPOSE_OPTIONS, TRANSACTION_TYPE_OPTIONS } from './validation';
+import { INCOME_OPTIONS, MAX_DIRECTORS, MEANS_OF_ID_OPTIONS, PURPOSE_OPTIONS } from './validation';
 
 export const STORAGE_KEY = 'woodhall-kyc-draft-v2';
 
@@ -68,7 +68,7 @@ function serializeIndividual(form: IndividualForm): IndividualDraft {
   return {
     v: 2,
     customerType: 'individual',
-    person: { ...form.person, meansOfId: [...form.person.meansOfId], expectedTransactionTypes: [...form.person.expectedTransactionTypes] },
+    person: { ...form.person, meansOfId: [...form.person.meansOfId] },
     declaration: { ...form.declaration },
     consent: form.consent,
   };
@@ -157,7 +157,6 @@ export function applyIndividualDraft(form: IndividualForm, d: IndividualDraft): 
   person.sourceOfIncome = pickOption(src.sourceOfIncome, INCOME_OPTIONS);
   person.purposeOfRelationship = pickOption(src.purposeOfRelationship, PURPOSE_OPTIONS);
   person.meansOfId = pickOptions(src.meansOfId, MEANS_OF_ID_OPTIONS);
-  person.expectedTransactionTypes = pickOptions(src.expectedTransactionTypes, TRANSACTION_TYPE_OPTIONS);
   const declaration = pickStrings(form.declaration, d.declaration);
   declaration.signatureAgree = isObj(d.declaration) && d.declaration.signatureAgree === true;
   return { ...form, person, declaration, consent: d.consent === true };

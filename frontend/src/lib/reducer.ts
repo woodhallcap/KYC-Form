@@ -1,5 +1,5 @@
 import type {
-  CorporateForm, CustomerType, DirectorField, DirectorFileId, Errors, FormState, ImageName, IndividualForm,
+  CorporateForm, CustomerType, DirectorField, DirectorFileId, Errors, FormState, ImageName, IndividualForm, MeansOfId,
 } from '../types';
 import { FLOWS } from '../flows/corporate';
 import type { Flow } from '../flows/types';
@@ -9,7 +9,7 @@ import { emptyDirector, initialCorporateForm, initialIndividualForm } from './in
 import { MAX_DIRECTORS } from './validation';
 
 export type FieldGroup = 'entity' | 'funds' | 'declaration' | 'person';
-export type ChoiceName = 'meansOfId' | 'expectedTransactionTypes';
+export type ChoiceName = 'meansOfId';
 
 export interface AppState {
   customerType: CustomerType | null;
@@ -124,9 +124,9 @@ export function reducer(s: AppState, a: Action): AppState {
     }
     case 'toggleChoice': {
       if (s.customerType !== 'individual') return s;
-      const current = s.individual.person[a.name] as string[];
-      const next = current.includes(a.value) ? current.filter((v) => v !== a.value) : [...current, a.value];
-      return withForm(s, { ...s.individual, person: { ...s.individual.person, [a.name]: next } });
+      const current: string[] = s.individual.person.meansOfId;
+      const next = (current.includes(a.value) ? current.filter((v) => v !== a.value) : [...current, a.value]) as MeansOfId[];
+      return withForm(s, { ...s.individual, person: { ...s.individual.person, meansOfId: next } });
     }
     case 'setConsent':
       return form ? withForm(s, { ...form, consent: a.value }) : s;
