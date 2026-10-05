@@ -6,7 +6,7 @@ export const NEEDS: Record<CustomerType, string[]> = {
     "A valid means of ID (NIN slip, international passport, driver's license or voter's card)",
     'Your BVN and NIN',
     'Proof of address from the last 3 months, such as a utility bill or bank statement',
-    'A passport photograph',
+    'A recent passport photograph',
     'Your signature mandate card',
   ],
   corporate: [
@@ -31,10 +31,10 @@ export const CUSTOMER_LABEL: Record<CustomerType, string> = {
 };
 
 export const CONTACT = {
-  email: 'office@woodhallfinanceltd.com',
+  email: 'info@woodhallfinanceltd.com',
   phoneDisplay: '+234 14549820',
   phoneHref: 'tel:+23414549820',
-  address: 'No 1 Bitou Street, Wuse 2, Abuja FCT',
+  address: '8A Modupe Alakija Cres, Ikoyi, Lagos 106104, Lagos',
   website: 'woodhallfinanceltd.com',
   websiteHref: 'https://woodhallfinanceltd.com',
 };
