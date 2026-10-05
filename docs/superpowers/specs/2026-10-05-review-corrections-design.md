@@ -142,10 +142,10 @@ No change. Per-person attachments stay optional.
 
 ## Risks / open items (defaults chosen)
 
-- **Total upload size.** The 20MB total cap stays. The corporate form can now carry 9
-  documents, a seal and 2 signatures, plus director files, and a 12-month statement can be
-  large. Default: raise the total to **30MB** on both client and server. It is worth
-  checking Bluehost's `post_max_size` and `upload_max_filesize` on deploy.
+- **Total upload size.** The 20MB total cap stays. Attachments grow by about a third when
+  emailed, so a 30MB cap would produce about 40MB of email, which is over Microsoft 365's
+  usual 35MB message limit (see `docs/email-setup-microsoft-365.md`). If 12-month
+  statements don't fit, a follow-up can attach a download link instead of the file.
 - **Signature mandate card (individual) and Corporate ID (corporate)** were not discussed.
   Default: keep both, as optional.
 - **Employer fields for self-employed or unemployed applicants.** The meeting rule ("all
