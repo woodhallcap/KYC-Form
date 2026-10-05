@@ -155,8 +155,9 @@ function collect_upload_errors(array $uploads): array
 }
 
 /** Build the PDF, send the emails, always clean up temp files, and shape the result. */
-function deliver_submission(array $data, array $uploads, callable $sendEmails): array
+function deliver_submission(array $data, array $uploads, callable $sendEmails, ?callable $buildPdf = null): array
 {
+    $buildPdf = $buildPdf ?? 'build_submission_pdf';
     $attachments = [];
     foreach ($uploads as $upload) {
         $attachments[] = [
@@ -165,12 +166,19 @@ function deliver_submission(array $data, array $uploads, callable $sendEmails): 
         ];
     }
 
-    $pdfBytes = build_submission_pdf($data);
-    $emailResult = call_user_func($sendEmails, $data, $pdfBytes, $attachments);
-
-    foreach ($attachments as $attachment) {
-        if (file_exists($attachment['tmpPath'])) {
-            @unlink($attachment['tmpPath']);
+    try {
+        try {
+            $pdfBytes = call_user_func($buildPdf, $data);
+        } catch (Throwable $e) {
+            error_log('KYC submission PDF build failed: ' . get_class($e));
+            return failure([], 'We could not send your submission. Please try again shortly.');
+        }
+        $emailResult = call_user_func($sendEmails, $data, $pdfBytes, $attachments);
+    } finally {
+        foreach ($attachments as $attachment) {
+            if (file_exists($attachment['tmpPath'])) {
+                @unlink($attachment['tmpPath']);
+            }
         }
     }
 

@@ -37,7 +37,7 @@ function build_email_shell(string $innerHtml, string $logoSrc): string
         . $innerHtml
         . '</div>'
         . "<div style=\"padding:{$md}px {$lg}px {$lg}px;text-align:center;color:#8a8a8a;font-size:12px;border-top:1px solid #EEE2DA;margin-top:{$md}px;\">"
-        . 'Woodhall Capital &mdash; A uniquely elevated financial advisory firm'
+        . 'Woodhall Finance'
         . '</div>'
         . '</div>'
         . '</div>';
@@ -61,10 +61,18 @@ function build_admin_email_html(array $data, string $logoSrc = 'cid:woodhall-log
     $name = htmlspecialchars($summary['name'], ENT_QUOTES);
     $submittedAt = htmlspecialchars($data['submittedAt'] ?? '', ENT_QUOTES);
     $md = EMAIL_SPACE_MD;
+    $items = '';
+    foreach ($data['documents'] ?? [] as $doc) {
+        if (!empty($doc['attached'])) {
+            $items .= '<li>' . htmlspecialchars((string) ($doc['label'] ?? ''), ENT_QUOTES) . '</li>';
+        }
+    }
     $inner = "<h2 style=\"color:#224834;margin:0 0 {$md}px 0;font-size:20px;\">New {$kind} Submission</h2>"
         . email_paragraph("<strong>{$nameLabel}:</strong> {$name}")
         . email_paragraph("<strong>Submitted:</strong> {$submittedAt}")
-        . email_paragraph('The full submission is attached as a print-ready PDF, along with any supporting documents provided.', true);
+        . email_paragraph("<strong>Documents attached:</strong><ul style=\"margin:8px 0 0 0;padding-left:20px;\">{$items}</ul>")
+        . email_paragraph('Signature images and the company seal (if any) are attached and also shown in the PDF.')
+        . email_paragraph('Please review the submission and contact the customer if anything is missing.', true);
     return build_email_shell($inner, $logoSrc);
 }
 
@@ -73,11 +81,14 @@ function build_confirmation_email_html(array $data, string $logoSrc = 'cid:woodh
     $summary = submission_summary($data);
     $kind = htmlspecialchars($summary['kind'], ENT_QUOTES);
     $name = htmlspecialchars($summary['name'], ENT_QUOTES);
+    $contact = htmlspecialchars(CONTACT_EMAIL, ENT_QUOTES);
     $md = EMAIL_SPACE_MD;
     $inner = "<h2 style=\"color:#224834;margin:0 0 {$md}px 0;font-size:20px;\">Thank you for your submission</h2>"
-        . email_paragraph("We have received the {$kind} submission for <strong>{$name}</strong>.")
-        . email_paragraph('A copy of your submission, formatted for printing, is attached for your records.')
-        . email_paragraph('&mdash; Woodhall Capital', true);
+        . email_paragraph("Thank you, {$name}. We have received your {$kind} submission and the documents you attached.")
+        . email_paragraph('<strong>What happens next</strong><br>Our team will review your documents and verify your details. We will contact you if we need anything else.')
+        . email_paragraph('A copy of your submission is attached for your records.')
+        . email_paragraph("Questions? Email <a href=\"mailto:{$contact}\">{$contact}</a>.")
+        . email_paragraph('&mdash; Woodhall Finance', true);
     return build_email_shell($inner, $logoSrc);
 }
 
@@ -118,7 +129,9 @@ function send_submission_emails(
         if (file_exists($logoPath)) {
             $admin->addEmbeddedImage($logoPath, EMAIL_LOGO_CID, 'woodhall-logo.png');
         }
-        $admin->addAddress(RECIPIENT_EMAIL, RECIPIENT_NAME);
+        foreach (RECIPIENT_EMAILS as $to) {
+            $admin->addAddress($to, RECIPIENT_NAME);
+        }
         $admin->Subject = 'New ' . $summary['kind'] . ' Submission — ' . $companyName;
         $admin->Body = build_admin_email_html($data);
         $admin->addStringAttachment($pdfBytes, $pdfFileName, 'base64', 'application/pdf');
@@ -137,7 +150,7 @@ function send_submission_emails(
                 $confirmation->addEmbeddedImage($logoPath, EMAIL_LOGO_CID, 'woodhall-logo.png');
             }
             $confirmation->addAddress($submitterEmail, $companyName);
-            $confirmation->Subject = 'We received your Woodhall Capital KYC submission';
+            $confirmation->Subject = 'We received your Woodhall Finance KYC submission';
             $confirmation->Body = build_confirmation_email_html($data);
             $confirmation->addStringAttachment($pdfBytes, $pdfFileName, 'base64', 'application/pdf');
             if (!$confirmation->send()) {

@@ -360,4 +360,25 @@ test_case('a corporate post still works alongside the individual path', function
     assert_equal(true, $r['success']);
 });
 
+test_case('a PDF build failure returns the send error, skips the sender and deletes temp files', function () {
+    $tmp = tmp_file();
+    $files = corporate_files(files_entry('documents', ['certificate_of_incorporation'], upload('coi.pdf', $tmp)));
+    $sent = false;
+    $sender = function () use (&$sent) {
+        $sent = true;
+        return ['success' => true, 'error' => null];
+    };
+    $throwing = function (array $data): string {
+        throw new RuntimeException('pdf boom');
+    };
+    $prev = ini_set('error_log', '/dev/null');
+    $uploads = collect_uploads(parse_documents_input($files, CORPORATE_DOCUMENTS), $files);
+    $r = deliver_submission(['customerType' => 'corporate'], $uploads, $sender, $throwing);
+    ini_set('error_log', (string) $prev);
+    assert_equal(false, $r['success']);
+    assert_equal('We could not send your submission. Please try again shortly.', $r['message']);
+    assert_true(!$sent, 'sender must not be called');
+    assert_true(!file_exists($tmp), 'temp file should be deleted');
+});
+
 test_summary();

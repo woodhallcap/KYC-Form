@@ -1,8 +1,9 @@
 <?php
 declare(strict_types=1);
 
-define('RECIPIENT_EMAIL', 'analyst@woodhallcap.com');
-define('RECIPIENT_NAME', 'Woodhall Capital');
+// Every address here receives the new-submission notification with the PDF and documents.
+define('RECIPIENT_EMAILS', ['credit@woodhallfinanceltd.com']);
+define('RECIPIENT_NAME', 'Woodhall Finance');
 
 // Leave SMTP_HOST empty to fall back to PHP's mail() function.
 define('SMTP_HOST', '');
@@ -10,8 +11,10 @@ define('SMTP_PORT', 587);
 define('SMTP_USERNAME', '');
 define('SMTP_PASSWORD', '');
 define('SMTP_SECURE', 'tls');
-define('MAIL_FROM_ADDRESS', 'no-reply@woodhallcap.com');
-define('MAIL_FROM_NAME', 'Woodhall Capital');
+// Sending setup is pending: see docs/email-setup-microsoft-365.md.
+define('MAIL_FROM_ADDRESS', 'no-reply@woodhallfinanceltd.com');
+define('MAIL_FROM_NAME', 'Woodhall Finance');
+define('CONTACT_EMAIL', 'info@woodhallfinanceltd.com');
 
 define('MAX_FILE_SIZE_BYTES', 5 * 1024 * 1024);
 define('MAX_TOTAL_SIZE_BYTES', 20 * 1024 * 1024);
