@@ -14,6 +14,42 @@ function png_fixture(): string
     return $p;
 }
 
+/** A PNG whose IHDR header is valid (so getimagesize accepts it) but whose image data is junk. Colour type 2 = RGB, 6 = RGBA. */
+function junk_body_png(int $width, int $height, int $colourType = 2): string
+{
+    $chunk = fn(string $type, string $data): string
+        => pack('N', strlen($data)) . $type . $data . pack('N', crc32($type . $data));
+    $ihdr = pack('NNCCCCC', $width, $height, 8, $colourType, 0, 0, 0);
+    $p = tempnam(sys_get_temp_dir(), 'junk-') . '.png';
+    file_put_contents($p, "\x89PNG\r\n\x1a\n" . $chunk('IHDR', $ihdr) . $chunk('IDAT', str_repeat("\xAB", 64)) . $chunk('IEND', ''));
+    return $p;
+}
+
+function transparent_png_fixture(): string
+{
+    $p = tempnam(sys_get_temp_dir(), 'alpha-') . '.png';
+    $im = imagecreatetruecolor(120, 40);
+    imagealphablending($im, false);
+    imagefill($im, 0, 0, imagecolorallocatealpha($im, 0, 0, 0, 127));
+    imageline($im, 5, 30, 115, 10, imagecolorallocatealpha($im, 0, 0, 0, 0));
+    imagesavealpha($im, true);
+    imagepng($im, $p);
+    return $p;
+}
+
+function new_test_pdf(): TCPDF
+{
+    $pdf = new TCPDF('P', 'mm', 'A4', true, 'UTF-8', false);
+    $pdf->AddPage();
+    return $pdf;
+}
+
+/** Re-encoded image copies currently sitting in the temp directory. */
+function pdf_temp_images(): array
+{
+    return glob(sys_get_temp_dir() . '/' . PDF_IMAGE_TEMP_PREFIX . '*') ?: [];
+}
+
 function sample_corporate_data(): array
 {
     return [
@@ -176,6 +212,38 @@ test_case('a corrupt "png" does not break the PDF and falls back to text', funct
     $data = sample_individual_data();
     $data['images'] = ['signatureFile' => $bad];
     assert_equal('%PDF', substr(build_submission_pdf($data), 0, 4));
+});
+
+test_case('a huge-dimension PNG with a junk body falls back to text without a fatal', function () {
+    $before = pdf_temp_images();
+    $bad = junk_body_png(20000, 20000, 6);
+    assert_true(pdf_image_row(new_test_pdf(), 'Signature', $bad) === false);
+    $data = sample_individual_data();
+    $data['images'] = ['signatureFile' => $bad];
+    assert_equal('%PDF', substr(build_submission_pdf($data), 0, 4));
+    assert_equal($before, pdf_temp_images());
+});
+
+test_case('a small PNG with a valid header but junk body falls back to text', function () {
+    $before = pdf_temp_images();
+    $bad = junk_body_png(120, 40);
+    assert_true(pdf_image_row(new_test_pdf(), 'Signature', $bad) === false);
+    $data = sample_individual_data();
+    $data['images'] = ['signatureFile' => $bad];
+    assert_equal('%PDF', substr(build_submission_pdf($data), 0, 4));
+    assert_equal($before, pdf_temp_images());
+});
+
+test_case('a PNG with transparency is embedded and its re-encoded copy is cleaned up', function () {
+    $before = pdf_temp_images();
+    $png = transparent_png_fixture();
+    assert_true(pdf_image_row(new_test_pdf(), 'Signature', $png) === true);
+    $data = sample_individual_data();
+    $data['images'] = ['signatureFile' => $png];
+    $out = build_submission_pdf($data);
+    assert_equal('%PDF', substr($out, 0, 4));
+    assert_true(strpos($out, '/DCTDecode') !== false, 'Expected the image embedded as a JPEG');
+    assert_equal($before, pdf_temp_images());
 });
 
 test_case('individual sections: official email, no turnover/transaction rows, Woodhall Finance wording', function () {

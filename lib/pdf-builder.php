@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../vendor/tcpdf/tcpdf.php';
+require_once __DIR__ . '/validator.php';
 
 // Spacing scale (mm) used consistently throughout this PDF layout, so
 // gaps between rows, sections, and blocks all come from the same scale
@@ -10,6 +11,15 @@ const PDF_SPACE_SM = 2;
 const PDF_SPACE_MD = 4;
 const PDF_SPACE_LG = 8;
 const PDF_LABEL_WIDTH = 55;
+
+// Uploaded signature/seal images are decoded with GD and re-encoded as a
+// clean JPEG before TCPDF sees them, so a malformed file can never reach
+// TCPDF's own parsers. Dimensions are checked from the header first so a
+// file claiming a huge size is rejected before anything is decoded.
+const PDF_IMAGE_TEMP_PREFIX = 'kyc-pdf-img-';
+const PDF_IMAGE_MAX_SIDE = 6000;
+const PDF_IMAGE_MAX_PIXELS = 25000000;
+const PDF_IMAGE_MAX_OUTPUT_SIDE = 1200;
 
 function build_submission_pdf(array $data): string
 {
@@ -231,28 +241,69 @@ function pdf_image_field(string $label, ?string $path): array
     return $path === null ? [$label, 'Not provided'] : [$label, 'Attached (see email)', 'image' => $path];
 }
 
+/**
+ * Decodes an uploaded JPG/PNG with GD and writes it to a fresh temp JPEG (flattened onto white,
+ * scaled down to at most PDF_IMAGE_MAX_OUTPUT_SIDE px). Returns the temp path and pixel size,
+ * or null when the file isn't a sane, decodable image or GD is unavailable.
+ */
+function pdf_clean_image(string $path): ?array
+{
+    if (!function_exists('imagecreatefromstring') || !is_file($path)) {
+        return null;
+    }
+    $bytes = filesize($path);
+    $size = @getimagesize($path);
+    if ($bytes === false || $bytes > MAX_FILE_SIZE || $size === false
+        || !in_array($size[2], [IMAGETYPE_JPEG, IMAGETYPE_PNG], true)) {
+        return null;
+    }
+    [$width, $height] = $size;
+    if ($width < 1 || $height < 1 || $width > PDF_IMAGE_MAX_SIDE || $height > PDF_IMAGE_MAX_SIDE
+        || $width * $height > PDF_IMAGE_MAX_PIXELS) {
+        return null;
+    }
+    $data = file_get_contents($path);
+    $source = $data === false ? false : @imagecreatefromstring($data);
+    if ($source === false) {
+        return null;
+    }
+    $scale = min(1, PDF_IMAGE_MAX_OUTPUT_SIDE / max($width, $height));
+    $outWidth = max(1, (int) round($width * $scale));
+    $outHeight = max(1, (int) round($height * $scale));
+    $canvas = imagecreatetruecolor($outWidth, $outHeight);
+    imagefill($canvas, 0, 0, imagecolorallocate($canvas, 255, 255, 255));
+    imagecopyresampled($canvas, $source, 0, 0, 0, 0, $outWidth, $outHeight, $width, $height);
+    $temp = tempnam(sys_get_temp_dir(), PDF_IMAGE_TEMP_PREFIX);
+    $written = $temp !== false && imagejpeg($canvas, $temp, 90);
+    if (!$written) {
+        if ($temp !== false) @unlink($temp);
+        return null;
+    }
+    return ['path' => $temp, 'width' => $outWidth, 'height' => $outHeight];
+}
+
 /** Draws an embedded JPG/PNG beside its label. False (nothing drawn) when the file isn't a usable image. */
 function pdf_image_row(TCPDF $pdf, string $label, string $path): bool
 {
-    $size = @getimagesize($path);
-    if ($size === false || !in_array($size[2], [IMAGETYPE_JPEG, IMAGETYPE_PNG], true) || $size[0] === 0) {
+    $image = pdf_clean_image($path);
+    if ($image === null) {
         return false;
     }
-    $width = 50;
-    $height = $width * $size[1] / $size[0];
-    if ($height > 30) {
-        $height = 30;
-        $width = $height * $size[0] / $size[1];
-    }
-    $margins = $pdf->getMargins();
-    if ($pdf->GetY() + $height + PDF_SPACE_SM > $pdf->getPageHeight() - $margins['bottom']) {
-        $pdf->AddPage();
-    }
-    $y = $pdf->GetY();
     try {
-        $pdf->Image($path, $margins['left'] + PDF_LABEL_WIDTH, $y, $width, $height);
-    } catch (Throwable $e) {
-        return false;
+        $width = 50;
+        $height = $width * $image['height'] / $image['width'];
+        if ($height > 30) {
+            $height = 30;
+            $width = $height * $image['width'] / $image['height'];
+        }
+        $margins = $pdf->getMargins();
+        if ($pdf->GetY() + $height + PDF_SPACE_SM > $pdf->getPageHeight() - $margins['bottom']) {
+            $pdf->AddPage();
+        }
+        $y = $pdf->GetY();
+        $pdf->Image($image['path'], $margins['left'] + PDF_LABEL_WIDTH, $y, $width, $height, 'JPG');
+    } finally {
+        @unlink($image['path']);
     }
     $pdf->SetFont('helvetica', 'B', 10);
     $pdf->MultiCell(PDF_LABEL_WIDTH, 6, $label, 0, 'L', false, 0, $margins['left'], $y);
