@@ -39,16 +39,6 @@ const INDIVIDUAL_IMAGES = [
     'signatureFile' => ['slot' => 'signature', 'missing' => 'Handwritten signature is required.'],
 ];
 
-// Removed in Task 7 (submission-handler.php moves to the *_DOCUMENTS constants).
-const CORPORATE_DOCUMENT_IDS = [
-    'certificate_of_incorporation', 'cac_status_report', 'cac_forms', 'memorandum_articles', 'board_resolution',
-    'company_bank_statement', 'government_id_signatories', 'passport_photograph_signatories', 'corporate_id_signatories',
-];
-// Removed in Task 7.
-const INDIVIDUAL_DOCUMENT_IDS = [
-    'valid_means_of_id', 'proof_of_address_utility', 'proof_of_address_statement', 'bank_statement_12_months',
-    'passport_photograph', 'work_id', 'employment_letter', 'signature_mandate_card',
-];
 const DIRECTOR_FILE_IDS = ['id', 'bvn', 'nin', 'proof_of_address'];
 const MAX_DIRECTORS = 25;
 
