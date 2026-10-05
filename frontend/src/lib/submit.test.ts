@@ -39,6 +39,15 @@ describe('buildFormData', () => {
     ['consent', 'signatureAgree', 'sealFile', 'signatory1SignatureFile'].forEach((k) => expect(fd.has(k)).toBe(false));
   });
 
+  it('appends documents and signature/seal images before director files', () => {
+    const s = emptyState();
+    s.directors[0].files.id = new File(['x'], 'id.pdf');
+    s.docs.cac_forms = new File(['x'], 'c.pdf');
+    s.images.sealFile = new File(['x'], 'seal.png');
+    const fileKeys = [...buildFormData(s).entries()].filter(([, v]) => v instanceof File).map(([k]) => k);
+    expect(fileKeys).toEqual(['documents[cac_forms]', 'sealFile', 'directors[0][files][id]']);
+  });
+
   it('numbers every director row', () => {
     const s = emptyState();
     s.directors.push({ ...emptyDirector(), name: 'John' });

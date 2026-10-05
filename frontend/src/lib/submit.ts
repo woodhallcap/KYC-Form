@@ -17,6 +17,9 @@ function buildCorporateFormData(state: CorporateForm): FormData {
   Object.entries(signatories).forEach(([k, v]) => fd.append(k, v));
   if (signatureAgree) fd.append('signatureAgree', 'on');
   if (state.consent) fd.append('consent', 'on');
+  // Required documents and images go before director files so they survive if the host caps the upload count.
+  appendDocuments(fd, state.docs, DOCUMENT_IDS);
+  appendImages(fd, state.images);
   state.directors.forEach((row, i) => {
     DIRECTOR_FIELDS.forEach((f) => fd.append(`directors[${i}][${f}]`, row[f]));
     DIRECTOR_FILE_IDS.forEach((id) => {
@@ -24,8 +27,6 @@ function buildCorporateFormData(state: CorporateForm): FormData {
       if (file) fd.append(`directors[${i}][files][${id}]`, file);
     });
   });
-  appendDocuments(fd, state.docs, DOCUMENT_IDS);
-  appendImages(fd, state.images);
   return fd;
 }
 

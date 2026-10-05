@@ -134,9 +134,18 @@ Before deploying, edit `config.php`:
 | `MAIL_FROM_ADDRESS` / `MAIL_FROM_NAME` | From-address used on both outgoing emails. Sending setup is pending: see `docs/email-setup-microsoft-365.md`. |
 | `MAX_FILE_SIZE_BYTES` / `MAX_TOTAL_SIZE_BYTES` | Per-file (5MB) and total (20MB) upload caps. |
 
-`.user.ini` raises PHP's own `upload_max_filesize`/`post_max_size` ini limits to
-comfortably exceed the app's caps above — without it, some hosts' lower defaults
-would silently reject uploads before the app's own validation ever runs.
+`.user.ini` raises PHP's own upload limits to comfortably exceed the app's caps
+above — without it, some hosts' lower defaults would silently reject uploads before
+the app's own validation ever runs:
+
+| Setting | Value | Why |
+|---|---|---|
+| `upload_max_filesize` | `8M` | Above the 5MB per-file cap. |
+| `post_max_size` | `25M` | Above the 20MB total cap plus form fields. |
+| `max_file_uploads` | `120` | Corporate worst case is 112 files (9 documents + 3 images + 25 directors × 4). PHP silently drops files past this count. |
+
+After deploying to Bluehost, confirm these took effect: upload a temporary
+`<?php phpinfo();` page next to `submit.php`, check the three values, then delete it.
 
 ## Tab icon
 
