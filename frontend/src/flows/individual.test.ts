@@ -20,7 +20,12 @@ describe('individualFlow', () => {
     const own = (k: string) => individualFlow.steps.findIndex((s) => s.owns(k)) + 1;
     PERSON_KEYS.forEach((k) => expect(own(k), k).toBe(1));
     expect([own('consent'), own('signatureAgree'), own('declarationName'), own('signatureDate')]).toEqual([2, 3, 3, 3]);
-    ['_total', 'valid_means_of_id', 'customerType'].forEach((k) => expect(own(k)).toBe(0));
+    ['_total', 'customerType'].forEach((k) => expect(own(k)).toBe(0));
+  });
+
+  it('ownership maps document ids to the documents step', () => {
+    const own = (k: string) => individualFlow.steps.findIndex((s) => s.owns(k)) + 1;
+    expect(own('proof_of_address_utility')).toBe(2);
   });
 
   it('each step validates its own slice', () => {

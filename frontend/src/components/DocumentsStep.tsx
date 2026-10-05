@@ -1,3 +1,4 @@
+import type { DocumentSpec } from '../lib/documents';
 import { activeForm } from '../lib/reducer';
 import { Button } from './Button';
 import { DocumentRow } from './DocumentRow';
@@ -8,14 +9,13 @@ import type { StepProps } from './stepProps';
 interface DocumentsStepProps extends StepProps {
   heading: string;
   intro: string;
-  ids: readonly string[];
-  labels: Record<string, string>;
+  documents: readonly DocumentSpec[];
   consentText: string;
   nextLabel: string;
 }
 
-/** The tick-and-attach document checklist plus consent, shared by both flows. */
-export function DocumentsStep({ state, dispatch, onNext, onBack, heading, intro, ids, labels, consentText, nextLabel }: DocumentsStepProps) {
+/** The required/optional document upload tiles plus consent, shared by both flows. */
+export function DocumentsStep({ state, dispatch, onNext, onBack, heading, intro, documents, consentText, nextLabel }: DocumentsStepProps) {
   const form = activeForm(state);
   if (!form) return null;
   return (
@@ -24,15 +24,18 @@ export function DocumentsStep({ state, dispatch, onNext, onBack, heading, intro,
       <p>{intro}</p>
 
       <div>
-        {ids.map((id) => (
+        {documents.map((d) => (
           <DocumentRow
-            key={id}
-            id={id}
-            label={labels[id]}
-            doc={form.docs[id]}
-            error={state.errors[id]}
-            onToggle={(value) => dispatch({ type: 'setDocSubmitted', id, value })}
-            onFile={(file) => dispatch({ type: 'setDocFile', id, file })}
+            key={d.id}
+            id={d.id}
+            label={d.label}
+            required={d.required}
+            file={form.docs[d.id] ?? null}
+            error={state.errors[d.id]}
+            onFile={(file) => {
+              dispatch({ type: 'setDocFile', id: d.id, file });
+              dispatch({ type: 'touch', name: d.id });
+            }}
           />
         ))}
       </div>

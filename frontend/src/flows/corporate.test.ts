@@ -10,7 +10,12 @@ describe('corporateFlow', () => {
   it('ownership maps keys to the right step, and leaves upload keys unmatched', () => {
     const own = (k: string) => corporateFlow.steps.findIndex((s) => s.owns(k)) + 1;
     expect([own('companyName'), own('directors'), own('directors.3.name'), own('consent'), own('sourceOfFunds'), own('signatureAgree')]).toEqual([1, 2, 2, 3, 4, 5]);
-    ['directorFile.0.id', 'sealFile', '_total', 'certificate_of_incorporation', 'customerType'].forEach((k) => expect(own(k)).toBe(0));
+    ['directorFile.0.id', 'sealFile', '_total', 'customerType'].forEach((k) => expect(own(k)).toBe(0));
+  });
+
+  it('ownership maps document ids to the documents step', () => {
+    const own = (k: string) => corporateFlow.steps.findIndex((s) => s.owns(k)) + 1;
+    expect(own('cac_status_report')).toBe(3);
   });
 
   it('directors touchKeys cover every row and field', () => {

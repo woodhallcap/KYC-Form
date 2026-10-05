@@ -2,20 +2,16 @@ import type {
   CorporateDeclaration, CorporateEntity, CorporateForm, CorporateFunds, Director, DirectorFileId, Errors,
   IncomeSource, IndividualDeclaration, IndividualForm, IndividualPerson, MeansOfId, Purpose, TransactionType,
 } from '../types';
+import { CORPORATE_DOCUMENTS, INDIVIDUAL_DOCUMENTS } from './documents';
+import type { DocumentSpec } from './documents';
 
 export const ALLOWED_FILE_EXTENSIONS = ['pdf', 'jpg', 'jpeg', 'png', 'docx'];
 export const MAX_FILE_SIZE = 5 * 1024 * 1024;
 export const MAX_TOTAL_SIZE = 20 * 1024 * 1024;
 export const MAX_DIRECTORS = 25;
 
-export const DOCUMENT_IDS: readonly string[] = [
-  'certificate_of_incorporation',
-  'cac_forms',
-  'memorandum_articles',
-  'board_resolution',
-  'company_bank_statement',
-  'corporate_id_signatories',
-];
+export const DOCUMENT_IDS: readonly string[] = CORPORATE_DOCUMENTS.map((d) => d.id);
+export const INDIVIDUAL_DOCUMENT_IDS: readonly string[] = INDIVIDUAL_DOCUMENTS.map((d) => d.id);
 
 export const DIRECTOR_FILE_IDS: readonly DirectorFileId[] = ['id', 'bvn', 'nin', 'proof_of_address'];
 
@@ -57,12 +53,12 @@ function directorFileErrors(rows: Director[]): Errors {
   return errors;
 }
 
-/** Every file that will be sent: ticked documents, directors' files, the seal. */
+/** Every file that will be sent: attached documents, directors' files, the seal. */
 export function collectUploads(form: CorporateForm): { key: string; file: File }[] {
   const uploads: { key: string; file: File }[] = [];
   DOCUMENT_IDS.forEach((id) => {
-    const doc = form.docs[id];
-    if (doc && doc.submitted && doc.file) uploads.push({ key: id, file: doc.file });
+    const file = form.docs[id];
+    if (file) uploads.push({ key: id, file });
   });
   form.directors.forEach((row, i) => {
     DIRECTOR_FILE_IDS.forEach((fid) => {
@@ -72,6 +68,14 @@ export function collectUploads(form: CorporateForm): { key: string; file: File }
   });
   if (form.seal) uploads.push({ key: 'sealFile', file: form.seal });
   return uploads;
+}
+
+/** The individual flow's attached documents. */
+export function collectIndividualUploads(form: IndividualForm): { key: string; file: File }[] {
+  return INDIVIDUAL_DOCUMENT_IDS.flatMap((id) => {
+    const file = form.docs[id];
+    return file ? [{ key: id, file }] : [];
+  });
 }
 
 export function validateEntity(d: Partial<CorporateEntity>): Errors {
@@ -120,22 +124,25 @@ export function validateDirectors(rows: Director[]): Errors {
   return { ...errors, ...directorFileErrors(rows) };
 }
 
-function uploadErrors(uploads: { key: string; file: File }[]): Errors {
+/** Missing required files and bad files, keyed by document id. */
+export function documentErrors(docs: Record<string, File | null>, specs: readonly DocumentSpec[]): Errors {
   const errors: Errors = {};
-  let total = 0;
-  uploads.forEach(({ key, file }) => {
+  specs.forEach(({ id, label, required }) => {
+    const file = docs[id];
+    if (!file) {
+      if (required) errors[id] = `${label} is required.`;
+      return;
+    }
     const meta = validateFileMeta(file);
-    if (!meta.valid) errors[key] = meta.error as string;
-    else total += file.size;
+    if (!meta.valid) errors[id] = meta.error as string;
   });
-  if (total > MAX_TOTAL_SIZE) errors._total = 'Total attachments exceed the 20MB limit.';
   return errors;
 }
 
 const consentError = (consent: boolean): Errors => (consent ? {} : { consent: 'Consent to processing is required.' });
 
 export function validateDocuments(form: CorporateForm): Errors {
-  return { ...uploadErrors(collectUploads(form)), ...consentError(form.consent) };
+  return { ...documentErrors(form.docs, CORPORATE_DOCUMENTS), ...consentError(form.consent) };
 }
 
 export function validateFunds(d: Partial<CorporateFunds>): Errors {
@@ -158,8 +165,6 @@ export function validateDeclaration(d: Partial<CorporateDeclaration>, seal: File
   }
   return errors;
 }
-
-export const INDIVIDUAL_DOCUMENT_IDS: readonly string[] = ['valid_means_of_id', 'proof_of_address', 'passport_photograph', 'signature_mandate_card'];
 
 export const MEANS_OF_ID_OPTIONS: { value: MeansOfId; label: string }[] = [
   { value: 'nin', label: 'NIN' },
@@ -231,11 +236,7 @@ export function validateIndividualPerson(p: Partial<IndividualPerson>): Errors {
 }
 
 export function validateIndividualDocuments(form: IndividualForm): Errors {
-  const uploads = INDIVIDUAL_DOCUMENT_IDS.flatMap((id) => {
-    const doc = form.docs[id];
-    return doc && doc.submitted && doc.file ? [{ key: id, file: doc.file }] : [];
-  });
-  return { ...uploadErrors(uploads), ...consentError(form.consent) };
+  return { ...documentErrors(form.docs, INDIVIDUAL_DOCUMENTS), ...consentError(form.consent) };
 }
 
 export function validateIndividualDeclaration(d: Partial<IndividualDeclaration>): Errors {

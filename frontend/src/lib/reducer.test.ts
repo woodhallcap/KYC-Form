@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { activeForm, fieldStep, flowOf, initialAppState, reducer, stepErrors } from './reducer';
 import type { Action, AppState } from './reducer';
 import { serialize } from './autosave';
+import { INDIVIDUAL_DOCUMENTS } from './documents';
 import { DIRECTOR_FIELDS } from '../types';
 import type { DirectorField } from '../types';
 import { FLOWS, corporateFlow } from '../flows/corporate';
@@ -155,14 +156,26 @@ describe('reducer: corporate directors', () => {
 });
 
 describe('reducer: corporate documents and seal', () => {
-  it('a ticked document with a bad file blocks; unticking lets the user through', () => {
-    let s = run(atStep(corp(), 3), { type: 'setDocSubmitted', id: 'certificate_of_incorporation', value: true },
-      { type: 'setDocFile', id: 'certificate_of_incorporation', file: new File(['x'], 'a.exe') },
+  it('setDocFile stores the file', () => {
+    const file = new File(['x'], 'a.pdf');
+    expect(run(corp(), { type: 'setDocFile', id: 'cac_forms', file }).corporate.docs.cac_forms).toBe(file);
+  });
+
+  it('a missing required document blocks, and removing a file shows the error again', () => {
+    let s = run(atStep(corp(), 3), { type: 'setConsent', value: true }, { type: 'next' });
+    expect(s.step).toBe(3);
+    expect(s.errors.certificate_of_incorporation).toBe('CAC Certificate of Incorporation is required.');
+    s = run(s, { type: 'setDocFile', id: 'certificate_of_incorporation', file: new File(['x'], 'a.pdf') });
+    expect(s.errors.certificate_of_incorporation).toBeUndefined();
+    s = run(s, { type: 'setDocFile', id: 'certificate_of_incorporation', file: null }, { type: 'touch', name: 'certificate_of_incorporation' });
+    expect(s.errors.certificate_of_incorporation).toBe('CAC Certificate of Incorporation is required.');
+  });
+
+  it('a bad document file blocks Next with its type error', () => {
+    const s = run(atStep(corp(), 3), { type: 'setDocFile', id: 'cac_forms', file: new File(['x'], 'a.exe') },
       { type: 'setConsent', value: true }, { type: 'next' });
     expect(s.step).toBe(3);
-    expect(s.errors.certificate_of_incorporation).toBe('File type not allowed: a.exe');
-    s = run(s, { type: 'setDocSubmitted', id: 'certificate_of_incorporation', value: false }, { type: 'next' });
-    expect(s.step).toBe(4);
+    expect(s.errors.cac_forms).toBe('File type not allowed: a.exe');
   });
 
   it('a bad seal blocks the declaration step', () => {
@@ -193,7 +206,7 @@ describe('reducer: individual flow', () => {
     s = run(s, { type: 'next' });
     expect(s.step).toBe(2);
     expect(s.errors.consent).toBeTruthy();
-    s = run(s, { type: 'setConsent', value: true }, { type: 'next' });
+    s = run(s, { type: 'setConsent', value: true }, ...INDIVIDUAL_DOCUMENTS.filter((d) => d.required).map((d): Action => ({ type: 'setDocFile', id: d.id, file: new File(['x'], `${d.id}.pdf`) })), { type: 'next' });
     expect(s.step).toBe(3);
   });
 
@@ -214,16 +227,16 @@ describe('reducer: individual flow', () => {
   });
 
   it('consent and documents write to the individual form only', () => {
-    const s = run(indiv(), { type: 'setConsent', value: true }, { type: 'setDocSubmitted', id: 'valid_means_of_id', value: true });
+    const s = run(indiv(), { type: 'setConsent', value: true }, { type: 'setDocFile', id: 'valid_means_of_id', file: new File(['x'], 'id.pdf') });
     expect(s.individual.consent).toBe(true);
-    expect(s.individual.docs.valid_means_of_id.submitted).toBe(true);
+    expect(s.individual.docs.valid_means_of_id?.name).toBe('id.pdf');
     expect(s.corporate.consent).toBe(false);
   });
 
   it('serverErrors jump to the earliest owning step, and leave unmatched keys alone', () => {
     expect(run(atStep(indiv(), 3), { type: 'serverErrors', errors: { meansOfId: 'x' } }).step).toBe(1);
     expect(run(atStep(indiv(), 3), { type: 'serverErrors', errors: { signatureDate: 'x', consent: 'y' } }).step).toBe(2);
-    expect(run(atStep(indiv(), 3), { type: 'serverErrors', errors: { _total: 'x', valid_means_of_id: 'y', customerType: 'z' } }).step).toBe(3);
+    expect(run(atStep(indiv(), 3), { type: 'serverErrors', errors: { _total: 'x', customerType: 'z' } }).step).toBe(3);
   });
 
   it('fieldStep maps individual keys', () => {

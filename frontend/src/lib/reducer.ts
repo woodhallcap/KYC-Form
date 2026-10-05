@@ -28,7 +28,6 @@ export type Action =
   | { type: 'setField'; group: FieldGroup; name: string; value: string | boolean }
   | { type: 'toggleChoice'; name: ChoiceName; value: string }
   | { type: 'setConsent'; value: boolean }
-  | { type: 'setDocSubmitted'; id: string; value: boolean }
   | { type: 'setDocFile'; id: string; file: File | null }
   | { type: 'addDirector' }
   | { type: 'removeDirector'; index: number }
@@ -131,10 +130,8 @@ export function reducer(s: AppState, a: Action): AppState {
     }
     case 'setConsent':
       return form ? withForm(s, { ...form, consent: a.value }) : s;
-    case 'setDocSubmitted':
-      return form ? withForm(s, { ...form, docs: { ...form.docs, [a.id]: { ...form.docs[a.id], submitted: a.value } } }) : s;
     case 'setDocFile':
-      return form ? withForm(s, { ...form, docs: { ...form.docs, [a.id]: { ...form.docs[a.id], file: a.file } } }) : s;
+      return form ? withForm(s, { ...form, docs: { ...form.docs, [a.id]: a.file } }) : s;
     case 'addDirector':
       if (s.customerType !== 'corporate' || s.corporate.directors.length >= MAX_DIRECTORS) return s;
       return withForm(s, { ...s.corporate, directors: [...s.corporate.directors, emptyDirector()] });

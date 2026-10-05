@@ -1,4 +1,4 @@
-import type { CorporateForm, Director, DocState, IndividualForm } from '../types';
+import type { CorporateForm, Director, IndividualForm } from '../types';
 import { DOCUMENT_IDS, INDIVIDUAL_DOCUMENT_IDS } from './validation';
 
 export function emptyDirector(): Director {
@@ -9,10 +9,7 @@ export function emptyDirector(): Director {
 }
 
 export function initialCorporateForm(): CorporateForm {
-  const docs: Record<string, DocState> = {};
-  DOCUMENT_IDS.forEach((id) => {
-    docs[id] = { submitted: false, file: null };
-  });
+  const docs: Record<string, File | null> = Object.fromEntries(DOCUMENT_IDS.map((id) => [id, null]));
   return {
     customerType: 'corporate',
     entity: {
@@ -29,10 +26,7 @@ export function initialCorporateForm(): CorporateForm {
 }
 
 export function initialIndividualForm(): IndividualForm {
-  const docs: Record<string, DocState> = {};
-  INDIVIDUAL_DOCUMENT_IDS.forEach((id) => {
-    docs[id] = { submitted: false, file: null };
-  });
+  const docs: Record<string, File | null> = Object.fromEntries(INDIVIDUAL_DOCUMENT_IDS.map((id) => [id, null]));
   return {
     customerType: 'individual',
     person: {

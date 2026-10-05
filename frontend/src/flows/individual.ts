@@ -1,4 +1,4 @@
-import { validateIndividualDeclaration, validateIndividualDocuments, validateIndividualPerson } from '../lib/validation';
+import { INDIVIDUAL_DOCUMENT_IDS, validateIndividualDeclaration, validateIndividualDocuments, validateIndividualPerson } from '../lib/validation';
 import type { Flow } from './types';
 import { asIndividual } from './narrow';
 import { step } from './step';
@@ -14,7 +14,7 @@ export const individualFlow: Flow = {
   id: 'individual',
   steps: [
     step('person', 'Customer Information', PERSON_FIELDS, (f) => validateIndividualPerson(asIndividual(f).person)),
-    step('documents', 'Documents', ['consent'], (f) => validateIndividualDocuments(asIndividual(f))),
+    step('documents', 'Documents', ['consent', ...INDIVIDUAL_DOCUMENT_IDS], (f) => validateIndividualDocuments(asIndividual(f))),
     step('declaration', 'Declaration', DECLARATION_FIELDS, (f) => validateIndividualDeclaration(asIndividual(f).declaration)),
   ],
 };

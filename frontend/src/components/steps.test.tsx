@@ -16,7 +16,7 @@ import { IndividualStep1Person } from './IndividualStep1Person';
 import { IndividualStep2Documents } from './IndividualStep2Documents';
 import { IndividualStep3Declaration } from './IndividualStep3Declaration';
 import type { StepProps } from './stepProps';
-import { DOCUMENT_LABELS, INDIVIDUAL_DOCUMENT_LABELS } from '../lib/documents';
+import { CORPORATE_DOCUMENTS, INDIVIDUAL_DOCUMENTS } from '../lib/documents';
 
 const forType = (customerType: CustomerType, step = 1, extra: Action[] = []): AppState =>
   [{ type: 'selectType', customerType } as Action, { type: 'goTo', step } as Action, ...extra].reduce(reducer, initialAppState());
@@ -122,15 +122,13 @@ describe('Step2Directors', () => {
 });
 
 describe('Step3Documents (corporate)', () => {
-  it('renders the 6 documents and shows the file input only once ticked', async () => {
+  it('renders a file input and a Required or Optional badge for every document, and shows an uploaded file', async () => {
     const user = userEvent.setup();
     render(<Host Step={Step3Documents} />);
-    expect(Object.keys(DOCUMENT_LABELS)).toHaveLength(6);
-    Object.values(DOCUMENT_LABELS).forEach((label) => expect(screen.getByLabelText(label)).toBeInTheDocument());
-    const label = DOCUMENT_LABELS.certificate_of_incorporation;
-    expect(screen.queryByLabelText(`File for ${label}`)).toBeNull();
-    await user.click(screen.getByLabelText(label));
-    expect(screen.getByLabelText(`File for ${label}`)).toBeInTheDocument();
+    CORPORATE_DOCUMENTS.forEach((d) => expect(screen.getByLabelText(d.label)).toBeInTheDocument());
+    expect(screen.getAllByText('Required')).toHaveLength(CORPORATE_DOCUMENTS.filter((d) => d.required).length);
+    await user.upload(screen.getByLabelText(CORPORATE_DOCUMENTS[0].label), new File(['x'], 'a.pdf'));
+    expect(screen.getByText('a.pdf')).toBeInTheDocument();
   });
 
   it('shows the consent error from state', () => {
@@ -260,15 +258,14 @@ describe('IndividualStep1Person', () => {
 });
 
 describe('IndividualStep2Documents', () => {
-  it('renders the 4 documents and shows the file input only once ticked', async () => {
+  it('renders a file input and a Required or Optional badge for every document, and shows an uploaded file', async () => {
     const user = userEvent.setup();
     render(<Host Step={IndividualStep2Documents} init={indiv(2)} />);
-    expect(Object.keys(INDIVIDUAL_DOCUMENT_LABELS)).toHaveLength(4);
-    Object.values(INDIVIDUAL_DOCUMENT_LABELS).forEach((l) => expect(screen.getByLabelText(l)).toBeInTheDocument());
-    const label = INDIVIDUAL_DOCUMENT_LABELS.passport_photograph;
-    expect(screen.queryByLabelText(`File for ${label}`)).toBeNull();
-    await user.click(screen.getByLabelText(label));
-    expect(screen.getByLabelText(`File for ${label}`)).toBeInTheDocument();
+    INDIVIDUAL_DOCUMENTS.forEach((d) => expect(screen.getByLabelText(d.label)).toBeInTheDocument());
+    expect(screen.getAllByText('Required')).toHaveLength(INDIVIDUAL_DOCUMENTS.filter((d) => d.required).length);
+    expect(screen.getAllByText('Optional')).toHaveLength(INDIVIDUAL_DOCUMENTS.filter((d) => !d.required).length);
+    await user.upload(screen.getByLabelText('Valid Means of ID'), new File(['x'], 'a.pdf'));
+    expect(screen.getByText('a.pdf')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Section B: Verification Documents' })).toBeInTheDocument();
   });
 

@@ -1,3 +1,4 @@
+import { DOCUMENT_IDS, INDIVIDUAL_DOCUMENT_IDS } from './lib/validation';
 import type { CorporateEntity, CorporateForm, Director, IndividualForm, IndividualPerson } from './types';
 
 export const validEntity: CorporateEntity = {
@@ -5,8 +6,6 @@ export const validEntity: CorporateEntity = {
   businessAddress: '', natureOfBusiness: 'Trading', tin: 'T1', companyEmail: 'info@acme.com',
   bankAccountNumber: '01', bankName: 'First Bank',
 };
-
-const DOC_IDS = ['certificate_of_incorporation', 'cac_forms', 'memorandum_articles', 'board_resolution', 'company_bank_statement', 'corporate_id_signatories'];
 
 /** A valid director row (pep answered, no files). */
 export function dir(o: Partial<Director> = {}): Director {
@@ -18,8 +17,7 @@ export function dir(o: Partial<Director> = {}): Director {
 
 /** A complete but EMPTY form (one blank-valued director row that is otherwise valid). */
 export function makeForm(o: Partial<CorporateForm> = {}): CorporateForm {
-  const docs: CorporateForm['docs'] = {};
-  DOC_IDS.forEach((id) => { docs[id] = { submitted: false, file: null }; });
+  const docs: CorporateForm['docs'] = Object.fromEntries(DOCUMENT_IDS.map((id) => [id, null]));
   return {
     customerType: 'corporate',
     entity: { companyName: '', rcNumber: '', dateOfIncorporation: '', registeredAddress: '', businessAddress: '', natureOfBusiness: '', tin: '', companyEmail: '', bankAccountNumber: '', bankName: '' },
@@ -45,12 +43,9 @@ export const validPerson: IndividualPerson = {
   gender: 'F', meansOfId: ['nin', 'passport'], sourceOfIncome: 'salary', purposeOfRelationship: 'loan', expectedTransactionTypes: ['transfer'],
 };
 
-const INDIVIDUAL_DOC_IDS = ['valid_means_of_id', 'proof_of_address', 'passport_photograph', 'signature_mandate_card'];
-
 /** A blank individual form. */
 export function makeIndividual(o: Partial<IndividualForm> = {}): IndividualForm {
-  const docs: IndividualForm['docs'] = {};
-  INDIVIDUAL_DOC_IDS.forEach((id) => { docs[id] = { submitted: false, file: null }; });
+  const docs: IndividualForm['docs'] = Object.fromEntries(INDIVIDUAL_DOCUMENT_IDS.map((id) => [id, null]));
   return {
     customerType: 'individual',
     person: {

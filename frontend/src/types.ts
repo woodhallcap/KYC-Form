@@ -46,16 +46,11 @@ export interface CorporateDeclaration {
   signatureAgree: boolean;
 }
 
-export interface DocState {
-  submitted: boolean;
-  file: File | null;
-}
-
 export interface CorporateForm {
   customerType: 'corporate';
   entity: CorporateEntity;
   directors: Director[];
-  docs: Record<string, DocState>;
+  docs: Record<string, File | null>;
   consent: boolean;
   funds: CorporateFunds;
   declaration: CorporateDeclaration;
@@ -107,7 +102,7 @@ export interface IndividualDeclaration {
 export interface IndividualForm {
   customerType: 'individual';
   person: IndividualPerson;
-  docs: Record<string, DocState>;
+  docs: Record<string, File | null>;
   consent: boolean;
   declaration: IndividualDeclaration;
 }

@@ -1,5 +1,7 @@
 import { DIRECTOR_FIELDS } from '../types';
 import type { CustomerType, DirectorField } from '../types';
+import { CORPORATE_DOCUMENTS, INDIVIDUAL_DOCUMENTS } from '../lib/documents';
+import type { DocumentSpec } from '../lib/documents';
 import type { Action, FieldGroup } from '../lib/reducer';
 
 const entity: Record<string, string> = {
@@ -34,6 +36,11 @@ const declaration: Record<string, string> = {
   signatory2Date: '2026-09-15',
 };
 
+const requiredDocs = (specs: readonly DocumentSpec[]): Action[] =>
+  specs
+    .filter((d) => d.required)
+    .map((d): Action => ({ type: 'setDocFile', id: d.id, file: new File(['test'], `${d.id}.pdf`, { type: 'application/pdf' }) }));
+
 const fields = (group: FieldGroup, values: Record<string, string>): Action[] =>
   Object.entries(values).map(([name, value]): Action => ({ type: 'setField', group, name, value }));
 
@@ -41,8 +48,7 @@ function corporateActions(): Action[] {
   return [
     ...fields('entity', entity),
     ...DIRECTOR_FIELDS.map((name): Action => ({ type: 'setDirectorField', index: 0, name, value: director[name] })),
-    { type: 'setDocSubmitted', id: 'certificate_of_incorporation', value: true },
-    { type: 'setDocSubmitted', id: 'cac_forms', value: true },
+    ...requiredDocs(CORPORATE_DOCUMENTS),
     { type: 'setConsent', value: true },
     ...fields('funds', funds),
     ...fields('declaration', declaration),
@@ -87,8 +93,7 @@ function individualActions(): Action[] {
     { type: 'toggleChoice', name: 'meansOfId', value: 'nin' },
     { type: 'toggleChoice', name: 'meansOfId', value: 'passport' },
     { type: 'toggleChoice', name: 'expectedTransactionTypes', value: 'transfer' },
-    { type: 'setDocSubmitted', id: 'valid_means_of_id', value: true },
-    { type: 'setDocSubmitted', id: 'proof_of_address', value: true },
+    ...requiredDocs(INDIVIDUAL_DOCUMENTS),
     { type: 'setConsent', value: true },
     ...fields('declaration', individualDeclaration),
     { type: 'setField', group: 'declaration', name: 'signatureAgree', value: true },

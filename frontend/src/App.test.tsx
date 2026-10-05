@@ -3,6 +3,8 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event';
 import App from './App';
 import { STORAGE_KEY } from './lib/autosave';
+import { CORPORATE_DOCUMENTS, INDIVIDUAL_DOCUMENTS } from './lib/documents';
+import type { DocumentSpec } from './lib/documents';
 
 type User = ReturnType<typeof userEvent.setup>;
 
@@ -52,8 +54,12 @@ async function toDocuments(user: User) {
   await fillDirector(user);
   await next(user, 'Next: Documents');
 }
+async function attachAll(user: User, specs: readonly DocumentSpec[]) {
+  for (const d of specs.filter((s) => s.required)) await user.upload(screen.getByLabelText(d.label), new File(['x'], `${d.id}.pdf`));
+}
 async function toFunds(user: User) {
   await toDocuments(user);
+  await attachAll(user, CORPORATE_DOCUMENTS);
   await user.click(screen.getByLabelText(/^We consent/));
   await next(user, 'Next: Source of Funds');
 }
@@ -110,6 +116,7 @@ async function toIndividualDocuments(user: User) {
 }
 async function toIndividualDeclaration(user: User) {
   await toIndividualDocuments(user);
+  await attachAll(user, INDIVIDUAL_DOCUMENTS);
   await user.click(screen.getByLabelText(/^I consent/));
   await next(user, 'Next: Declaration');
 }
@@ -196,18 +203,19 @@ describe('corporate navigation and validation', () => {
     expect(screen.getByRole('heading', { name: 'Section C: Required Documents' })).toBeInTheDocument();
   });
 
-  it('alerts on a bad file for a ticked document, and lets the user through once it is unticked', async () => {
+  it('blocks Next on a bad document file, and lets the user through once it is replaced', async () => {
     const user = userEvent.setup({ applyAccept: false });
     render(<App />);
     await toDocuments(user);
+    await attachAll(user, CORPORATE_DOCUMENTS);
     const label = 'CAC Forms CAC2.3 / CAC1.1 - Directors & Shareholders';
-    await user.click(screen.getByLabelText(label));
-    await user.upload(screen.getByLabelText(`File for ${label}`), new File(['x'], 'a.exe'));
+    await user.upload(screen.getByLabelText(label), new File(['x'], 'a.exe'));
     await user.click(screen.getByLabelText(/^We consent/));
     await next(user, 'Next: Source of Funds');
-    expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('File type not allowed: a.exe'));
+    expect(screen.getAllByText('File type not allowed: a.exe').length).toBeGreaterThan(0);
     expect(screen.getByRole('heading', { name: 'Section C: Required Documents' })).toBeInTheDocument();
-    await user.click(screen.getByLabelText(label));
+    await user.click(screen.getByRole('button', { name: `Remove ${label}` }));
+    await user.upload(screen.getByLabelText(label), new File(['x'], 'ok.pdf'));
     await next(user, 'Next: Source of Funds');
     expect(screen.getByRole('heading', { name: 'Section D: Source of Funds' })).toBeInTheDocument();
   });
@@ -365,27 +373,27 @@ describe('individual flow', () => {
     expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
   });
 
-  it('sends a ticked document and omits an unticked one', async () => {
-    const user = userEvent.setup({ applyAccept: false });
+  it('blocks Next on the documents step until required files are attached', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await toIndividualDocuments(user);
+    await user.click(screen.getByLabelText(/^I consent/));
+    await next(user, 'Next: Declaration');
+    expect(screen.getByRole('heading', { name: 'Section B: Verification Documents' })).toBeInTheDocument();
+    expect(screen.getByText('Valid Means of ID is required.')).toBeInTheDocument();
+  });
+
+  it('sends attached documents and omits optional ones left empty', async () => {
+    const user = userEvent.setup();
     const fetchMock = json({ success: true });
     vi.stubGlobal('fetch', fetchMock);
     render(<App />);
-    await toIndividualDocuments(user);
-    const id = 'Valid Means of ID';
-    await user.click(screen.getByLabelText(id));
-    await user.upload(screen.getByLabelText(`File for ${id}`), new File(['x'], 'id.pdf'));
-    const photo = 'Passport Photograph';
-    await user.click(screen.getByLabelText(photo));
-    await user.upload(screen.getByLabelText(`File for ${photo}`), new File(['x'], 'p.jpg'));
-    await user.click(screen.getByLabelText(photo));
-    await user.click(screen.getByLabelText(/^I consent/));
-    await next(user, 'Next: Declaration');
+    await toIndividualDeclaration(user);
     await submitIndividual(user);
     await screen.findByText('Thank you');
     const body = fetchMock.mock.calls[0][1].body as FormData;
-    expect((body.get('documents[valid_means_of_id][file]') as File).name).toBe('id.pdf');
-    expect(body.has('documents[passport_photograph][submitted]')).toBe(false);
-    expect(body.has('documents[passport_photograph][file]')).toBe(false);
+    expect((body.get('documents[valid_means_of_id]') as File).name).toBe('valid_means_of_id.pdf');
+    expect(body.get('documents[work_id]')).toBeNull();
   });
 
   it('jumps to step 1 for an email error, and stays put with an alert for a total-size error', async () => {

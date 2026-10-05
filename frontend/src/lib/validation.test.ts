@@ -3,6 +3,7 @@ import {
   validateDeclaration, validateDirectors, validateDocuments, validateEntity, validateFileMeta, validateFunds,
   validateIndividualDeclaration, validateIndividualDocuments, validateIndividualPerson,
 } from './validation';
+import { CORPORATE_DOCUMENTS, INDIVIDUAL_DOCUMENTS } from './documents';
 import { bigFile, dir, makeForm, makeIndividual, validEntity, validPerson } from '../test-utils';
 
 describe('validateFileMeta', () => {
@@ -53,31 +54,25 @@ describe('validateDirectors', () => {
   });
 });
 
-describe('validateDocuments', () => {
-  it('requires consent', () => {
-    expect(validateDocuments(makeForm()).consent).toBe('Consent to processing is required.');
-  });
+const pdf = (name = 'a.pdf') => new File(['x'], name);
+const allDocs = (specs: readonly { id: string }[]) => Object.fromEntries(specs.map((d) => [d.id, pdf()]));
 
-  it('ignores an unticked document even with a bad file', () => {
-    const f = makeForm({ consent: true });
-    f.docs.cac_forms = { submitted: false, file: bigFile('x.exe', 9) };
-    expect(validateDocuments(f)).toEqual({});
+describe('validateDocuments (corporate)', () => {
+  it('requires every required document and consent, keyed by document id', () => {
+    const errors = validateDocuments(makeForm());
+    CORPORATE_DOCUMENTS.filter((d) => d.required).forEach((d) => expect(errors[d.id]).toBe(`${d.label} is required.`));
+    expect(errors.corporate_id_signatories).toBeUndefined();
+    expect(errors.consent).toBeTruthy();
   });
-
-  it('blocks a ticked document with a bad file, keyed by document id', () => {
-    const f = makeForm({ consent: true });
-    f.docs.cac_forms = { submitted: true, file: new File(['x'], 'a.exe') };
-    expect(validateDocuments(f).cac_forms).toBe('File type not allowed: a.exe');
+  it('passes with every required file and consent, and checks the type of an optional file', () => {
+    const docs = allDocs(CORPORATE_DOCUMENTS.filter((d) => d.required));
+    expect(validateDocuments(makeForm({ docs, consent: true }))).toEqual({});
+    const bad = validateDocuments(makeForm({ docs: { ...docs, corporate_id_signatories: pdf('x.exe') }, consent: true }));
+    expect(bad.corporate_id_signatories).toBe('File type not allowed: x.exe');
   });
-
-  it('totals ALL uploads (documents, directors, seal) against 20MB', () => {
-    const g = makeForm({ consent: true });
-    g.docs.certificate_of_incorporation = { submitted: true, file: bigFile('a.pdf', 4.5) };
-    g.directors[0].files.id = bigFile('b.pdf', 4.5);
-    g.directors[0].files.nin = bigFile('c.pdf', 4.5);
-    g.directors[0].files.bvn = bigFile('d.pdf', 4.5);
-    g.seal = bigFile('e.png', 4.5);
-    expect(validateDocuments(g)._total).toBe('Total attachments exceed the 20MB limit.');
+  it('rejects an oversized file', () => {
+    const docs = { ...allDocs(CORPORATE_DOCUMENTS.filter((d) => d.required)), cac_forms: bigFile('big.pdf', 5.01) };
+    expect(validateDocuments(makeForm({ docs, consent: true })).cac_forms).toBe('File exceeds 5MB limit: big.pdf');
   });
 });
 
@@ -125,27 +120,17 @@ describe('validateIndividualPerson', () => {
 });
 
 describe('validateIndividualDocuments', () => {
-  it('requires consent and ignores an unticked document with a bad file', () => {
-    expect(validateIndividualDocuments(makeIndividual()).consent).toBe('Consent to processing is required.');
-    const f = makeIndividual({ consent: true });
-    f.docs.passport_photograph = { submitted: false, file: bigFile('x.exe', 9) };
-    expect(validateIndividualDocuments(f)).toEqual({});
+  it('requires the five required documents but not work ID, employment letter or mandate card', () => {
+    const errors = validateIndividualDocuments(makeIndividual());
+    expect(Object.keys(errors).filter((k) => k !== 'consent').sort()).toEqual(
+      ['bank_statement_12_months', 'passport_photograph', 'proof_of_address_statement', 'proof_of_address_utility', 'valid_means_of_id'],
+    );
+    expect(errors.consent).toBeTruthy();
   });
-
-  it('blocks a ticked document with a bad file', () => {
-    const f = makeIndividual({ consent: true });
-    f.docs.valid_means_of_id = { submitted: true, file: new File(['x'], 'a.exe') };
-    expect(validateIndividualDocuments(f).valid_means_of_id).toBe('File type not allowed: a.exe');
-  });
-
-  it('accepts four files at exactly the 5MB limit (the 20MB total is unreachable with four documents)', () => {
-    const g = makeIndividual({ consent: true });
-    ['valid_means_of_id', 'proof_of_address', 'passport_photograph', 'signature_mandate_card'].forEach((id) => {
-      g.docs[id] = { submitted: true, file: bigFile(id + '.pdf', 5) };
-    });
-    expect(validateIndividualDocuments(g)).toEqual({});
-    g.docs.passport_photograph = { submitted: true, file: bigFile('p.pdf', 5.01) };
-    expect(validateIndividualDocuments(g).passport_photograph).toBe('File exceeds 5MB limit: p.pdf');
+  it('passes with the required files, and blocks a bad optional file', () => {
+    const docs = allDocs(INDIVIDUAL_DOCUMENTS.filter((d) => d.required));
+    expect(validateIndividualDocuments(makeIndividual({ docs, consent: true }))).toEqual({});
+    expect(validateIndividualDocuments(makeIndividual({ docs: { ...docs, work_id: pdf('a.exe') }, consent: true })).work_id).toBe('File type not allowed: a.exe');
   });
 });
 
