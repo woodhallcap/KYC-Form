@@ -26,22 +26,23 @@ Items marked **[UNVERIFIED]** could not be confirmed from public sources or from
 `config.php`:
 
 ```php
-define('RECIPIENT_EMAIL', 'analyst@woodhallcap.com');
-define('RECIPIENT_NAME', 'Woodhall Capital');
+define('RECIPIENT_EMAILS', ['credit@woodhallfinanceltd.com']);  // every address gets the notification
+define('RECIPIENT_NAME', 'Woodhall Finance');
 define('SMTP_HOST', '');            // empty, so PHPMailer falls back to PHP mail()
 define('SMTP_PORT', 587);
 define('SMTP_USERNAME', '');
 define('SMTP_PASSWORD', '');
 define('SMTP_SECURE', 'tls');
-define('MAIL_FROM_ADDRESS', 'no-reply@woodhallcap.com');
-define('MAIL_FROM_NAME', 'Woodhall Capital');
+define('MAIL_FROM_ADDRESS', 'no-reply@woodhallfinanceltd.com');
+define('MAIL_FROM_NAME', 'Woodhall Finance');
+define('CONTACT_EMAIL', 'info@woodhallfinanceltd.com');
 define('MAX_FILE_SIZE_BYTES', 5 * 1024 * 1024);    // 5 MB per upload
 define('MAX_TOTAL_SIZE_BYTES', 20 * 1024 * 1024);  // 20 MB total
 ```
 
 `lib/mailer.php` sends two messages per submission with vendored PHPMailer 6.9.3 (`vendor/phpmailer/`: `PHPMailer.php`, `SMTP.php`, `Exception.php` only):
 
-- **(a) Notification** to `RECIPIENT_EMAIL`. It carries the generated PDF, every uploaded document and an embedded logo (`cid:woodhall-logo`). With 20 MB of uploads, the message can reach about 20 MB of raw data, or about 27 MB once base64-encoded.
+- **(a) Notification** to every address in `RECIPIENT_EMAILS`. It carries the generated PDF, every uploaded document and an embedded logo (`cid:woodhall-logo`). With 20 MB of uploads, the message can reach about 20 MB of raw data, or about 27 MB once base64-encoded.
 - **(b) Confirmation** to the submitter's own email address, with the PDF and the logo.
 
 There is no `config.local.php` loading in `config.php`, although `.gitignore` lists `config.local.php`. Any secrets added to `config.php` would therefore be committed. Fix this before adding credentials (section 7).
@@ -347,7 +348,7 @@ Also run the domain through <https://mxtoolbox.com/SuperTool.aspx> (SPF, DMARC a
 
 ### 6.3 End-to-end
 
-1. **mail-tester:** temporarily set `RECIPIENT_EMAIL` (or a test submitter email) to the one-off address shown at <https://www.mail-tester.com>, submit the form, and aim for 9/10 or better. It shows SPF, DKIM, DMARC, the blocklists and the raw headers.
+1. **mail-tester:** temporarily set `RECIPIENT_EMAILS` to `['<one-off address>']` with the one-off address shown at <https://www.mail-tester.com> (or use that address as a test submitter email), submit the form, and aim for 9/10 or better. It shows SPF, DKIM, DMARC, the blocklists and the raw headers.
 2. **Real inboxes:** submit to `credit@woodhallfinanceltd.com`, to an external Gmail address and to an Outlook.com address. In each, open the message source (Outlook: File > Properties > Internet headers; Gmail: Show original) and check `Authentication-Results`. Expect:
    - `spf=pass smtp.mailfrom=woodhallfinanceltd.com`
    - `dkim=pass header.d=woodhallfinanceltd.com`
@@ -366,7 +367,7 @@ Also run the domain through <https://mxtoolbox.com/SuperTool.aspx> (SPF, DMARC a
 **Values that change in every option:**
 
 ```php
-define('RECIPIENT_EMAIL',   'credit@woodhallfinanceltd.com');
+define('RECIPIENT_EMAILS',  ['credit@woodhallfinanceltd.com']);
 define('RECIPIENT_NAME',    'Woodhall Finance Credit Team');
 define('MAIL_FROM_ADDRESS', 'no-reply@woodhallfinanceltd.com');
 define('MAIL_FROM_NAME',    'Woodhall Finance');
