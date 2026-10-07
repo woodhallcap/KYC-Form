@@ -17,6 +17,9 @@ function buildCorporateFormData(state: CorporateForm): FormData {
   Object.entries(signatories).forEach(([k, v]) => fd.append(k, v));
   if (signatureAgree) fd.append('signatureAgree', 'on');
   if (state.consent) fd.append('consent', 'on');
+  // Required documents and images go before director files so they survive if the host caps the upload count.
+  appendDocuments(fd, state.docs, DOCUMENT_IDS);
+  appendImages(fd, state.images);
   state.directors.forEach((row, i) => {
     DIRECTOR_FIELDS.forEach((f) => fd.append(`directors[${i}][${f}]`, row[f]));
     DIRECTOR_FILE_IDS.forEach((id) => {
@@ -24,34 +27,35 @@ function buildCorporateFormData(state: CorporateForm): FormData {
       if (file) fd.append(`directors[${i}][files][${id}]`, file);
     });
   });
-  appendDocuments(fd, state, DOCUMENT_IDS);
-  if (state.seal) fd.append('sealFile', state.seal);
   return fd;
 }
 
-/** A document is sent when its file is attached: that is what provides it. */
-function appendDocuments(fd: FormData, form: CorporateForm | IndividualForm, ids: readonly string[]): void {
+function appendImages(fd: FormData, images: Record<string, File | null>): void {
+  Object.entries(images).forEach(([k, f]) => {
+    if (f) fd.append(k, f);
+  });
+}
+
+function appendDocuments(fd: FormData, docs: Record<string, File | null>, ids: readonly string[]): void {
   ids.forEach((id) => {
-    const file = form.docs[id]?.file;
-    if (!file) return;
-    fd.append(`documents[${id}][submitted]`, 'on');
-    fd.append(`documents[${id}][file]`, file);
+    const file = docs[id];
+    if (file) fd.append(`documents[${id}]`, file);
   });
 }
 
 function buildIndividualFormData(form: IndividualForm): FormData {
   const fd = new FormData();
   fd.append('customerType', 'individual');
-  const { meansOfId, expectedTransactionTypes, gender, ...scalars } = form.person;
+  const { meansOfId, gender, ...scalars } = form.person;
   Object.entries(scalars).forEach(([k, v]) => fd.append(k, v));
   if (gender) fd.append('gender', gender);
   meansOfId.forEach((v) => fd.append('meansOfId[]', v));
-  expectedTransactionTypes.forEach((v) => fd.append('expectedTransactionTypes[]', v));
   const { signatureAgree, ...declaration } = form.declaration;
   Object.entries(declaration).forEach(([k, v]) => fd.append(k, v));
   if (signatureAgree) fd.append('signatureAgree', 'on');
   if (form.consent) fd.append('consent', 'on');
-  appendDocuments(fd, form, INDIVIDUAL_DOCUMENT_IDS);
+  appendDocuments(fd, form.docs, INDIVIDUAL_DOCUMENT_IDS);
+  appendImages(fd, form.images);
   return fd;
 }
 

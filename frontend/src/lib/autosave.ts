@@ -1,7 +1,7 @@
 import { DIRECTOR_FIELDS } from '../types';
 import type { CorporateForm, CustomerType, Director, FormState, IndividualForm, IndividualPerson } from '../types';
 import { emptyDirector } from './initial-state';
-import { INCOME_OPTIONS, MAX_DIRECTORS, MEANS_OF_ID_OPTIONS, PURPOSE_OPTIONS, TRANSACTION_TYPE_OPTIONS } from './validation';
+import { INCOME_OPTIONS, MAX_DIRECTORS, MEANS_OF_ID_OPTIONS, PURPOSE_OPTIONS } from './validation';
 
 export const STORAGE_KEY = 'woodhall-kyc-draft-v2';
 
@@ -12,7 +12,6 @@ export interface CorporateDraft {
   funds: Record<string, string>;
   declaration: Record<string, string | boolean>;
   directors: Record<string, string>[];
-  documents: Record<string, boolean>;
   consent: boolean;
 }
 
@@ -21,7 +20,6 @@ export interface IndividualDraft {
   customerType: 'individual';
   person: Record<string, string | string[]>;
   declaration: Record<string, string | boolean>;
-  documents: Record<string, boolean>;
   consent: boolean;
 }
 
@@ -62,7 +60,6 @@ function serializeCorporate(form: CorporateForm): CorporateDraft {
       const { files: _files, ...values } = d;
       return values;
     }),
-    documents: {}, // files cannot be saved, so a document is never restored as already provided
     consent: form.consent,
   };
 }
@@ -71,9 +68,8 @@ function serializeIndividual(form: IndividualForm): IndividualDraft {
   return {
     v: 2,
     customerType: 'individual',
-    person: { ...form.person, meansOfId: [...form.person.meansOfId], expectedTransactionTypes: [...form.person.expectedTransactionTypes] },
+    person: { ...form.person, meansOfId: [...form.person.meansOfId] },
     declaration: { ...form.declaration },
-    documents: {}, // files cannot be saved, so a document is never restored as already provided
     consent: form.consent,
   };
 }
@@ -117,13 +113,14 @@ const anyText = (o: unknown) => isObj(o) && Object.values(o).some(hasText);
 
 export function hasAnyContent(d: Draft | null): boolean {
   if (!d) return false;
+  const common = d.consent === true;
   if (d.customerType === 'individual') {
-    return d.consent === true || anyText(d.person) || anyText(d.declaration);
+    return common || anyText(d.person) || anyText(d.declaration);
   }
   const directorHasContent = (row: unknown) =>
     isObj(row) && DIRECTOR_FIELDS.some((f) => typeof row[f] === 'string' && (row[f] as string).trim() !== '');
   return (
-    d.consent === true ||
+    common ||
     anyText(d.entity) ||
     anyText(d.funds) ||
     anyText(d.declaration) ||
@@ -160,7 +157,6 @@ export function applyIndividualDraft(form: IndividualForm, d: IndividualDraft): 
   person.sourceOfIncome = pickOption(src.sourceOfIncome, INCOME_OPTIONS);
   person.purposeOfRelationship = pickOption(src.purposeOfRelationship, PURPOSE_OPTIONS);
   person.meansOfId = pickOptions(src.meansOfId, MEANS_OF_ID_OPTIONS);
-  person.expectedTransactionTypes = pickOptions(src.expectedTransactionTypes, TRANSACTION_TYPE_OPTIONS);
   const declaration = pickStrings(form.declaration, d.declaration);
   declaration.signatureAgree = isObj(d.declaration) && d.declaration.signatureAgree === true;
   return { ...form, person, declaration, consent: d.consent === true };

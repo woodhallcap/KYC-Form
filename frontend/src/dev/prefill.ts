@@ -1,7 +1,8 @@
 import { DIRECTOR_FIELDS } from '../types';
-import type { CustomerType, DirectorField } from '../types';
+import type { CustomerType, DirectorField, ImageName } from '../types';
+import { CORPORATE_DOCUMENTS, INDIVIDUAL_DOCUMENTS } from '../lib/documents';
+import type { DocumentSpec } from '../lib/documents';
 import type { Action, FieldGroup } from '../lib/reducer';
-import { DOCUMENT_IDS, INDIVIDUAL_DOCUMENT_IDS } from '../lib/validation';
 
 const entity: Record<string, string> = {
   companyName: 'Acme Trading Ltd',
@@ -35,25 +36,26 @@ const declaration: Record<string, string> = {
   signatory2Date: '2026-09-15',
 };
 
+const requiredDocs = (specs: readonly DocumentSpec[]): Action[] =>
+  specs
+    .filter((d) => d.required)
+    .map((d): Action => ({ type: 'setDocFile', id: d.id, file: new File(['test'], `${d.id}.pdf`, { type: 'application/pdf' }) }));
+
+const images = (...names: ImageName[]): Action[] =>
+  names.map((name): Action => ({ type: 'setImage', name, file: new File(['test'], 'signature.png', { type: 'image/png' }) }));
+
 const fields = (group: FieldGroup, values: Record<string, string>): Action[] =>
   Object.entries(values).map(([name, value]): Action => ({ type: 'setField', group, name, value }));
-
-/** Every document is required, so the dev shortcut attaches a tiny placeholder file to each. */
-const devDocuments = (ids: readonly string[]): Action[] =>
-  ids.map((id): Action => ({
-    type: 'setDocFile',
-    id,
-    file: new File(['dev test file'], `${id}.pdf`, { type: 'application/pdf' }),
-  }));
 
 function corporateActions(): Action[] {
   return [
     ...fields('entity', entity),
     ...DIRECTOR_FIELDS.map((name): Action => ({ type: 'setDirectorField', index: 0, name, value: director[name] })),
-    ...devDocuments(DOCUMENT_IDS),
+    ...requiredDocs(CORPORATE_DOCUMENTS),
     { type: 'setConsent', value: true },
     ...fields('funds', funds),
     ...fields('declaration', declaration),
+    ...images('signatory1SignatureFile', 'signatory2SignatureFile', 'sealFile'),
     { type: 'setField', group: 'declaration', name: 'signatureAgree', value: true },
   ];
 }
@@ -77,15 +79,14 @@ const person: Record<string, string> = {
   occupation: 'Engineer',
   employerName: 'Acme Engineering',
   officeAddress: '4 Adeola Odeku Street, Victoria Island, Lagos',
+  officialEmail: 'jane.doe@acme-engineering.com',
   sourceOfIncome: 'salary',
   sourceOfWealth: 'Savings and property rental',
   purposeOfRelationship: 'loan',
-  expectedMonthlyTurnover: '500,000',
 };
 
 const individualDeclaration: Record<string, string> = {
   declarationName: 'Jane Doe',
-  signatureName: 'Jane Doe',
   signatureDate: '2026-09-15',
 };
 
@@ -94,10 +95,10 @@ function individualActions(): Action[] {
     ...fields('person', person),
     { type: 'toggleChoice', name: 'meansOfId', value: 'nin' },
     { type: 'toggleChoice', name: 'meansOfId', value: 'passport' },
-    { type: 'toggleChoice', name: 'expectedTransactionTypes', value: 'transfer' },
-    ...devDocuments(INDIVIDUAL_DOCUMENT_IDS),
+    ...requiredDocs(INDIVIDUAL_DOCUMENTS),
     { type: 'setConsent', value: true },
     ...fields('declaration', individualDeclaration),
+    ...images('signatureFile'),
     { type: 'setField', group: 'declaration', name: 'signatureAgree', value: true },
   ];
 }

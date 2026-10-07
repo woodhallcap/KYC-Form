@@ -5,23 +5,27 @@ export const NEEDS: Record<CustomerType, string[]> = {
   individual: [
     "A valid means of ID (NIN slip, international passport, driver's license or voter's card)",
     'Your BVN and NIN',
-    'A utility bill and a bank statement, both from the last 3 months',
-    'A passport photograph',
-    'Your signature mandate card',
+    'Proof of address from the last 3 months: a utility bill and a bank statement',
+    'The last 12 months of bank statements',
+    'A recent passport photograph',
+    'A photo or scan of your handwritten signature',
+    'Your work ID, employment letter and signature mandate card',
   ],
   corporate: [
-    'CAC certificate of incorporation',
+    'CAC certificate of incorporation and CAC status report',
     'CAC forms CAC2.3 and CAC1.1 for directors and shareholders',
     'Memorandum and articles of association',
     'A board resolution to open the account and obtain the facility',
     'The last 12 months of company bank statements',
-    'ID, BVN, NIN and proof of address for each director, signatory and owner above 5%',
+    'Government-issued ID and a recent passport photograph of each authorized signatory',
+    'Corporate ID of the authorized signatories',
+    "Photos or scans of both signatories' handwritten signatures and the company seal or stamp",
   ],
 };
 
 /** The three-line version shown on the customer-type cards. */
 export const NEEDS_SHORT: Record<CustomerType, string[]> = {
-  individual: ['A valid ID', 'Your BVN and NIN', 'Utility bill and bank statement'],
+  individual: ['A valid ID', 'Your BVN and NIN', 'Proof of address'],
   corporate: ['CAC certificate and forms', 'Directors and owners above 5%', 'Bank statements'],
 };
 
@@ -31,10 +35,10 @@ export const CUSTOMER_LABEL: Record<CustomerType, string> = {
 };
 
 export const CONTACT = {
-  email: 'office@woodhallfinanceltd.com',
+  email: 'info@woodhallfinanceltd.com',
   phoneDisplay: '+234 14549820',
   phoneHref: 'tel:+23414549820',
-  address: 'No 1 Bitou Street, Wuse 2, Abuja FCT',
+  address: '8A Modupe Alakija Cres, Ikoyi, Lagos 106104, Lagos',
   website: 'woodhallfinanceltd.com',
   websiteHref: 'https://woodhallfinanceltd.com',
 };

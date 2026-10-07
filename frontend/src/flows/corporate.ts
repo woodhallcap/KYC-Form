@@ -13,7 +13,10 @@ export const ENTITY_FIELDS = [
   'natureOfBusiness', 'tin', 'companyEmail', 'bankAccountNumber', 'bankName',
 ];
 const FUNDS_FIELDS = ['sourceOfFunds', 'facilityAmount'];
-const DECLARATION_FIELDS = ['signatory1Name', 'signatory1Date', 'signatory2Name', 'signatory2Date', 'signatureAgree'];
+const DECLARATION_FIELDS = [
+  'signatory1Name', 'signatory1Date', 'signatory2Name', 'signatory2Date', 'signatureAgree',
+  'signatory1SignatureFile', 'signatory2SignatureFile', 'sealFile',
+];
 
 export const corporateFlow: Flow = {
   id: 'corporate',
@@ -25,7 +28,7 @@ export const corporateFlow: Flow = {
     }),
     step('documents', 'Documents', ['consent', ...DOCUMENT_IDS], (f) => validateDocuments(asCorporate(f))),
     step('funds', 'Source of Funds', FUNDS_FIELDS, (f) => validateFunds(asCorporate(f).funds)),
-    step('declaration', 'Declaration', DECLARATION_FIELDS, (f) => { const c = asCorporate(f); return validateDeclaration(c.declaration, c.seal); }),
+    step('declaration', 'Declaration', DECLARATION_FIELDS, (f) => validateDeclaration(asCorporate(f))),
   ],
 };
 

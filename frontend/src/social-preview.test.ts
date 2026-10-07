@@ -13,6 +13,10 @@ function meta(key: string): string | undefined {
 }
 
 describe('link preview (Open Graph / Twitter)', () => {
+  it('titles the page with the Woodhall Finance brand', () => {
+    expect(html().match(/<title>([^<]*)<\/title>/)?.[1]).toBe('KYC / CDD Form — Woodhall Finance');
+  });
+
   it('describes the page for search and for people who paste the link', () => {
     expect(meta('description')).toMatch(/KYC|due diligence/i);
     expect(meta('description')!.length).toBeLessThanOrEqual(160);

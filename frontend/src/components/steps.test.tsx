@@ -16,7 +16,7 @@ import { IndividualStep1Person } from './IndividualStep1Person';
 import { IndividualStep2Documents } from './IndividualStep2Documents';
 import { IndividualStep3Declaration } from './IndividualStep3Declaration';
 import type { StepProps } from './stepProps';
-import { DOCUMENT_LABELS, INDIVIDUAL_DOCUMENT_LABELS } from '../lib/documents';
+import { CORPORATE_DOCUMENTS, INDIVIDUAL_DOCUMENTS } from '../lib/documents';
 
 const forType = (customerType: CustomerType, step = 1, extra: Action[] = []): AppState =>
   [{ type: 'selectType', customerType } as Action, { type: 'goTo', step } as Action, ...extra].reduce(reducer, initialAppState());
@@ -29,13 +29,12 @@ function Host({ Step, init }: { Step: ComponentType<StepProps>; init?: AppState 
   return (
     <>
       <Step state={state} dispatch={dispatch} onNext={() => {}} onBack={() => {}} />
-      <span data-testid="seal-name">{state.corporate.seal?.name ?? ''}</span>
+      <span data-testid="seal-name">{state.corporate.images.sealFile?.name ?? ''}</span>
       <span data-testid="pct-0">{state.corporate.directors[0]?.shareholdingPercent}</span>
       <span data-testid="pep-0">{state.corporate.directors[0]?.pep}</span>
       <span data-testid="gender">{p.gender}</span>
       <span data-testid="means">{p.meansOfId.join(',')}</span>
       <span data-testid="income">{p.sourceOfIncome}</span>
-      <span data-testid="types">{p.expectedTransactionTypes.join(',')}</span>
     </>
   );
 }
@@ -61,6 +60,12 @@ describe('Step1Entity', () => {
     await user.click(screen.getByLabelText('Company Name'));
     await user.tab();
     expect(screen.getByText('Company name is required.')).toBeInTheDocument();
+  });
+
+  it('labels the registration number as BN / RC', () => {
+    render(<Host Step={Step1Entity} />);
+    expect(screen.getByLabelText('Business Registration Number (BN / RC)')).toBeInTheDocument();
+    expect(screen.queryByLabelText('RC Number')).toBeNull();
   });
 
   it('has company email and no legal status or website', () => {
@@ -122,33 +127,13 @@ describe('Step2Directors', () => {
 });
 
 describe('Step3Documents (corporate)', () => {
-  it('shows all six documents with a file input each, and no tick-boxes apart from consent', () => {
-    render(<Host Step={Step3Documents} init={corp(3)} />);
-    expect(Object.keys(DOCUMENT_LABELS)).toHaveLength(6);
-    Object.values(DOCUMENT_LABELS).forEach((label) =>
-      expect(screen.getByLabelText(`File for ${label}`)).toHaveAttribute('type', 'file'));
-    expect(screen.getAllByRole('checkbox')).toHaveLength(1);
-    expect(screen.getByRole('heading', { name: 'Section C: Required Documents' })).toBeInTheDocument();
-  });
-
-  it('says every document is needed before continuing', () => {
-    render(<Host Step={Step3Documents} init={corp(3)} />);
-    expect(screen.getByText(/Attach every document below to continue/)).toBeInTheDocument();
-  });
-
-  it('shows a missing-document error inline under just that document', () => {
-    const init = { ...corp(3), errors: { board_resolution: 'This document is required.' } };
-    render(<Host Step={Step3Documents} init={init} />);
-    const alerts = screen.getAllByRole('alert');
-    expect(alerts).toHaveLength(1);
-    expect(screen.getByTestId('doc-board_resolution')).toContainElement(alerts[0]);
-  });
-
-  it('shows a chosen file and flags a bad file type under its own document', async () => {
-    const user = userEvent.setup({ applyAccept: false });
-    render(<Host Step={Step3Documents} init={corp(3)} />);
-    await user.upload(screen.getByLabelText(`File for ${DOCUMENT_LABELS.cac_forms}`), new File(['x'], 'forms.exe'));
-    expect(within(screen.getByTestId('doc-cac_forms')).getByRole('alert')).toHaveTextContent('File type not allowed: forms.exe');
+  it('renders a file input and a Required or Optional badge for every document, and shows an uploaded file', async () => {
+    const user = userEvent.setup();
+    render(<Host Step={Step3Documents} />);
+    CORPORATE_DOCUMENTS.forEach((d) => expect(screen.getByLabelText(d.label)).toBeInTheDocument());
+    expect(screen.getAllByText('Required')).toHaveLength(CORPORATE_DOCUMENTS.filter((d) => d.required).length);
+    await user.upload(screen.getByLabelText(CORPORATE_DOCUMENTS[0].label), new File(['x'], 'a.pdf'));
+    expect(screen.getByText('a.pdf')).toBeInTheDocument();
   });
 
   it('shows the consent error from state', () => {
@@ -174,21 +159,30 @@ describe('Step4Funds', () => {
 });
 
 describe('Step5Declaration (corporate)', () => {
-  it('has both signatories with name and date fields and an optional seal input', () => {
+  it('has both signatories with name and date fields and the signature and seal image tiles', () => {
     render(<Host Step={Step5Declaration} />);
     ['Authorized Signatory 1 — Name', 'Authorized Signatory 1 — Date', 'Authorized Signatory 2 — Name', 'Authorized Signatory 2 — Date']
       .forEach((l) => expect(screen.getByLabelText(l)).toBeInTheDocument());
-    expect(screen.getByLabelText('Company seal (optional)')).toBeInTheDocument();
-    expect(screen.getByLabelText(/^I agree that the typed names/)).toBeInTheDocument();
+    ['Authorized Signatory 1 — Handwritten Signature', 'Authorized Signatory 2 — Handwritten Signature', 'Company Seal or Stamp']
+      .forEach((l) => expect(screen.getByLabelText(l)).toBeInTheDocument());
+    expect(screen.getByLabelText(/^We confirm the attached images/)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/^I agree that the typed names/)).toBeNull();
   });
 
   it('stores the chosen seal file and shows a seal error from state', async () => {
     const user = userEvent.setup({ applyAccept: false });
-    const init = { ...corp(5), errors: { sealFile: 'File type not allowed: s.exe' } };
+    const init = { ...corp(5), errors: { sealFile: 'Company seal or stamp is required.' } };
     render(<Host Step={Step5Declaration} init={init} />);
-    expect(screen.getByText('File type not allowed: s.exe')).toBeInTheDocument();
-    await user.upload(screen.getByLabelText('Company seal (optional)'), new File(['x'], 'seal.png'));
+    expect(screen.getByText('Company seal or stamp is required.')).toBeInTheDocument();
+    await user.upload(screen.getByLabelText('Company Seal or Stamp'), new File(['x'], 'seal.png'));
     expect(screen.getByTestId('seal-name')).toHaveTextContent('seal.png');
+  });
+
+  it('shows the image-type error when a PDF is chosen as the seal', async () => {
+    const user = userEvent.setup({ applyAccept: false });
+    render(<Host Step={Step5Declaration} />);
+    await user.upload(screen.getByLabelText('Company Seal or Stamp'), new File(['x'], 'sig.pdf'));
+    expect(screen.getByText('Upload a JPG or PNG image.')).toBeInTheDocument();
   });
 
   it('disables submit and Back and shows Submitting… while sending', () => {
@@ -223,18 +217,23 @@ describe('IndividualStep1Person', () => {
   it('has every field, with duplicate labels reachable within their groups', () => {
     render(<Host Step={IndividualStep1Person} init={indiv()} />);
     ['Full Name', 'Date of Birth', 'Place of Birth', 'Nationality', 'Country of Residence', 'Residential Address', 'LGA', 'State', 'Phone No', 'Email',
-      'ID No', 'Expiry Date (if any)', 'Occupation', 'Employer/Business Name', 'Office Address', 'Source of Wealth',
-      'Expected Monthly Turnover (₦)'].forEach((l) => expect(screen.getByLabelText(l), l).toBeInTheDocument());
+      'ID No (optional)', 'Expiry Date (optional)', 'Occupation', 'Employer/Business Name', 'Office Address', 'Source of Wealth',
+      'Official Email'].forEach((l) => expect(screen.getByLabelText(l), l).toBeInTheDocument());
     expect(screen.getByRole('textbox', { name: 'BVN' })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'NIN' })).toBeInTheDocument();
-    expect(within(groupOf('Means of ID')).getAllByRole('checkbox')).toHaveLength(5);
-    expect(within(groupOf('Expected Transaction Type')).getAllByRole('checkbox')).toHaveLength(3);
+    expect(within(groupOf('Means of ID')).getAllByRole('checkbox')).toHaveLength(4);
+    expect(within(groupOf('Means of ID')).queryByLabelText('BVN')).toBeNull();
     expect(within(radiosOf('Gender')).getAllByRole('radio')).toHaveLength(2);
     expect(within(radiosOf('Source of Income')).getAllByRole('radio')).toHaveLength(5);
-    expect(within(radiosOf('Purpose of Relationship')).getAllByRole('radio')).toHaveLength(4);
+    expect(within(radiosOf('Purpose of Relationship with Woodhall Finance')).getAllByRole('radio')).toHaveLength(4);
+    expect(screen.queryByLabelText(/Expected Monthly Turnover/)).toBeNull();
+    expect(screen.queryByText(/Expected Transaction Type/)).toBeNull();
+    const office = screen.getByLabelText('Office Address');
+    const official = screen.getByLabelText('Official Email');
+    expect(office.compareDocumentPosition(official) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('sets gender and toggles multiple means of ID and transaction types', async () => {
+  it('sets gender and toggles multiple means of ID', async () => {
     const user = userEvent.setup();
     render(<Host Step={IndividualStep1Person} init={indiv()} />);
     await user.click(within(radiosOf('Gender')).getByLabelText('Female'));
@@ -245,9 +244,6 @@ describe('IndividualStep1Person', () => {
     expect(screen.getByTestId('means')).toHaveTextContent('nin,drivers_license');
     await user.click(means.getByLabelText('NIN'));
     expect(screen.getByTestId('means')).toHaveTextContent(/^drivers_license$/);
-    await user.click(within(groupOf('Expected Transaction Type')).getByLabelText('Cash'));
-    await user.click(within(groupOf('Expected Transaction Type')).getByLabelText('Cheque'));
-    expect(screen.getByTestId('types')).toHaveTextContent('cash,cheque');
   });
 
   it('reveals the specify input only for Source of Income = Other, independently of Purpose', async () => {
@@ -258,23 +254,11 @@ describe('IndividualStep1Person', () => {
     await user.click(within(radiosOf('Source of Income')).getByLabelText('Other'));
     expect(screen.getByLabelText('Specify source of income')).toBeInTheDocument();
     expect(screen.queryByLabelText('Specify purpose')).toBeNull();
-    await user.click(within(radiosOf('Purpose of Relationship')).getByLabelText('Other'));
+    await user.click(within(radiosOf('Purpose of Relationship with Woodhall Finance')).getByLabelText('Other'));
     expect(screen.getByLabelText('Specify purpose')).toBeInTheDocument();
     await user.click(within(radiosOf('Source of Income')).getByLabelText('Salary'));
     expect(screen.queryByLabelText('Specify source of income')).toBeNull();
     expect(screen.getByLabelText('Specify purpose')).toBeInTheDocument();
-  });
-
-  it('requires employer and office address (only the expiry date is optional)', async () => {
-    const user = userEvent.setup();
-    render(<Host Step={IndividualStep1Person} init={indiv()} />);
-    expect(screen.getByLabelText('Expiry Date (if any)')).toBeInTheDocument();
-    await user.click(screen.getByLabelText('Employer/Business Name'));
-    await user.tab();
-    await user.click(screen.getByLabelText('Office Address'));
-    await user.tab();
-    expect(screen.getByText('Employer or business name is required.')).toBeInTheDocument();
-    expect(screen.getByText('Office address is required.')).toBeInTheDocument();
   });
 
   it('shows the specify error after blur, and group errors inside their group', async () => {
@@ -290,43 +274,15 @@ describe('IndividualStep1Person', () => {
 });
 
 describe('IndividualStep2Documents', () => {
-  it('shows all five documents with a file input each, and no tick-boxes apart from consent', () => {
-    render(<Host Step={IndividualStep2Documents} init={indiv(2)} />);
-    expect(Object.keys(INDIVIDUAL_DOCUMENT_LABELS)).toHaveLength(5);
-    Object.values(INDIVIDUAL_DOCUMENT_LABELS).forEach((l) =>
-      expect(screen.getByLabelText(`File for ${l}`)).toHaveAttribute('type', 'file'));
-    expect(screen.getAllByRole('checkbox')).toHaveLength(1);
-    expect(screen.getByRole('heading', { name: 'Section B: Verification Documents' })).toBeInTheDocument();
-  });
-
-  it('asks for the utility bill and the bank statement as two separate documents', () => {
-    render(<Host Step={IndividualStep2Documents} init={indiv(2)} />);
-    expect(screen.getByText('Utility Bill (less than 3 months)')).toBeInTheDocument();
-    expect(screen.getByText('Bank Statement (less than 3 months)')).toBeInTheDocument();
-    expect(screen.queryByText(/Proof of Address/i)).toBeNull();
-  });
-
-  it('says every document is needed before continuing', () => {
-    render(<Host Step={IndividualStep2Documents} init={indiv(2)} />);
-    expect(screen.getByText(/Attach every document below to continue/)).toBeInTheDocument();
-  });
-
-  it('shows a missing-document error inline under just that document', () => {
-    const init = { ...indiv(2), errors: { utility_bill: 'This document is required.' } };
-    render(<Host Step={IndividualStep2Documents} init={init} />);
-    const alerts = screen.getAllByRole('alert');
-    expect(alerts).toHaveLength(1);
-    expect(alerts[0]).toHaveTextContent('This document is required.');
-    expect(screen.getByTestId('doc-utility_bill')).toContainElement(alerts[0]);
-  });
-
-  it('shows the chosen file with its name and lets the visitor remove it again', async () => {
+  it('renders a file input and a Required or Optional badge for every document, and shows an uploaded file', async () => {
     const user = userEvent.setup();
     render(<Host Step={IndividualStep2Documents} init={indiv(2)} />);
-    await user.upload(screen.getByLabelText('File for Passport Photograph'), new File(['x'], 'me.jpg'));
-    expect(screen.getByText('me.jpg')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Remove File for Passport Photograph' }));
-    expect(screen.queryByText('me.jpg')).toBeNull();
+    INDIVIDUAL_DOCUMENTS.forEach((d) => expect(screen.getByLabelText(d.label)).toBeInTheDocument());
+    expect(screen.getAllByText('Required')).toHaveLength(INDIVIDUAL_DOCUMENTS.filter((d) => d.required).length);
+    expect(screen.queryByText('Optional')).not.toBeInTheDocument();
+    await user.upload(screen.getByLabelText('Valid Means of ID'), new File(['x'], 'a.pdf'));
+    expect(screen.getByText('a.pdf')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Section B: Verification Documents' })).toBeInTheDocument();
   });
 
   it('shows the consent error and a next button for the declaration', () => {
@@ -338,15 +294,23 @@ describe('IndividualStep2Documents', () => {
 });
 
 describe('IndividualStep3Declaration', () => {
-  it('has name, typed signature, date and agreement, and validates after blur', async () => {
+  it('has name, date, signature image and agreement, and validates after blur', async () => {
     const user = userEvent.setup();
     render(<Host Step={IndividualStep3Declaration} init={indiv(3)} />);
     expect(screen.getByRole('heading', { name: 'Section C: Declaration' })).toBeInTheDocument();
-    ['Name', 'Typed Signature (type your full name)', 'Date'].forEach((l) => expect(screen.getByLabelText(l)).toBeInTheDocument());
-    expect(screen.getByLabelText(/^I agree that the typed name above/)).toBeInTheDocument();
-    await user.click(screen.getByLabelText('Name'));
+    ['Full Name', 'Date', 'Handwritten Signature'].forEach((l) => expect(screen.getByLabelText(l)).toBeInTheDocument());
+    expect(screen.getByLabelText(/^I confirm the attached image/)).toBeInTheDocument();
+    expect(screen.queryByLabelText('Typed Signature (type your full name)')).toBeNull();
+    await user.click(screen.getByLabelText('Full Name'));
     await user.tab();
     expect(screen.getByText('Name is required.')).toBeInTheDocument();
+  });
+
+  it('shows the image-type error when a PDF is chosen as the signature', async () => {
+    const user = userEvent.setup({ applyAccept: false });
+    render(<Host Step={IndividualStep3Declaration} init={indiv(3)} />);
+    await user.upload(screen.getByLabelText('Handwritten Signature'), new File(['x'], 'sig.pdf'));
+    expect(screen.getByText('Upload a JPG or PNG image.')).toBeInTheDocument();
   });
 
   it('disables submit and Back while sending, and shows Submit Form when idle', () => {

@@ -125,28 +125,30 @@ describe('BrandPanel', () => {
   it('shows the logo, an intro and the help contacts before a type is chosen, with no checklist', () => {
     render(<BrandPanel customerType={null} />);
     expect(screen.getByRole('img', { name: 'Woodhall Finance' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Customer due diligence' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Customer Due Diligence' })).toBeInTheDocument();
     expect(screen.queryByText("What you'll need")).toBeNull();
-    expect(screen.getByRole('link', { name: 'office@woodhallfinanceltd.com' })).toHaveAttribute('href', 'mailto:office@woodhallfinanceltd.com');
+    expect(screen.getByRole('link', { name: 'info@woodhallfinanceltd.com' })).toHaveAttribute('href', 'mailto:info@woodhallfinanceltd.com');
     expect(screen.getByRole('link', { name: '+234 14549820' })).toHaveAttribute('href', 'tel:+23414549820');
-    expect(screen.getByText(/Wuse 2, Abuja/)).toBeInTheDocument();
+    expect(screen.getByText(/Modupe Alakija/)).toBeInTheDocument();
   });
 
   it('lists what an individual needs', () => {
     render(<BrandPanel customerType="individual" />);
     expect(screen.getByRole('heading', { name: 'Individual customer' })).toBeInTheDocument();
     const list = screen.getByRole('list', { name: "What you'll need" });
-    expect(within(list).getAllByRole('listitem')).toHaveLength(5);
+    expect(within(list).getAllByRole('listitem')).toHaveLength(7);
     expect(within(list).getByText(/passport photograph/i)).toBeInTheDocument();
-    expect(within(list).getByText(/utility bill and a bank statement/i)).toBeInTheDocument();
+    expect(within(list).getByText(/12 months of bank statements/)).toBeInTheDocument();
   });
 
   it('lists what a company needs', () => {
     render(<BrandPanel customerType="corporate" />);
     expect(screen.getByRole('heading', { name: 'Corporate customer' })).toBeInTheDocument();
     const list = screen.getByRole('list', { name: "What you'll need" });
-    expect(within(list).getAllByRole('listitem')).toHaveLength(6);
+    expect(within(list).getAllByRole('listitem')).toHaveLength(8);
     expect(within(list).getByText(/CAC certificate of incorporation/i)).toBeInTheDocument();
+    expect(within(list).getByText(/CAC status report/)).toBeInTheDocument();
+    expect(within(list).getByText(/company seal/)).toBeInTheDocument();
   });
 });
 
@@ -155,7 +157,7 @@ describe('SiteFooter', () => {
     render(<SiteFooter />);
     expect(screen.getByText(new RegExp(`© ${new Date().getFullYear()} Woodhall Finance`))).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'woodhallfinanceltd.com' })).toHaveAttribute('href', 'https://woodhallfinanceltd.com');
-    expect(screen.getByRole('link', { name: 'office@woodhallfinanceltd.com' })).toHaveAttribute('href', 'mailto:office@woodhallfinanceltd.com');
+    expect(screen.getByRole('link', { name: 'info@woodhallfinanceltd.com' })).toHaveAttribute('href', 'mailto:info@woodhallfinanceltd.com');
   });
 });
 
@@ -168,7 +170,6 @@ describe('TypeSelector', () => {
     const individual = screen.getByRole('button', { name: /Individual customer/ });
     const corporate = screen.getByRole('button', { name: /Corporate customer/ });
     expect(within(individual).getByText(/A valid ID/)).toBeInTheDocument();
-    expect(within(individual).getByText(/Utility bill and bank statement/)).toBeInTheDocument();
     expect(within(corporate).getByText(/Directors and owners above 5%/)).toBeInTheDocument();
     await user.click(individual);
     await user.click(corporate);

@@ -1,3 +1,4 @@
+import { DOCUMENT_IDS, INDIVIDUAL_DOCUMENT_IDS } from './lib/validation';
 import type { CorporateEntity, CorporateForm, Director, IndividualForm, IndividualPerson } from './types';
 
 export const validEntity: CorporateEntity = {
@@ -5,8 +6,6 @@ export const validEntity: CorporateEntity = {
   businessAddress: '', natureOfBusiness: 'Trading', tin: 'T1', companyEmail: 'info@acme.com',
   bankAccountNumber: '01', bankName: 'First Bank',
 };
-
-export const CORPORATE_DOC_IDS = ['certificate_of_incorporation', 'cac_forms', 'memorandum_articles', 'board_resolution', 'company_bank_statement', 'corporate_id_signatories'];
 
 /** A valid director row (pep answered, no files). */
 export function dir(o: Partial<Director> = {}): Director {
@@ -18,8 +17,7 @@ export function dir(o: Partial<Director> = {}): Director {
 
 /** A complete but EMPTY form (one blank-valued director row that is otherwise valid). */
 export function makeForm(o: Partial<CorporateForm> = {}): CorporateForm {
-  const docs: CorporateForm['docs'] = {};
-  CORPORATE_DOC_IDS.forEach((id) => { docs[id] = { submitted: false, file: null }; });
+  const docs: CorporateForm['docs'] = Object.fromEntries(DOCUMENT_IDS.map((id) => [id, null]));
   return {
     customerType: 'corporate',
     entity: { companyName: '', rcNumber: '', dateOfIncorporation: '', registeredAddress: '', businessAddress: '', natureOfBusiness: '', tin: '', companyEmail: '', bankAccountNumber: '', bankName: '' },
@@ -27,7 +25,7 @@ export function makeForm(o: Partial<CorporateForm> = {}): CorporateForm {
     docs, consent: false,
     funds: { sourceOfFunds: '', facilityAmount: '' },
     declaration: { signatory1Name: '', signatory1Date: '', signatory2Name: '', signatory2Date: '', signatureAgree: false },
-    seal: null,
+    images: { signatory1SignatureFile: null, signatory2SignatureFile: null, sealFile: null },
     ...o,
   };
 }
@@ -40,44 +38,24 @@ export { initialCorporateForm as emptyState, initialIndividualForm as emptyIndiv
 export const validPerson: IndividualPerson = {
   fullName: 'Jane Doe', dateOfBirth: '1990-01-01', placeOfBirth: 'Lagos', nationality: 'Nigerian', countryOfResidence: 'Nigeria',
   residentialAddress: '1 Rd', lga: 'Ikeja', state: 'Lagos', phone: '08000000000', email: 'jane@example.com',
-  idNumber: 'A123', idExpiry: '', bvn: '222', nin: '333', occupation: 'Engineer', employerName: 'Acme Engineering', officeAddress: '4 Adeola Odeku Street, Victoria Island',
-  sourceOfIncomeOther: '', sourceOfWealth: 'Savings', purposeOther: '', expectedMonthlyTurnover: '500,000',
-  gender: 'F', meansOfId: ['nin', 'passport'], sourceOfIncome: 'salary', purposeOfRelationship: 'loan', expectedTransactionTypes: ['transfer'],
+  idNumber: 'A123', idExpiry: '', bvn: '222', nin: '333', occupation: 'Engineer', employerName: 'Acme Engineering', officeAddress: '4 Adeola Odeku St', officialEmail: 'jane@acme-eng.com',
+  sourceOfIncomeOther: '', sourceOfWealth: 'Savings', purposeOther: '',
+  gender: 'F', meansOfId: ['nin', 'passport'], sourceOfIncome: 'salary', purposeOfRelationship: 'loan',
 };
-
-export const INDIVIDUAL_DOC_IDS = ['valid_means_of_id', 'utility_bill', 'bank_statement', 'passport_photograph', 'signature_mandate_card'];
 
 /** A blank individual form. */
 export function makeIndividual(o: Partial<IndividualForm> = {}): IndividualForm {
-  const docs: IndividualForm['docs'] = {};
-  INDIVIDUAL_DOC_IDS.forEach((id) => { docs[id] = { submitted: false, file: null }; });
+  const docs: IndividualForm['docs'] = Object.fromEntries(INDIVIDUAL_DOCUMENT_IDS.map((id) => [id, null]));
   return {
     customerType: 'individual',
     person: {
       fullName: '', dateOfBirth: '', placeOfBirth: '', nationality: '', countryOfResidence: '', residentialAddress: '', lga: '', state: '', phone: '', email: '',
-      idNumber: '', idExpiry: '', bvn: '', nin: '', occupation: '', employerName: '', officeAddress: '', sourceOfIncomeOther: '', sourceOfWealth: '',
-      purposeOther: '', expectedMonthlyTurnover: '', gender: '', meansOfId: [], sourceOfIncome: '', purposeOfRelationship: '', expectedTransactionTypes: [],
+      idNumber: '', idExpiry: '', bvn: '', nin: '', occupation: '', employerName: '', officeAddress: '', officialEmail: '', sourceOfIncomeOther: '', sourceOfWealth: '',
+      purposeOther: '', gender: '', meansOfId: [], sourceOfIncome: '', purposeOfRelationship: '',
     },
     docs, consent: false,
-    declaration: { declarationName: '', signatureName: '', signatureDate: '', signatureAgree: false },
+    declaration: { declarationName: '', signatureDate: '', signatureAgree: false },
+    images: { signatureFile: null },
     ...o,
   };
-}
-
-/** Attach a small file to every (or just the listed) individual document, as the visitor would. */
-export function withDocuments(form: IndividualForm, ids: readonly string[] = INDIVIDUAL_DOC_IDS): IndividualForm {
-  const docs = { ...form.docs };
-  ids.forEach((id) => {
-    docs[id] = { submitted: true, file: new File(['x'], `${id}.pdf`) };
-  });
-  return { ...form, docs };
-}
-
-/** Attach a small file to every (or just the listed) corporate document. */
-export function withCorporateDocuments(form: CorporateForm, ids: readonly string[] = CORPORATE_DOC_IDS): CorporateForm {
-  const docs = { ...form.docs };
-  ids.forEach((id) => {
-    docs[id] = { submitted: true, file: new File(['x'], `${id}.pdf`) };
-  });
-  return { ...form, docs };
 }

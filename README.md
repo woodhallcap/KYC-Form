@@ -5,17 +5,17 @@ parts of the updated KYC document). The first screen asks whether the customer i
 **Individual** or a **Corporate** customer, then shows the matching wizard:
 
 - **Individual (3 steps):** **A** Customer Information, **B** Verification Documents,
-  **C** Declaration (typed name, typed signature, date).
+  **C** Declaration (typed name, handwritten signature image, date).
 - **Corporate (5 steps):** **A** Entity Information, **B** Directors, Signatories & UBOs (>5%) —
   a list you can add to and remove from, with optional per-person attachments — **C** Required
-  Documents, **D** Source of Funds and **E** Declaration (two typed-name signatories plus an
-  optional company seal).
+  Documents, **D** Source of Funds and **E** Declaration (two authorized signatories, each with a
+  signature image, plus a required company seal or stamp image).
 
 Official-use sections (risk rating, sign-offs, EDD, CBN notes) are not on the web form. On
 submission it:
 
 1. Generates a branded, print-ready PDF of the full submission.
-2. Emails that PDF (plus any uploaded supporting documents) to compliance.
+2. Emails that PDF (plus the uploaded documents and images) to the credit team.
 3. Emails a confirmation copy of the PDF to the submitter.
 
 ## Tech stack
@@ -64,38 +64,48 @@ tests/php/                 PHP unit tests (custom harness)
 `POST submit.php` (multipart). `customerType` is required and is `corporate` or `individual`;
 anything else is rejected with `errors.customerType`.
 
+Documents are sent as files named `documents[<id>]`; there is no separate "submitted" flag. A
+required document with no file is rejected with `<label> is required.` (keyed by document id).
+Documents accept pdf/jpg/jpeg/png/docx. Signature and seal fields are images only (jpg/jpeg/png,
+error `Upload a JPG or PNG image.`). Every upload is at most 5MB and all uploads together at most
+20MB (error key `_total`).
+
 **Corporate**
 
 - Text fields by name: `companyName, rcNumber, dateOfIncorporation, registeredAddress,
   businessAddress, natureOfBusiness, tin, companyEmail, bankAccountNumber, bankName,
   sourceOfFunds, facilityAmount, signatory1Name, signatory1Date, signatory2Name, signatory2Date`;
-  checkboxes `consent`, `signatureAgree` = `on`.
+  checkboxes `consent`, `signatureAgree` = `on`. The field `rcNumber` is labelled "Business
+  Registration Number (BN / RC)" in the form.
 - Directors: `directors[i][name|designation|bvn|nin|shareholdingPercent|nationality|pep|residentialAddress]`
-  (`pep` = `yes`/`no`, `shareholdingPercent` 0–100) and optional files
+  (`pep` = `yes`/`no`, `shareholdingPercent` 0-100) and optional files
   `directors[i][files][id|bvn|nin|proof_of_address]`.
-- Documents (all six are required, each with a file): ids `certificate_of_incorporation, cac_forms,
-  memorandum_articles, board_resolution, company_bank_statement, corporate_id_signatories`. Optional `sealFile`.
+- Documents (`documents[<id>]`), Required unless noted:
+  `certificate_of_incorporation, cac_status_report, cac_forms, memorandum_articles,
+  board_resolution, company_bank_statement, government_id_signatories,
+  passport_photograph_signatories, corporate_id_signatories`.
+- Images (all required): `signatory1SignatureFile`, `signatory2SignatureFile`, `sealFile`.
 
 **Individual**
 
 - Text fields by name: `fullName, dateOfBirth, placeOfBirth, nationality, countryOfResidence,
   residentialAddress, lga, state, phone, email, idNumber, idExpiry, bvn, nin, occupation,
-  employerName, officeAddress, sourceOfIncomeOther, sourceOfWealth, purposeOther,
-  expectedMonthlyTurnover, declarationName, signatureName, signatureDate`; checkboxes `consent`,
-  `signatureAgree` = `on`.
+  employerName, officialEmail, officeAddress, sourceOfIncomeOther, sourceOfWealth, purposeOther,
+  declarationName, signatureDate`; checkboxes `consent`, `signatureAgree` = `on`. There are no
+  turnover or transaction-type fields.
 - Choices: `gender` (`M`/`F`), `sourceOfIncome` (`salary|business|investment|inheritance|other`),
   `purposeOfRelationship` (`loan|lease|investment|other`); `sourceOfIncomeOther` / `purposeOther`
   are required when the choice is `other`.
-- Multi-choice arrays: `meansOfId[]` (`nin|bvn|passport|drivers_license|voters_card`, at least one)
-  and `expectedTransactionTypes[]` (`cash|transfer|cheque`, at least one).
-- Documents (all five are required, each with a file): ids `valid_means_of_id, utility_bill, bank_statement, passport_photograph, signature_mandate_card`. Items 1 to 8 on the form are all required, except the ID expiry date.
+- Multi-choice array: `meansOfId[]` (`nin|passport|drivers_license|voters_card`, at least one).
+- Documents (`documents[<id>]`), All required: `valid_means_of_id,
+  proof_of_address_utility, proof_of_address_statement, bank_statement_12_months,
+  passport_photograph, work_id, employment_letter, signature_mandate_card`.
+- Image (required): `signatureFile`.
 
-**Both:** every document is sent as `documents[<id>][submitted]=on` plus `documents[<id>][file]`, and a
-document without its file is rejected as missing (`This document is required.`, keyed by the document id). Uploads: pdf/jpg/jpeg/png/docx, 5MB each, 20MB total across all uploads.
-Response: `{success, errors, message}`. Field errors are keyed by field name (`directors.<i>.<field>`
-for director rows); upload problems are keyed by document id, `directorFile.<i>.<id>`, `sealFile`
-or `_total` and shown to the user as an alert. The confirmation copy is emailed to `companyEmail`
-(corporate) or `email` (individual).
+Response: `{success, errors, message}`. Field errors are keyed by field name
+(`directors.<i>.<field>` for director rows); upload problems are keyed by document id,
+`directorFile.<i>.<id>`, an image field name or `_total` and shown to the user as an alert. The
+confirmation copy is emailed to `companyEmail` (corporate) or `email` (individual).
 
 ## Local development
 
@@ -109,8 +119,8 @@ npm run dev                    # front end on http://localhost:5173
 
 Vite proxies `/submit.php` to the PHP server on :8000. In `npm run dev` only, a
 **"Fill test data (dev only)"** button appears bottom-right; it is compiled out of
-production builds. **Careful:** a real submission emails `RECIPIENT_EMAIL` from
-`config.php` — point it at a test inbox or configure a sandbox SMTP before testing.
+production builds. **Careful:** a real submission emails every address in
+`RECIPIENT_EMAILS` from `config.php` — point it at a test inbox or configure a sandbox SMTP before testing.
 
 ## Configuration
 
@@ -118,14 +128,24 @@ Before deploying, edit `config.php`:
 
 | Constant | Purpose |
 |---|---|
-| `RECIPIENT_EMAIL` / `RECIPIENT_NAME` | **Placeholder — must be replaced** with the real compliance inbox before go-live. |
+| `RECIPIENT_EMAILS` / `RECIPIENT_NAME` | List of addresses that receive each new-submission notification (currently the credit team inbox). |
+| `CONTACT_EMAIL` | Address shown to customers in the confirmation email. |
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USERNAME` / `SMTP_PASSWORD` / `SMTP_SECURE` | Leave `SMTP_HOST` empty to fall back to PHP's built-in `mail()`; set these for real SMTP delivery. |
-| `MAIL_FROM_ADDRESS` / `MAIL_FROM_NAME` | From-address used on both outgoing emails. |
+| `MAIL_FROM_ADDRESS` / `MAIL_FROM_NAME` | From-address used on both outgoing emails. Sending setup is pending: see `docs/email-setup-microsoft-365.md`. |
 | `MAX_FILE_SIZE_BYTES` / `MAX_TOTAL_SIZE_BYTES` | Per-file (5MB) and total (20MB) upload caps. |
 
-`.user.ini` raises PHP's own `upload_max_filesize`/`post_max_size` ini limits to
-comfortably exceed the app's caps above — without it, some hosts' lower defaults
-would silently reject uploads before the app's own validation ever runs.
+`.user.ini` raises PHP's own upload limits to comfortably exceed the app's caps
+above — without it, some hosts' lower defaults would silently reject uploads before
+the app's own validation ever runs:
+
+| Setting | Value | Why |
+|---|---|---|
+| `upload_max_filesize` | `8M` | Above the 5MB per-file cap. |
+| `post_max_size` | `25M` | Above the 20MB total cap plus form fields. |
+| `max_file_uploads` | `120` | Corporate worst case is 112 files (9 documents + 3 images + 25 directors × 4). PHP silently drops files past this count. |
+
+After deploying to Bluehost, confirm these took effect: upload a temporary
+`<?php phpinfo();` page next to `submit.php`, check the three values, then delete it.
 
 ## Tab icon
 
@@ -173,7 +193,7 @@ php -d error_reporting="E_ALL & ~E_DEPRECATED" tests/php/test_submission_handler
 
 ## Deploying to Bluehost
 
-1. Set the real values in `config.php` (recipient email, SMTP credentials).
+1. Set the real values in `config.php` (recipient emails, SMTP credentials).
 2. Run `scripts/package.sh`. It builds the front end and writes
    `build/woodhall-kyc-deploy.zip` (also unpacked in `build/woodhall-kyc/`). The package
    contains the built site, `submit.php`, `config.php`, `lib/`, `vendor/`, `assets/logos/`,
