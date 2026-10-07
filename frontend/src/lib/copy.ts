@@ -9,7 +9,7 @@ export const NEEDS: Record<CustomerType, string[]> = {
     'The last 12 months of bank statements',
     'A recent passport photograph',
     'A photo or scan of your handwritten signature',
-    'Optional: work ID, employment letter, signature mandate card',
+    'Your work ID, employment letter and signature mandate card',
   ],
   corporate: [
     'CAC certificate of incorporation and CAC status report',
@@ -18,6 +18,7 @@ export const NEEDS: Record<CustomerType, string[]> = {
     'A board resolution to open the account and obtain the facility',
     'The last 12 months of company bank statements',
     'Government-issued ID and a recent passport photograph of each authorized signatory',
+    'Corporate ID of the authorized signatories',
     "Photos or scans of both signatories' handwritten signatures and the company seal or stamp",
   ],
 };

@@ -149,7 +149,7 @@ test_case('rejects a corporate submission missing a required document or image, 
     assert_equal(false, $r['success']);
     assert_equal('CAC Status Report is required.', $r['errors']['cac_status_report']);
     assert_equal('Company seal or stamp is required.', $r['errors']['sealFile']);
-    assert_true(!isset($r['errors']['corporate_id_signatories']), 'optional doc');
+    assert_true(isset($r['errors']['corporate_id_signatories']), 'now required');
     assert_true(!isset($r['errors']['certificate_of_incorporation']));
 });
 
@@ -170,12 +170,11 @@ test_case('passes attached flags and image paths to the sender, and slot-names i
     assert_true(count(array_filter($names, fn($n) => strpos($n, 'signatory-1-signature - ') === 0)) === 1);
 });
 
-test_case('an optional document left out is reported as not attached', function () {
-    $docIds = array_diff(array_keys(CORPORATE_DOCUMENTS), ['corporate_id_signatories']);
-    $files = all_files($docIds, array_keys(CORPORATE_IMAGES));
+test_case('every corporate document is reported as attached', function () {
+    $files = all_files(array_keys(CORPORATE_DOCUMENTS), array_keys(CORPORATE_IMAGES));
     $r = handle_submission(sample_post(), $files, ok_sender($data, $att));
     assert_equal(true, $r['success']);
-    assert_equal(false, array_column($data['documents'], 'attached', 'id')['corporate_id_signatories']);
+    assert_true(!in_array(false, array_column($data['documents'], 'attached'), true));
 });
 
 test_case('blocks a document with a disallowed file type', function () {
@@ -293,13 +292,10 @@ test_case('individual: succeeds and hands the sender the individual data shape',
     assert_equal(true, $d['consent']);
 });
 
-test_case('an individual submission needs the five required documents and the signature image', function () {
+test_case('an individual submission needs all eight documents and the signature image', function () {
     $r = handle_submission(['customerType' => 'individual'], [], ok_sender());
-    foreach (['valid_means_of_id', 'proof_of_address_utility', 'proof_of_address_statement', 'bank_statement_12_months', 'passport_photograph', 'signatureFile'] as $k) {
+    foreach (['valid_means_of_id', 'proof_of_address_utility', 'proof_of_address_statement', 'bank_statement_12_months', 'passport_photograph', 'work_id', 'employment_letter', 'signature_mandate_card', 'signatureFile'] as $k) {
         assert_true(isset($r['errors'][$k]), $k);
-    }
-    foreach (['work_id', 'employment_letter', 'signature_mandate_card'] as $k) {
-        assert_true(!isset($r['errors'][$k]), $k);
     }
 });
 

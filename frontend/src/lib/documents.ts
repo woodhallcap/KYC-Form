@@ -13,7 +13,7 @@ export const CORPORATE_DOCUMENTS: readonly DocumentSpec[] = [
   { id: 'company_bank_statement', label: 'Company Bank Statement - Last 12 months', required: true },
   { id: 'government_id_signatories', label: 'Valid Government-issued ID of Authorized Signatories', required: true },
   { id: 'passport_photograph_signatories', label: 'Recent Passport Photograph of Authorized Signatories', required: true },
-  { id: 'corporate_id_signatories', label: 'Corporate ID of Authorized Signatories', required: false },
+  { id: 'corporate_id_signatories', label: 'Corporate ID of Authorized Signatories', required: true },
 ];
 
 export const INDIVIDUAL_DOCUMENTS: readonly DocumentSpec[] = [
@@ -22,7 +22,7 @@ export const INDIVIDUAL_DOCUMENTS: readonly DocumentSpec[] = [
   { id: 'proof_of_address_statement', label: 'Proof of Address: Bank Statement (less than 3 months old)', required: true },
   { id: 'bank_statement_12_months', label: 'Bank Statement - Last 12 months', required: true },
   { id: 'passport_photograph', label: 'Recent Passport Photograph', required: true },
-  { id: 'work_id', label: 'Work ID', required: false },
-  { id: 'employment_letter', label: 'Employment Letter', required: false },
-  { id: 'signature_mandate_card', label: 'Signature Mandate Card', required: false },
+  { id: 'work_id', label: 'Work ID', required: true },
+  { id: 'employment_letter', label: 'Employment Letter', required: true },
+  { id: 'signature_mandate_card', label: 'Signature Mandate Card', required: true },
 ];

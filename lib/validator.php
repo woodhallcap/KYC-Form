@@ -16,7 +16,7 @@ const CORPORATE_DOCUMENTS = [
     'company_bank_statement' => ['label' => 'Company Bank Statement - Last 12 months', 'required' => true],
     'government_id_signatories' => ['label' => 'Valid Government-issued ID of Authorized Signatories', 'required' => true],
     'passport_photograph_signatories' => ['label' => 'Recent Passport Photograph of Authorized Signatories', 'required' => true],
-    'corporate_id_signatories' => ['label' => 'Corporate ID of Authorized Signatories', 'required' => false],
+    'corporate_id_signatories' => ['label' => 'Corporate ID of Authorized Signatories', 'required' => true],
 ];
 
 const INDIVIDUAL_DOCUMENTS = [
@@ -25,9 +25,9 @@ const INDIVIDUAL_DOCUMENTS = [
     'proof_of_address_statement' => ['label' => 'Proof of Address: Bank Statement (less than 3 months old)', 'required' => true],
     'bank_statement_12_months' => ['label' => 'Bank Statement - Last 12 months', 'required' => true],
     'passport_photograph' => ['label' => 'Recent Passport Photograph', 'required' => true],
-    'work_id' => ['label' => 'Work ID', 'required' => false],
-    'employment_letter' => ['label' => 'Employment Letter', 'required' => false],
-    'signature_mandate_card' => ['label' => 'Signature Mandate Card', 'required' => false],
+    'work_id' => ['label' => 'Work ID', 'required' => true],
+    'employment_letter' => ['label' => 'Employment Letter', 'required' => true],
+    'signature_mandate_card' => ['label' => 'Signature Mandate Card', 'required' => true],
 ];
 
 const CORPORATE_IMAGES = [

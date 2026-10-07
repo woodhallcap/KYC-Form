@@ -145,7 +145,7 @@ describe('BrandPanel', () => {
     render(<BrandPanel customerType="corporate" />);
     expect(screen.getByRole('heading', { name: 'Corporate customer' })).toBeInTheDocument();
     const list = screen.getByRole('list', { name: "What you'll need" });
-    expect(within(list).getAllByRole('listitem')).toHaveLength(7);
+    expect(within(list).getAllByRole('listitem')).toHaveLength(8);
     expect(within(list).getByText(/CAC certificate of incorporation/i)).toBeInTheDocument();
     expect(within(list).getByText(/CAC status report/)).toBeInTheDocument();
     expect(within(list).getByText(/company seal/)).toBeInTheDocument();

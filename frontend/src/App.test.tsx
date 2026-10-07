@@ -412,7 +412,7 @@ describe('individual flow', () => {
     expect(screen.getByText('Valid Means of ID is required.')).toBeInTheDocument();
   });
 
-  it('sends attached documents and omits optional ones left empty', async () => {
+  it('sends every attached document', async () => {
     const user = userEvent.setup();
     const fetchMock = json({ success: true });
     vi.stubGlobal('fetch', fetchMock);
@@ -422,7 +422,7 @@ describe('individual flow', () => {
     await screen.findByText('Thank you');
     const body = fetchMock.mock.calls[0][1].body as FormData;
     expect((body.get('documents[valid_means_of_id]') as File).name).toBe('valid_means_of_id.pdf');
-    expect(body.get('documents[work_id]')).toBeNull();
+    expect((body.get('documents[work_id]') as File).name).toBe('work_id.pdf');
   });
 
   it('jumps to step 1 for an email error, and stays put with an alert for a total-size error', async () => {

@@ -83,7 +83,7 @@ error `Upload a JPG or PNG image.`). Every upload is at most 5MB and all uploads
 - Documents (`documents[<id>]`), Required unless noted:
   `certificate_of_incorporation, cac_status_report, cac_forms, memorandum_articles,
   board_resolution, company_bank_statement, government_id_signatories,
-  passport_photograph_signatories`; `corporate_id_signatories` is Optional.
+  passport_photograph_signatories, corporate_id_signatories`.
 - Images (all required): `signatory1SignatureFile`, `signatory2SignatureFile`, `sealFile`.
 
 **Individual**
@@ -97,9 +97,9 @@ error `Upload a JPG or PNG image.`). Every upload is at most 5MB and all uploads
   `purposeOfRelationship` (`loan|lease|investment|other`); `sourceOfIncomeOther` / `purposeOther`
   are required when the choice is `other`.
 - Multi-choice array: `meansOfId[]` (`nin|passport|drivers_license|voters_card`, at least one).
-- Documents (`documents[<id>]`), Required unless noted: `valid_means_of_id,
+- Documents (`documents[<id>]`), All required: `valid_means_of_id,
   proof_of_address_utility, proof_of_address_statement, bank_statement_12_months,
-  passport_photograph`; `work_id`, `employment_letter` and `signature_mandate_card` are Optional.
+  passport_photograph, work_id, employment_letter, signature_mandate_card`.
 - Image (required): `signatureFile`.
 
 Response: `{success, errors, message}`. Field errors are keyed by field name

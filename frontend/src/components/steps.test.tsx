@@ -279,7 +279,7 @@ describe('IndividualStep2Documents', () => {
     render(<Host Step={IndividualStep2Documents} init={indiv(2)} />);
     INDIVIDUAL_DOCUMENTS.forEach((d) => expect(screen.getByLabelText(d.label)).toBeInTheDocument());
     expect(screen.getAllByText('Required')).toHaveLength(INDIVIDUAL_DOCUMENTS.filter((d) => d.required).length);
-    expect(screen.getAllByText('Optional')).toHaveLength(INDIVIDUAL_DOCUMENTS.filter((d) => !d.required).length);
+    expect(screen.queryByText('Optional')).not.toBeInTheDocument();
     await user.upload(screen.getByLabelText('Valid Means of ID'), new File(['x'], 'a.pdf'));
     expect(screen.getByText('a.pdf')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Section B: Verification Documents' })).toBeInTheDocument();
