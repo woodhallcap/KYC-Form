@@ -138,6 +138,7 @@ describe('BrandPanel', () => {
     const list = screen.getByRole('list', { name: "What you'll need" });
     expect(within(list).getAllByRole('listitem')).toHaveLength(5);
     expect(within(list).getByText(/passport photograph/i)).toBeInTheDocument();
+    expect(within(list).getByText(/utility bill and a bank statement/i)).toBeInTheDocument();
   });
 
   it('lists what a company needs', () => {
@@ -167,6 +168,7 @@ describe('TypeSelector', () => {
     const individual = screen.getByRole('button', { name: /Individual customer/ });
     const corporate = screen.getByRole('button', { name: /Corporate customer/ });
     expect(within(individual).getByText(/A valid ID/)).toBeInTheDocument();
+    expect(within(individual).getByText(/Utility bill and bank statement/)).toBeInTheDocument();
     expect(within(corporate).getByText(/Directors and owners above 5%/)).toBeInTheDocument();
     await user.click(individual);
     await user.click(corporate);

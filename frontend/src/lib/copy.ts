@@ -5,7 +5,7 @@ export const NEEDS: Record<CustomerType, string[]> = {
   individual: [
     "A valid means of ID (NIN slip, international passport, driver's license or voter's card)",
     'Your BVN and NIN',
-    'Proof of address from the last 3 months, such as a utility bill or bank statement',
+    'A utility bill and a bank statement, both from the last 3 months',
     'A passport photograph',
     'Your signature mandate card',
   ],
@@ -21,7 +21,7 @@ export const NEEDS: Record<CustomerType, string[]> = {
 
 /** The three-line version shown on the customer-type cards. */
 export const NEEDS_SHORT: Record<CustomerType, string[]> = {
-  individual: ['A valid ID', 'Your BVN and NIN', 'Proof of address'],
+  individual: ['A valid ID', 'Your BVN and NIN', 'Utility bill and bank statement'],
   corporate: ['CAC certificate and forms', 'Directors and owners above 5%', 'Bank statements'],
 };
 

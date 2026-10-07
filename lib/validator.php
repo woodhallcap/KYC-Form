@@ -12,7 +12,7 @@ const CORPORATE_DOCUMENT_IDS = [
 const DIRECTOR_FILE_IDS = ['id', 'bvn', 'nin', 'proof_of_address'];
 const MAX_DIRECTORS = 25;
 
-const INDIVIDUAL_DOCUMENT_IDS = ['valid_means_of_id', 'proof_of_address', 'passport_photograph', 'signature_mandate_card'];
+const INDIVIDUAL_DOCUMENT_IDS = ['valid_means_of_id', 'utility_bill', 'bank_statement', 'passport_photograph', 'signature_mandate_card'];
 const MEANS_OF_ID = ['nin', 'bvn', 'passport', 'drivers_license', 'voters_card'];
 const TRANSACTION_TYPES = ['cash', 'transfer', 'cheque'];
 const SOURCE_OF_INCOME_OPTIONS = ['salary', 'business', 'investment', 'inheritance', 'other'];
@@ -262,7 +262,8 @@ function validate_individual_person(array $data): array
         'countryOfResidence' => 'Country of residence is required.', 'residentialAddress' => 'Residential address is required.',
         'lga' => 'LGA is required.', 'state' => 'State is required.', 'phone' => 'Phone number is required.',
         'idNumber' => 'ID number is required.', 'bvn' => 'BVN is required.', 'nin' => 'NIN is required.',
-        'occupation' => 'Occupation is required.', 'sourceOfWealth' => 'Source of wealth is required.',
+        'occupation' => 'Occupation is required.', 'employerName' => 'Employer or business name is required.',
+        'officeAddress' => 'Office address is required.', 'sourceOfWealth' => 'Source of wealth is required.',
         'expectedMonthlyTurnover' => 'Expected monthly turnover is required.',
     ];
     foreach ($required as $field => $message) {
@@ -290,6 +291,18 @@ function validate_individual_person(array $data): array
     }
     if (!are_choices($data['expectedTransactionTypes'] ?? null, TRANSACTION_TYPES)) {
         $errors['expectedTransactionTypes'] = 'Select at least one transaction type.';
+    }
+    return validation_result($errors);
+}
+
+/** Every listed document needs a ticked box AND a file; anything less is missing. */
+function validate_required_documents(array $documents): array
+{
+    $errors = [];
+    foreach ($documents as $doc) {
+        if (empty($doc['submitted']) || empty($doc['file'])) {
+            $errors[$doc['id']] = 'This document is required.';
+        }
     }
     return validation_result($errors);
 }

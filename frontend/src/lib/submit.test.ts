@@ -11,6 +11,7 @@ describe('buildFormData', () => {
     s.directors[0].files.nin = new File(['x'], 'n.pdf');
     s.docs.cac_forms = { submitted: true, file: new File(['x'], 'c.pdf') };
     s.docs.board_resolution = { submitted: false, file: new File(['x'], 'b.pdf') };
+    s.docs.memorandum_articles = { submitted: true, file: null };
     s.consent = true;
     s.declaration.signatureAgree = true;
     s.declaration.signatory1Name = 'Jane';
@@ -25,8 +26,11 @@ describe('buildFormData', () => {
     expect(fd.has('directors[0][files][id]')).toBe(false);
     expect(fd.get('documents[cac_forms][submitted]')).toBe('on');
     expect((fd.get('documents[cac_forms][file]') as File).name).toBe('c.pdf');
-    expect(fd.has('documents[board_resolution][submitted]')).toBe(false);
-    expect(fd.has('documents[board_resolution][file]')).toBe(false);
+    // attaching a file is what provides a document, whatever the flag says; no file, nothing sent
+    expect(fd.get('documents[board_resolution][submitted]')).toBe('on');
+    expect((fd.get('documents[board_resolution][file]') as File).name).toBe('b.pdf');
+    expect(fd.has('documents[memorandum_articles][submitted]')).toBe(false);
+    expect(fd.has('documents[memorandum_articles][file]')).toBe(false);
     expect(fd.get('consent')).toBe('on');
     expect(fd.get('signatureAgree')).toBe('on');
     expect(fd.get('signatory1Name')).toBe('Jane');
@@ -71,6 +75,7 @@ describe('buildFormData: individual', () => {
     f.person.sourceOfIncomeOther = 'Gift';
     f.docs.valid_means_of_id = { submitted: true, file: new File(['x'], 'id.pdf') };
     f.docs.passport_photograph = { submitted: false, file: new File(['x'], 'p.jpg') };
+    f.docs.utility_bill = { submitted: true, file: null };
     f.consent = true;
     f.declaration = { declarationName: 'Jane Doe', signatureName: 'Jane Doe', signatureDate: '2026-09-15', signatureAgree: true };
     const fd = buildFormData(f);
@@ -84,8 +89,12 @@ describe('buildFormData: individual', () => {
     expect(fd.get('sourceOfIncomeOther')).toBe('Gift');
     expect(fd.get('documents[valid_means_of_id][submitted]')).toBe('on');
     expect((fd.get('documents[valid_means_of_id][file]') as File).name).toBe('id.pdf');
-    expect(fd.has('documents[passport_photograph][submitted]')).toBe(false);
-    expect(fd.has('documents[passport_photograph][file]')).toBe(false);
+    // attaching a file is what provides a document, whatever the flag says; no file, nothing sent
+    expect(fd.get('documents[passport_photograph][submitted]')).toBe('on');
+    expect((fd.get('documents[passport_photograph][file]') as File).name).toBe('p.jpg');
+    expect(fd.has('documents[utility_bill][submitted]')).toBe(false);
+    expect(fd.has('documents[utility_bill][file]')).toBe(false);
+    expect(fd.has('documents[bank_statement][submitted]')).toBe(false);
     expect(fd.get('consent')).toBe('on');
     expect(fd.get('declarationName')).toBe('Jane Doe');
     expect(fd.get('signatureDate')).toBe('2026-09-15');
